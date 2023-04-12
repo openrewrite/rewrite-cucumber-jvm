@@ -24,7 +24,7 @@ public class DropSummaryPrinter extends Recipe {
 
     @Override
     protected TreeVisitor<?, ExecutionContext> getSingleSourceApplicableTest() {
-        return new UsesType<>(IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER);
+        return new UsesType<>(IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER, null);
     }
 
     @Override

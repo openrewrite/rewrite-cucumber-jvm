@@ -140,7 +140,7 @@ class StepDefinitionArguments {
     J.Lambda lambda;
 
     String template() {
-        return "@#{}(#{any()})\npublic void #{}(#{}) throws Exception {\n\t#{any()}\n}";
+        return "@#{}(#{any()})\npublic void #{}(#{}) throws Exception {\n\t#{any()};\n}";
     }
 
     private String formatMethodName() {

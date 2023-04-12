@@ -21,7 +21,7 @@
         <base.java.version>1.8</base.java.version>
         <cucumber.version>7.11.2</cucumber.version>
         <junit.version>5.9.2</junit.version>
-        <rewrite.version>1.17.0</rewrite.version>
+        <rewrite.version>1.18.1</rewrite.version>
         <resources.encoding>UTF-8</resources.encoding>
         <project.build.outputTimestamp>1674814830</project.build.outputTimestamp>
         <project.Automatic-Module-Name>io.cucumber.migration</project.Automatic-Module-Name>

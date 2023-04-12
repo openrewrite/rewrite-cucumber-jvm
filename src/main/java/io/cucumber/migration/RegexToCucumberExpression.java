@@ -26,7 +26,7 @@ public class RegexToCucumberExpression extends Recipe {
 
     @Override
     protected TreeVisitor<?, ExecutionContext> getSingleSourceApplicableTest() {
-        return new UsesType<>(IO_CUCUMBER_JAVA_STEP_DEFINITION);
+        return new UsesType<>(IO_CUCUMBER_JAVA_STEP_DEFINITION, null);
     }
 
     @Override

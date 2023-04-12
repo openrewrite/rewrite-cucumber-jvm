@@ -151,7 +151,7 @@ class HookArguments {
     }
 
     String template() {
-        return "@#{}#{}\npublic void #{}(#{}) throws Exception {\n\t#{any()}\n}";
+        return "@#{}#{}\npublic void #{}(#{}) throws Exception {\n\t#{any()};\n}";
     }
 
     private String formatAnnotationArguments() {

@@ -250,7 +250,7 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                                         Given("{int} plus {int}", (Integer a, Integer b) -> {
 
                                             // Lambda body comment
-                                            int c = a + b;
+                                            System.out.println(a + b);
                                         });
                                     }
                                 }
@@ -266,7 +266,7 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                                     public void int_plus_int(Integer a, Integer b) {
 
                                         // Lambda body comment
-                                        int c = a + b;
+                                        System.out.println(a + b);
                                     }
                                 }
                                 """),
