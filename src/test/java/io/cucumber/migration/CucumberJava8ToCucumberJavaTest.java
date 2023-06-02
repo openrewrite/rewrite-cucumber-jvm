@@ -3,6 +3,7 @@ package io.cucumber.migration;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.openrewrite.Issue;
+import org.openrewrite.config.Environment;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
@@ -15,7 +16,9 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
 
     @Override
     public void defaults(RecipeSpec spec) {
-        spec.recipe("/META-INF/rewrite/cucumber.yml", "io.cucumber.migration.CucumberJava8ToJava");
+        spec.recipe(Environment.builder()
+                .scanRuntimeClasspath("io.cucumber.migration")
+                .build().activateRecipes("io.cucumber.migration.CucumberJava8ToJava"));
         spec.parser(JavaParser.fromJavaVersion()
                 .logCompilationWarningsAndErrors(true)
                 .classpath("junit-jupiter-api", "cucumber-java", "cucumber-java8"));

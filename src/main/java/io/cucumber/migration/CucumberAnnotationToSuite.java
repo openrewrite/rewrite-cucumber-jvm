@@ -2,6 +2,7 @@ package io.cucumber.migration;
 
 import lombok.SneakyThrows;
 import org.openrewrite.ExecutionContext;
+import org.openrewrite.Preconditions;
 import org.openrewrite.Recipe;
 import org.openrewrite.TreeVisitor;
 import org.openrewrite.internal.ListUtils;
@@ -19,7 +20,6 @@ import org.openrewrite.java.tree.TypeUtils;
 import java.text.RuleBasedCollator;
 import java.time.Duration;
 import java.util.Comparator;
-import java.util.function.Supplier;
 
 public class CucumberAnnotationToSuite extends Recipe {
 
@@ -44,58 +44,57 @@ public class CucumberAnnotationToSuite extends Recipe {
     }
 
     @Override
-    protected TreeVisitor<?, ExecutionContext> getSingleSourceApplicableTest() {
-        return new UsesType<>(IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER, null);
+    public TreeVisitor<?, ExecutionContext> getVisitor() {
+        return Preconditions.check(
+                new UsesType<>(IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER, null),
+                new ExecutionContextJavaIsoVisitor());
     }
 
-    @Override
-    protected JavaIsoVisitor<ExecutionContext> getVisitor() {
-        final AnnotationMatcher cucumberAnnoMatcher = new AnnotationMatcher(
-            "@" + IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER);
+    class ExecutionContextJavaIsoVisitor extends JavaIsoVisitor<ExecutionContext> {
+        private final AnnotationMatcher cucumberAnnoMatcher = new AnnotationMatcher(
+                "@" + IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER);
 
-        return new JavaIsoVisitor<ExecutionContext>() {
-            @SneakyThrows
-            @Override
-            public J.ClassDeclaration visitClassDeclaration(ClassDeclaration cd, ExecutionContext ctx) {
-                ClassDeclaration classDecl = super.visitClassDeclaration(cd, ctx);
-                if (classDecl.getAllAnnotations().stream().noneMatch(cucumberAnnoMatcher::matches)) {
-                    return classDecl;
-                }
-
-                Supplier<JavaParser> javaParserSupplier = () -> JavaParser.fromJavaVersion()
-                        .classpath("junit-platform-suite-api")
-                        .build();
-
-                JavaType.FullyQualified classFqn = TypeUtils.asFullyQualified(classDecl.getType());
-                if (classFqn != null) {
-                    maybeRemoveImport(IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER);
-                    maybeAddImport(SUITE);
-                    maybeAddImport(SELECT_CLASSPATH_RESOURCE);
-
-                    final String classDeclPath = classFqn.getPackageName().replace('.', '/');
-                    classDecl = classDecl
-                            .withLeadingAnnotations(ListUtils.map(classDecl.getLeadingAnnotations(), ann -> {
-                                if (cucumberAnnoMatcher.matches(ann)) {
-                                    String code = "@SelectClasspathResource(\"#{}\")";
-                                    JavaTemplate template = JavaTemplate.builder(this::getCursor, code)
-                                            .javaParser(javaParserSupplier)
-                                            .imports(SELECT_CLASSPATH_RESOURCE)
-                                            .build();
-                                    return ann.withTemplate(template, ann.getCoordinates().replace(), classDeclPath);
-                                }
-                                return ann;
-                            }));
-                    classDecl = classDecl.withTemplate(JavaTemplate.builder(this::getCursor, "@Suite")
-                            .javaParser(javaParserSupplier)
-                            .imports(SUITE)
-                            .build(),
-                        classDecl.getCoordinates().addAnnotation(Comparator.comparing(
-                            J.Annotation::getSimpleName,
-                            new RuleBasedCollator("< SelectClasspathResource"))));
-                }
+        @SneakyThrows
+        @Override
+        public ClassDeclaration visitClassDeclaration(ClassDeclaration cd, ExecutionContext ctx) {
+            ClassDeclaration classDecl = super.visitClassDeclaration(cd, ctx);
+            if (classDecl.getAllAnnotations().stream().noneMatch(cucumberAnnoMatcher::matches)) {
                 return classDecl;
             }
-        };
-    }
 
+            JavaParser.Builder javaParserSupplier = JavaParser.fromJavaVersion().classpath("junit-platform-suite-api");
+
+            JavaType.FullyQualified classFqn = TypeUtils.asFullyQualified(classDecl.getType());
+            if (classFqn != null) {
+                maybeRemoveImport(IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER);
+                maybeAddImport(SUITE);
+                maybeAddImport(SELECT_CLASSPATH_RESOURCE);
+
+                final String classDeclPath = classFqn.getPackageName().replace('.', '/');
+                classDecl = classDecl
+                        .withLeadingAnnotations(ListUtils.map(classDecl.getLeadingAnnotations(), ann -> {
+                            if (cucumberAnnoMatcher.matches(ann)) {
+                                String code = "@SelectClasspathResource(\"#{}\")";
+                                return JavaTemplate.builder(code)
+                                        .contextSensitive()
+                                        .javaParser(javaParserSupplier)
+                                        .imports(SELECT_CLASSPATH_RESOURCE)
+                                        .build()
+                                        .apply(getCursor(), ann.getCoordinates().replace(), classDeclPath);
+                            }
+                            return ann;
+                        }));
+                JavaTemplate template = JavaTemplate.builder("@Suite")
+                        .contextSensitive()
+                        .javaParser(javaParserSupplier)
+                        .imports(SUITE)
+                        .build();
+                classDecl = template.apply(getCursor(),
+                        classDecl.getCoordinates().addAnnotation(Comparator.comparing(
+                                J.Annotation::getSimpleName,
+                                new RuleBasedCollator("< SelectClasspathResource"))));
+            }
+            return classDecl;
+        }
+    }
 }

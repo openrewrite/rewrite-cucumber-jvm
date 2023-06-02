@@ -1,6 +1,7 @@
 package io.cucumber.migration;
 
 import org.openrewrite.ExecutionContext;
+import org.openrewrite.Preconditions;
 import org.openrewrite.Recipe;
 import org.openrewrite.TreeVisitor;
 import org.openrewrite.internal.ListUtils;
@@ -25,11 +26,6 @@ public class RegexToCucumberExpression extends Recipe {
     private static final String IO_CUCUMBER_JAVA_STEP_DEFINITION = "io.cucumber.java.*.*";
 
     @Override
-    protected TreeVisitor<?, ExecutionContext> getSingleSourceApplicableTest() {
-        return new UsesType<>(IO_CUCUMBER_JAVA_STEP_DEFINITION, null);
-    }
-
-    @Override
     public String getDisplayName() {
         return "Replace Cucumber-Java step definition regexes with Cucumber expressions";
     }
@@ -45,8 +41,8 @@ public class RegexToCucumberExpression extends Recipe {
     }
 
     @Override
-    protected TreeVisitor<?, ExecutionContext> getVisitor() {
-        return new CucumberStepDefinitionBodyVisitor();
+    public TreeVisitor<?, ExecutionContext> getVisitor() {
+        return Preconditions.check(new UsesType<>(IO_CUCUMBER_JAVA_STEP_DEFINITION, null), new CucumberStepDefinitionBodyVisitor());
     }
 
     static final class CucumberStepDefinitionBodyVisitor extends JavaIsoVisitor<ExecutionContext> {
@@ -55,7 +51,7 @@ public class RegexToCucumberExpression extends Recipe {
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration m, ExecutionContext p) {
             J.MethodDeclaration methodDeclaration = super.visitMethodDeclaration(m, p);
             return methodDeclaration.withLeadingAnnotations(ListUtils.map(methodDeclaration.getLeadingAnnotations(),
-                ann -> replaceRegexWithCucumberExpression(methodDeclaration, ann)));
+                    ann -> replaceRegexWithCucumberExpression(methodDeclaration, ann)));
         }
 
         private static J.Annotation replaceRegexWithCucumberExpression(

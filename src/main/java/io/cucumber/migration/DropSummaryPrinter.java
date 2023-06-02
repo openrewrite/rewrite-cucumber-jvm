@@ -1,6 +1,7 @@
 package io.cucumber.migration;
 
 import org.openrewrite.ExecutionContext;
+import org.openrewrite.Preconditions;
 import org.openrewrite.Recipe;
 import org.openrewrite.TreeVisitor;
 import org.openrewrite.internal.ListUtils;
@@ -23,11 +24,6 @@ public class DropSummaryPrinter extends Recipe {
     private static final String IO_CUCUMBER_PLUGIN_PLUGIN = "io.cucumber.plugin.Plugin";
 
     @Override
-    protected TreeVisitor<?, ExecutionContext> getSingleSourceApplicableTest() {
-        return new UsesType<>(IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER, null);
-    }
-
-    @Override
     public String getDisplayName() {
         return "Drop SummaryPrinter";
     }
@@ -43,8 +39,8 @@ public class DropSummaryPrinter extends Recipe {
     }
 
     @Override
-    protected TreeVisitor<?, ExecutionContext> getVisitor() {
-        return new DropSummaryPrinterVisitor();
+    public TreeVisitor<?, ExecutionContext> getVisitor() {
+        return Preconditions.check(new UsesType<>(IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER, null), new DropSummaryPrinterVisitor());
     }
 
     static final class DropSummaryPrinterVisitor extends JavaIsoVisitor<ExecutionContext> {
@@ -63,9 +59,9 @@ public class DropSummaryPrinter extends Recipe {
                 return classDeclaration;
             }
             doAfterVisit(new ChangeType(
-                IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER,
-                IO_CUCUMBER_PLUGIN_PLUGIN,
-                true));
+                    IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER,
+                    IO_CUCUMBER_PLUGIN_PLUGIN,
+                    true).getVisitor());
             doAfterVisit(new RemoveImport<>(IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER));
             return classDeclaration.withImplements(ListUtils.map(classDeclaration.getImplements(), i -> {
                 // Remove duplicate implements
