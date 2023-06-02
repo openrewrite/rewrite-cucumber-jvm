@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.cucumber.migration;
+package org.openrewrite.cucumber.jvm;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -32,8 +32,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipe(Environment.builder()
-                .scanRuntimeClasspath("io.cucumber.migration")
-                .build().activateRecipes("io.cucumber.migration.CucumberJava8ToJava"));
+                .scanRuntimeClasspath("org.openrewrite.cucumber.jvm")
+                .build().activateRecipes("org.openrewrite.cucumber.jvm.CucumberJava8ToJava"));
         spec.parser(JavaParser.fromJavaVersion()
                 .logCompilationWarningsAndErrors(true)
                 .classpath("junit-jupiter-api", "cucumber-java", "cucumber-java8"));

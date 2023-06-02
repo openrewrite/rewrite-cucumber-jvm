@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.cucumber.migration;
+package org.openrewrite.cucumber.jvm;
 
 import lombok.RequiredArgsConstructor;
 import org.openrewrite.ExecutionContext;

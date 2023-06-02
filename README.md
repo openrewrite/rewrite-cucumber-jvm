@@ -12,14 +12,14 @@ These can either be added to the build file of the project to be migrated or [ru
 ```shell
 mvn -U org.openrewrite.maven:rewrite-maven-plugin:run \
   -Drewrite.recipeArtifactCoordinates=io.cucumber:cucumber-jvm-migration:LATEST \
-  -DactiveRecipes=io.cucumber.migration.UpgradeCucumber7x
+  -DactiveRecipes=org.openrewrite.cucumber.jvm.UpgradeCucumber7x
 ```
 
 ### Cucumber-Java8 migration to Cucumber-Java
 ```shell
 mvn -U org.openrewrite.maven:rewrite-maven-plugin:run \
   -Drewrite.recipeArtifactCoordinates=io.cucumber:cucumber-jvm-migration:LATEST \
-  -DactiveRecipes=io.cucumber.migration.CucumberJava8ToJava
+  -DactiveRecipes=org.openrewrite.cucumber.jvm.CucumberJava8ToJava
 ```
 
 

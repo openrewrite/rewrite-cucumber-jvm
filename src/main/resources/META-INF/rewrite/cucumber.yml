@@ -16,38 +16,38 @@
 
 ---
 type: specs.openrewrite.org/v1beta/recipe
-name: io.cucumber.migration.UpgradeCucumber7x
+name: org.openrewrite.cucumber.jvm.UpgradeCucumber7x
 displayName: Upgrade to Cucumber-JVM 7.x
 description: Upgrade to Cucumber-JVM 7.x from any previous version.
 tags:
   - testing
   - cucumber
 recipeList:
-  - io.cucumber.migration.UpgradeCucumber5x
-  - io.cucumber.migration.CucumberJava8ToJava
-  - io.cucumber.migration.DropSummaryPrinter
-  - io.cucumber.migration.RegexToCucumberExpression
-  - io.cucumber.migration.CucumberToJunitPlatformSuite
+  - org.openrewrite.cucumber.jvm.UpgradeCucumber5x
+  - org.openrewrite.cucumber.jvm.CucumberJava8ToJava
+  - org.openrewrite.cucumber.jvm.DropSummaryPrinter
+  - org.openrewrite.cucumber.jvm.RegexToCucumberExpression
+  - org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite
   - org.openrewrite.maven.UpgradeDependencyVersion:
       groupId: io.cucumber
       artifactId: "*"
       newVersion: 7.x
 ---
 type: specs.openrewrite.org/v1beta/recipe
-name: io.cucumber.migration.UpgradeCucumber5x
+name: org.openrewrite.cucumber.jvm.UpgradeCucumber5x
 displayName: Upgrade to Cucumber-JVM 5.x
 description: Upgrade to Cucumber-JVM 5.x from any previous version.
 tags:
   - testing
   - cucumber
 recipeList:
-  - io.cucumber.migration.UpgradeCucumber2x
+  - org.openrewrite.cucumber.jvm.UpgradeCucumber2x
   - org.openrewrite.java.ChangePackage:
       oldPackageName: cucumber.api
       newPackageName: io.cucumber
 ---
 type: specs.openrewrite.org/v1beta/recipe
-name: io.cucumber.migration.UpgradeCucumber2x
+name: org.openrewrite.cucumber.jvm.UpgradeCucumber2x
 displayName: Upgrade to Cucumber-JVM 2.x
 description: Upgrade to Cucumber-JVM 2.x from any previous version.
 tags:
@@ -66,15 +66,15 @@ recipeList:
       newArtifactId: cucumber-java8
 ---
 type: specs.openrewrite.org/v1beta/recipe
-name: io.cucumber.migration.CucumberJava8ToJava
+name: org.openrewrite.cucumber.jvm.CucumberJava8ToJava
 displayName: Cucumber-Java8 migration to Cucumber-Java
 description: Migrates Cucumber-Java8 step definitions and LambdaGlue hooks to Cucumber-Java annotated methods.
 tags:
   - testing
   - cucumber
 recipeList:
-  - io.cucumber.migration.CucumberJava8HookDefinitionToCucumberJava
-  - io.cucumber.migration.CucumberJava8StepDefinitionToCucumberJava
+  - org.openrewrite.cucumber.jvm.CucumberJava8HookDefinitionToCucumberJava
+  - org.openrewrite.cucumber.jvm.CucumberJava8StepDefinitionToCucumberJava
   - org.openrewrite.maven.ChangeDependencyGroupIdAndArtifactId:
       oldGroupId: io.cucumber
       oldArtifactId: cucumber-java8
@@ -85,14 +85,14 @@ recipeList:
       newPackageName: io.cucumber.java
 ---
 type: specs.openrewrite.org/v1beta/recipe
-name: io.cucumber.migration.CucumberToJunitPlatformSuite
+name: org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite
 displayName: Cucumber to JUnit Test Suites
 description: Migrates Cucumber tests to JUnit Test Suites.
 tags:
   - testing
   - cucumber
 recipeList:
-  - io.cucumber.migration.CucumberAnnotationToSuite
+  - org.openrewrite.cucumber.jvm.CucumberAnnotationToSuite
   - org.openrewrite.maven.AddDependency:
       groupId: org.junit.platform
       artifactId: junit-platform-suite
