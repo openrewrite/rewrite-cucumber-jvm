@@ -1,4 +1,19 @@
-package io.cucumber.migration;
+/*
+ * Copyright 2023 the original author or authors.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p>
+ * https://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.openrewrite.cucumber.jvm;
 
 import lombok.RequiredArgsConstructor;
 import org.openrewrite.ExecutionContext;
@@ -55,21 +70,19 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         });
 
         // Remove nested braces from lambda body block inserted into new method
-        doAfterVisit(new org.openrewrite.java.cleanup.RemoveUnneededBlock());
+        doAfterVisit(new org.openrewrite.staticanalysis.RemoveUnneededBlock().getVisitor());
 
         // Remove unnecessary throws from templates that maybe-throw-exceptions
-        doAfterVisit(new org.openrewrite.java.cleanup.UnnecessaryThrows());
+        doAfterVisit(new org.openrewrite.staticanalysis.UnnecessaryThrows().getVisitor());
 
         // Update implements & add new method
-        return classDeclaration
-                .withImplements(retained)
-                .withTemplate(JavaTemplate.builder(this::getCursor, template)
-                        .javaParser(
-                            JavaParser.fromJavaVersion().classpath("cucumber-java", "cucumber-java8"))
-                        .imports(replacementImport)
-                        .build(),
-                    coordinatesForNewMethod(classDeclaration.getBody()),
-                    templateParameters);
+        J.ClassDeclaration applied = JavaTemplate.builder(template)
+                .contextSensitive()
+                .javaParser(
+                        JavaParser.fromJavaVersion().classpath("cucumber-java", "cucumber-java8"))
+                .imports(replacementImport)
+                .build().apply(getCursor(), coordinatesForNewMethod(classDeclaration.getBody()), templateParameters);
+        return applied.withImplements(retained);
     }
 
     /**

@@ -1,6 +1,22 @@
-package io.cucumber.migration;
+/*
+ * Copyright 2023 the original author or authors.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p>
+ * https://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.openrewrite.cucumber.jvm;
 
 import org.openrewrite.ExecutionContext;
+import org.openrewrite.Preconditions;
 import org.openrewrite.Recipe;
 import org.openrewrite.TreeVisitor;
 import org.openrewrite.internal.ListUtils;
@@ -25,11 +41,6 @@ public class RegexToCucumberExpression extends Recipe {
     private static final String IO_CUCUMBER_JAVA_STEP_DEFINITION = "io.cucumber.java.*.*";
 
     @Override
-    protected TreeVisitor<?, ExecutionContext> getSingleSourceApplicableTest() {
-        return new UsesType<>(IO_CUCUMBER_JAVA_STEP_DEFINITION, null);
-    }
-
-    @Override
     public String getDisplayName() {
         return "Replace Cucumber-Java step definition regexes with Cucumber expressions";
     }
@@ -45,8 +56,8 @@ public class RegexToCucumberExpression extends Recipe {
     }
 
     @Override
-    protected TreeVisitor<?, ExecutionContext> getVisitor() {
-        return new CucumberStepDefinitionBodyVisitor();
+    public TreeVisitor<?, ExecutionContext> getVisitor() {
+        return Preconditions.check(new UsesType<>(IO_CUCUMBER_JAVA_STEP_DEFINITION, null), new CucumberStepDefinitionBodyVisitor());
     }
 
     static final class CucumberStepDefinitionBodyVisitor extends JavaIsoVisitor<ExecutionContext> {
@@ -55,7 +66,7 @@ public class RegexToCucumberExpression extends Recipe {
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration m, ExecutionContext p) {
             J.MethodDeclaration methodDeclaration = super.visitMethodDeclaration(m, p);
             return methodDeclaration.withLeadingAnnotations(ListUtils.map(methodDeclaration.getLeadingAnnotations(),
-                ann -> replaceRegexWithCucumberExpression(methodDeclaration, ann)));
+                    ann -> replaceRegexWithCucumberExpression(methodDeclaration, ann)));
         }
 
         private static J.Annotation replaceRegexWithCucumberExpression(

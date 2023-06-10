@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.cucumber.migration;
+package org.openrewrite.cucumber.jvm;
 
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 import org.openrewrite.ExecutionContext;
+import org.openrewrite.Preconditions;
 import org.openrewrite.Recipe;
 import org.openrewrite.TreeVisitor;
 import org.openrewrite.internal.lang.Nullable;
@@ -40,12 +41,7 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
     private static final String IO_CUCUMBER_JAVA8_STEP_DEFINITION = "io.cucumber.java8.* *(String, ..)";
     private static final String IO_CUCUMBER_JAVA8_STEP_DEFINITION_BODY = "io.cucumber.java8.StepDefinitionBody";
     private static final MethodMatcher STEP_DEFINITION_METHOD_MATCHER = new MethodMatcher(
-        IO_CUCUMBER_JAVA8_STEP_DEFINITION);
-
-    @Override
-    protected TreeVisitor<?, ExecutionContext> getSingleSourceApplicableTest() {
-        return new UsesMethod<>(IO_CUCUMBER_JAVA8_STEP_DEFINITION, true);
-    }
+            IO_CUCUMBER_JAVA8_STEP_DEFINITION);
 
     @Override
     public String getDisplayName() {
@@ -63,8 +59,10 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
     }
 
     @Override
-    protected TreeVisitor<?, ExecutionContext> getVisitor() {
-        return new CucumberStepDefinitionBodyVisitor();
+    public TreeVisitor<?, ExecutionContext> getVisitor() {
+        return Preconditions.check(
+                new UsesMethod<>(IO_CUCUMBER_JAVA8_STEP_DEFINITION, true),
+                new CucumberStepDefinitionBodyVisitor());
     }
 
     static final class CucumberStepDefinitionBodyVisitor extends JavaVisitor<ExecutionContext> {
@@ -91,20 +89,20 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
 
             // Extract step definition body, when applicable
             Expression possibleStepDefinitionBody = arguments.get(1); // Always
-                                                                      // available
-                                                                      // after a
-                                                                      // first
-                                                                      // String
-                                                                      // argument
+            // available
+            // after a
+            // first
+            // String
+            // argument
             if (!(possibleStepDefinitionBody instanceof J.Lambda)
                     || !TypeUtils.isAssignableTo(IO_CUCUMBER_JAVA8_STEP_DEFINITION_BODY,
-                        possibleStepDefinitionBody.getType())) {
+                    possibleStepDefinitionBody.getType())) {
                 return SearchResult.found(m, "TODO Migrate manually");
             }
             J.Lambda lambda = (J.Lambda) possibleStepDefinitionBody;
 
             StepDefinitionArguments stepArguments = new StepDefinitionArguments(
-                m.getSimpleName(), literal, lambda);
+                    m.getSimpleName(), literal, lambda);
 
             // Determine step definitions class name
             J.ClassDeclaration parentClass = getCursor()
@@ -114,14 +112,14 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
                 return m;
             }
             String replacementImport = String.format("%s.%s",
-                m.getMethodType().getDeclaringType().getFullyQualifiedName()
-                        .replace("java8", "java").toLowerCase(),
-                m.getSimpleName());
+                    m.getMethodType().getDeclaringType().getFullyQualifiedName()
+                            .replace("java8", "java").toLowerCase(),
+                    m.getSimpleName());
             doAfterVisit(new CucumberJava8ClassVisitor(
-                parentClass.getType(),
-                replacementImport,
-                stepArguments.template(),
-                stepArguments.parameters()));
+                    parentClass.getType(),
+                    replacementImport,
+                    stepArguments.template(),
+                    stepArguments.parameters()));
 
             // Remove original method invocation; it's replaced in the above
             // visitor
@@ -161,12 +159,12 @@ class StepDefinitionArguments {
     }
 
     Object[] parameters() {
-        return new Object[] {
+        return new Object[]{
                 annotationName,
                 cucumberExpression,
                 formatMethodName(),
                 formatMethodArguments(),
-                lambda.getBody() };
+                lambda.getBody()};
     }
 
 }
