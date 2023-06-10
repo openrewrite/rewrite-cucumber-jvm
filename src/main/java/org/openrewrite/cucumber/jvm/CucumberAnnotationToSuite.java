@@ -29,6 +29,7 @@ import org.openrewrite.java.JavaTemplate;
 import org.openrewrite.java.search.UsesType;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.J.ClassDeclaration;
+import org.openrewrite.java.tree.JavaCoordinates;
 import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.java.tree.TypeUtils;
 
@@ -78,36 +79,24 @@ public class CucumberAnnotationToSuite extends Recipe {
             }
 
             JavaParser.Builder javaParserSupplier = JavaParser.fromJavaVersion().classpath("junit-platform-suite-api");
-
             JavaType.FullyQualified classFqn = TypeUtils.asFullyQualified(classDecl.getType());
             if (classFqn != null) {
-                maybeRemoveImport(IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER);
+                // Add suite annotation and select classpath resource
+                JavaCoordinates coordinates = classDecl.getCoordinates().addAnnotation(Comparator.comparing(
+                        J.Annotation::getSimpleName, new RuleBasedCollator("< SelectClasspathResource")));
+                classDecl = JavaTemplate.builder("@Suite @SelectClasspathResource(\"#{}\")")
+                        .contextSensitive()
+                        .javaParser(javaParserSupplier)
+                        .imports(SUITE, SELECT_CLASSPATH_RESOURCE)
+                        .build()
+                        .apply(getCursor(), coordinates, classFqn.getPackageName().replace('.', '/'));
                 maybeAddImport(SUITE);
                 maybeAddImport(SELECT_CLASSPATH_RESOURCE);
 
-                final String classDeclPath = classFqn.getPackageName().replace('.', '/');
-                classDecl = classDecl
-                        .withLeadingAnnotations(ListUtils.map(classDecl.getLeadingAnnotations(), ann -> {
-                            if (cucumberAnnoMatcher.matches(ann)) {
-                                String code = "@SelectClasspathResource(\"#{}\")";
-                                return JavaTemplate.builder(code)
-                                        .contextSensitive()
-                                        .javaParser(javaParserSupplier)
-                                        .imports(SELECT_CLASSPATH_RESOURCE)
-                                        .build()
-                                        .apply(getCursor(), ann.getCoordinates().replace(), classDeclPath);
-                            }
-                            return ann;
-                        }));
-                JavaTemplate template = JavaTemplate.builder("@Suite")
-                        .contextSensitive()
-                        .javaParser(javaParserSupplier)
-                        .imports(SUITE)
-                        .build();
-                classDecl = template.apply(getCursor(),
-                        classDecl.getCoordinates().addAnnotation(Comparator.comparing(
-                                J.Annotation::getSimpleName,
-                                new RuleBasedCollator("< SelectClasspathResource"))));
+                // Remove cucumber annotation
+                classDecl = classDecl.withLeadingAnnotations(ListUtils.map(classDecl.getLeadingAnnotations(),
+                        ann -> cucumberAnnoMatcher.matches(ann) ? null : ann));
+                maybeRemoveImport(IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER);
             }
             return classDecl;
         }
