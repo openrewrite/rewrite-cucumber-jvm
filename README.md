@@ -10,6 +10,8 @@
 
 This project implements a [Rewrite module](https://github.com/openrewrite/rewrite) that performs common tasks when migrating to new version of [Cucumber-JVM](https://github.com/cucumber/cucumber-jvm).
 
+Browse [a selection of recipes available through this module in the recipe catalog](https://docs.openrewrite.org/recipes/cucumber/jvm).
+
 ## Running migration recipes
 Migration recipes can be run using the [rewrite-maven-plugin](https://docs.openrewrite.org/reference/rewrite-maven-plugin)
 or [rewrite-gradle-plugin](https://docs.openrewrite.org/reference/gradle-plugin-configuration).
