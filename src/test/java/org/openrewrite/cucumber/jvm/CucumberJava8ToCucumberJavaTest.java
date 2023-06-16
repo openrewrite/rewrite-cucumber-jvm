@@ -17,6 +17,7 @@ package org.openrewrite.cucumber.jvm;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.openrewrite.DocumentExample;
 import org.openrewrite.Issue;
 import org.openrewrite.config.Environment;
 import org.openrewrite.java.JavaParser;
@@ -41,6 +42,7 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
 
     @SuppressWarnings("CodeBlock2Expr")
     @Test
+    @DocumentExample
     void cucumberJava8HooksAndSteps() {
         rewriteRun(
             version(
