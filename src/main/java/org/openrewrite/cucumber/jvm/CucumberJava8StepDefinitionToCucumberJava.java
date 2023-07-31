@@ -45,12 +45,12 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
 
     @Override
     public String getDisplayName() {
-        return "Replace Cucumber-Java8 step definitions with Cucumber-Java";
+        return "Replace `cucumber-java8` step definitions with `cucumber-java`";
     }
 
     @Override
     public String getDescription() {
-        return "Replace StepDefinitionBody methods with StepDefinitionAnnotations on new methods with the same body.";
+        return "Replace `StepDefinitionBody` methods with `StepDefinitionAnnotations` on new methods with the same body.";
     }
 
     @Override

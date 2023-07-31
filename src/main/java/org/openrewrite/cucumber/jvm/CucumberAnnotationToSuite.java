@@ -46,12 +46,12 @@ public class CucumberAnnotationToSuite extends Recipe {
 
     @Override
     public String getDisplayName() {
-        return "Replace @Cucumber with @Suite";
+        return "Replace `@Cucumber` with `@Suite`";
     }
 
     @Override
     public String getDescription() {
-        return "Replace @Cucumber with @Suite and @SelectClasspathResource(\"cucumber/annotated/class/package\").";
+        return "Replace `@Cucumber` with `@Suite` and `@SelectClasspathResource(\"cucumber/annotated/class/package\")`.";
     }
 
     @Override

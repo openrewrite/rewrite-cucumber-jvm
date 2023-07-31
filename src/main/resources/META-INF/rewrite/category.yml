@@ -15,6 +15,11 @@
 #
 ---
 type: specs.openrewrite.org/v1beta/category
+name: Cucumber
+packageName: org.openrewrite.cucumber
+description: Recipes for upgrading [Cucumber](https://cucumber.io/).
+---
+type: specs.openrewrite.org/v1beta/category
 name: Cucumber-JVM
 packageName: org.openrewrite.cucumber.jvm
 description: Recipes for upgrading [Cucumber-JVM](https://github.com/cucumber/cucumber-jvm/).
