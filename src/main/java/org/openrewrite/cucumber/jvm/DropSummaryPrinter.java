@@ -40,12 +40,12 @@ public class DropSummaryPrinter extends Recipe {
 
     @Override
     public String getDisplayName() {
-        return "Drop SummaryPrinter";
+        return "Drop `SummaryPrinter`";
     }
 
     @Override
     public String getDescription() {
-        return "Replace SummaryPrinter with Plugin, if not already present.";
+        return "Replace `SummaryPrinter` with `Plugin`, if not already present.";
     }
 
     @Override

@@ -67,8 +67,8 @@ recipeList:
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.CucumberJava8ToJava
-displayName: Cucumber-Java8 migration to Cucumber-Java
-description: Migrates Cucumber-Java8 step definitions and LambdaGlue hooks to Cucumber-Java annotated methods.
+displayName: Migrate `cucumber-java8` to `cucumber-java`
+description: Migrates `cucumber-java8` step definitions and `LambdaGlue` hooks to `cucumber-java` annotated methods.
 tags:
   - testing
   - cucumber
@@ -86,8 +86,8 @@ recipeList:
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite
-displayName: Cucumber to JUnit Test Suites
-description: Migrates Cucumber tests to JUnit Test Suites.
+displayName: Cucumber to JUnit test `@Suite`
+description: Migrates Cucumber tests to JUnit test `@Suite`.
 tags:
   - testing
   - cucumber

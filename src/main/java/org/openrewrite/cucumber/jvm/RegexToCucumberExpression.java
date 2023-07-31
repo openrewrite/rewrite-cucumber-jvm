@@ -42,7 +42,7 @@ public class RegexToCucumberExpression extends Recipe {
 
     @Override
     public String getDisplayName() {
-        return "Replace Cucumber-Java step definition regexes with Cucumber expressions";
+        return "Replace `cucumber-java` step definition regexes with Cucumber expressions";
     }
 
     @Override

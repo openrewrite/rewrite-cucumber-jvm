@@ -55,12 +55,12 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
 
     @Override
     public String getDisplayName() {
-        return "Replace Cucumber-Java8 hook definition with Cucumber-Java";
+        return "Replace `cucumber-java8` hook definition with `cucumber-java`";
     }
 
     @Override
     public String getDescription() {
-        return "Replace LambdaGlue hook definitions with new annotated methods with the same body.";
+        return "Replace `LambdaGlue` hook definitions with new annotated methods with the same body.";
     }
 
     @Override
