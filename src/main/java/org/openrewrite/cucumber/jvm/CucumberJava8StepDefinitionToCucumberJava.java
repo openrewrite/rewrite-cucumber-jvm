@@ -152,8 +152,8 @@ class StepDefinitionArguments {
         // TODO Type loss here, but my attempts to pass these as J failed:
         // __P__.<java.lang.Object>/*__p0__*/p <error>()
         return lambda.getParameters().getParameters().stream()
-                .filter(j -> j instanceof J.VariableDeclarations)
-                .map(j -> (J.VariableDeclarations) j)
+                .filter(org.openrewrite.java.tree.J.VariableDeclarations.class::isInstance)
+                .map(org.openrewrite.java.tree.J.VariableDeclarations.class::cast)
                 .map(J.VariableDeclarations::toString)
                 .collect(Collectors.joining(", "));
     }

@@ -89,7 +89,7 @@ public class RegexToCucumberExpression extends Recipe {
                     .filter(list -> list.size() == 1)
                     .flatMap(Collection::stream)
                     .filter(J.Literal.class::isInstance)
-                    .map(e -> (J.Literal) e)
+                    .map(org.openrewrite.java.tree.J.Literal.class::cast)
                     .map(l -> (String) l.getValue())
                     // https://github.com/cucumber/cucumber-expressions/blob/main/java/heuristics.adoc
                     .filter(s -> s != null && (s.startsWith("^") || s.endsWith("$") || leadingAndTrailingSlash(s)))

@@ -114,7 +114,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         // After last cucumber annotated method
         return body.getStatements().stream()
                 .filter(J.MethodDeclaration.class::isInstance)
-                .map(firstMethod -> (J.MethodDeclaration) firstMethod)
+                .map(org.openrewrite.java.tree.J.MethodDeclaration.class::cast)
                 .filter(method -> method.getAllAnnotations().stream()
                         .anyMatch(ann -> ann.getAnnotationType().getType() != null
                                 && ((JavaType.Class) ann.getAnnotationType().getType()).getPackageName()
@@ -124,7 +124,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
                 // After last constructor
                 .orElseGet(() -> body.getStatements().stream()
                         .filter(J.MethodDeclaration.class::isInstance)
-                        .map(firstMethod -> (J.MethodDeclaration) firstMethod)
+                        .map(org.openrewrite.java.tree.J.MethodDeclaration.class::cast)
                         .filter(J.MethodDeclaration::isConstructor)
                         .map(constructor -> constructor.getCoordinates().after())
                         .reduce((a, b) -> b)
