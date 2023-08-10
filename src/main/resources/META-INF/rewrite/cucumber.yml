@@ -93,7 +93,7 @@ tags:
   - cucumber
 recipeList:
   - org.openrewrite.cucumber.jvm.CucumberAnnotationToSuite
-  - org.openrewrite.maven.AddDependency:
+  - org.openrewrite.java.dependencies.AddDependency:
       groupId: org.junit.platform
       artifactId: junit-platform-suite
       version: 1.9.x
