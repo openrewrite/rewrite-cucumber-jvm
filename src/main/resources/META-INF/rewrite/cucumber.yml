@@ -28,7 +28,7 @@ recipeList:
   - org.openrewrite.cucumber.jvm.DropSummaryPrinter
   - org.openrewrite.cucumber.jvm.RegexToCucumberExpression
   - org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite
-  - org.openrewrite.maven.UpgradeDependencyVersion:
+  - org.openrewrite.java.dependencies.UpgradeDependencyVersion:
       groupId: io.cucumber
       artifactId: "*"
       newVersion: 7.x
@@ -54,12 +54,12 @@ tags:
   - testing
   - cucumber
 recipeList:
-  - org.openrewrite.maven.ChangeDependencyGroupIdAndArtifactId:
+  - org.openrewrite.java.dependencies.ChangeDependency:
       oldGroupId: info.cukes
       oldArtifactId: cucumber-java
       newGroupId: io.cucumber
       newArtifactId: cucumber-java
-  - org.openrewrite.maven.ChangeDependencyGroupIdAndArtifactId:
+  - org.openrewrite.java.dependencies.ChangeDependency:
       oldGroupId: info.cukes
       oldArtifactId: cucumber-java8
       newGroupId: io.cucumber
@@ -75,7 +75,7 @@ tags:
 recipeList:
   - org.openrewrite.cucumber.jvm.CucumberJava8HookDefinitionToCucumberJava
   - org.openrewrite.cucumber.jvm.CucumberJava8StepDefinitionToCucumberJava
-  - org.openrewrite.maven.ChangeDependencyGroupIdAndArtifactId:
+  - org.openrewrite.java.dependencies.ChangeDependency:
       oldGroupId: io.cucumber
       oldArtifactId: cucumber-java8
       newGroupId: io.cucumber
