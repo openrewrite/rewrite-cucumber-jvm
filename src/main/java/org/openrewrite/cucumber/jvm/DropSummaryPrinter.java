@@ -60,8 +60,8 @@ public class DropSummaryPrinter extends Recipe {
 
     static final class DropSummaryPrinterVisitor extends JavaIsoVisitor<ExecutionContext> {
         @Override
-        public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, ExecutionContext p) {
-            J.ClassDeclaration classDeclaration = super.visitClassDeclaration(cd, p);
+        public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, ExecutionContext ctx) {
+            J.ClassDeclaration classDeclaration = super.visitClassDeclaration(cd, ctx);
             boolean implementsSummaryPrinter = Stream.of(classDeclaration.getImplements())
                     .filter(Objects::nonNull)
                     .flatMap(Collection::stream)

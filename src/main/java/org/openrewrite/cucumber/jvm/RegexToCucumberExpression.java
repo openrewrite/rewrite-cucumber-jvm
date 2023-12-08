@@ -63,8 +63,8 @@ public class RegexToCucumberExpression extends Recipe {
     static final class CucumberStepDefinitionBodyVisitor extends JavaIsoVisitor<ExecutionContext> {
 
         @Override
-        public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration m, ExecutionContext p) {
-            J.MethodDeclaration methodDeclaration = super.visitMethodDeclaration(m, p);
+        public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration m, ExecutionContext ctx) {
+            J.MethodDeclaration methodDeclaration = super.visitMethodDeclaration(m, ctx);
             return methodDeclaration.withLeadingAnnotations(ListUtils.map(methodDeclaration.getLeadingAnnotations(),
                     ann -> replaceRegexWithCucumberExpression(methodDeclaration, ann)));
         }

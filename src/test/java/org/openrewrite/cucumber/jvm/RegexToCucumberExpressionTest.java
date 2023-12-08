@@ -39,7 +39,8 @@ class RegexToCucumberExpressionTest implements RewriteTest {
     @DocumentExample
     void regexToCucumberExpression() {
         // language=java
-        rewriteRun(java("""
+        rewriteRun(java(
+                """
                 package com.example.app;
 
                 import io.cucumber.java.Before;

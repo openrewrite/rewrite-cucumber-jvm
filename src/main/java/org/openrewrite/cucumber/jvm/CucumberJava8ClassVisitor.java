@@ -58,8 +58,8 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         // method invocations with typical usage
         doAfterVisit(new JavaIsoVisitor<ExecutionContext>() {
             @Override
-            public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration md, ExecutionContext p) {
-                J.MethodDeclaration methodDeclaration = super.visitMethodDeclaration(md, p);
+            public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration md, ExecutionContext ctx) {
+                J.MethodDeclaration methodDeclaration = super.visitMethodDeclaration(md, ctx);
                 if (methodDeclaration.isConstructor() && (methodDeclaration.getBody() == null
                         || methodDeclaration.getBody().getStatements().isEmpty())) {
                     // noinspection DataFlowIssue

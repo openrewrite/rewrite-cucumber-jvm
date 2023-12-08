@@ -67,8 +67,8 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
 
     static final class CucumberStepDefinitionBodyVisitor extends JavaVisitor<ExecutionContext> {
         @Override
-        public J visitMethodInvocation(J.MethodInvocation methodInvocation, ExecutionContext p) {
-            J.MethodInvocation m = (J.MethodInvocation) super.visitMethodInvocation(methodInvocation, p);
+        public J visitMethodInvocation(J.MethodInvocation methodInvocation, ExecutionContext ctx) {
+            J.MethodInvocation m = (J.MethodInvocation) super.visitMethodInvocation(methodInvocation, ctx);
             if (!STEP_DEFINITION_METHOD_MATCHER.matches(m)) {
                 return m;
             }
