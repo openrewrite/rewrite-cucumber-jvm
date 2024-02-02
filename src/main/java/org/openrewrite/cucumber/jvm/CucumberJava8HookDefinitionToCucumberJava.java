@@ -35,7 +35,7 @@ import java.time.Duration;
 import java.util.List;
 
 @Value
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(callSuper = false)
 public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
 
     private static final String IO_CUCUMBER_JAVA8 = "io.cucumber.java8";

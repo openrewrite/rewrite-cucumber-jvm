@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Value
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(callSuper = false)
 public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
 
     private static final String IO_CUCUMBER_JAVA8_STEP_DEFINITION = "io.cucumber.java8.* *(String, ..)";
