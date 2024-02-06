@@ -21,7 +21,6 @@ import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.JavaTemplate;
 import org.openrewrite.java.tree.*;
-import org.openrewrite.java.tree.JavaType.FullyQualified;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,7 +33,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
     private static final String IO_CUCUMBER_JAVA = "io.cucumber.java";
     private static final String IO_CUCUMBER_JAVA8 = "io.cucumber.java8";
 
-    private final FullyQualified stepDefinitionsClass;
+    private final JavaType.FullyQualified stepDefinitionsClass;
     private final String replacementImport;
     private final String template;
     private final Object[] templateParameters;
