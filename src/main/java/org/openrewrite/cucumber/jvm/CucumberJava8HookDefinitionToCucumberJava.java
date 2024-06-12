@@ -151,12 +151,15 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
 class HookArguments {
 
     String annotationName;
+
     @Nullable
     @With
     String tagExpression;
+
     @Nullable
     @With
     Integer order;
+
     J.Lambda lambda;
 
     String replacementImport() {
