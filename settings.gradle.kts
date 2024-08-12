@@ -1,4 +1,10 @@
 rootProject.name = "rewrite-cucumber-jvm"
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+    }
+}
 
 plugins {
     id("com.gradle.develocity") version "latest.release"
