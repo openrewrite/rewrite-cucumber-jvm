@@ -80,8 +80,8 @@ public class DropSummaryPrinter extends Recipe {
             doAfterVisit(new RemoveImport<>(IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER));
             return classDeclaration.withImplements(ListUtils.map(classDeclaration.getImplements(), i -> {
                 // Remove duplicate implements
-                if (TypeUtils.isOfClassType(i.getType(), IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER)
-                        && alreadyImplementsPlugin) {
+                if (TypeUtils.isOfClassType(i.getType(), IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER) &&
+                        alreadyImplementsPlugin) {
                     return null;
                 }
                 return i;

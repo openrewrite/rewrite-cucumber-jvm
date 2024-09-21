@@ -64,8 +64,8 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
             @Override
             public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration md, ExecutionContext ctx) {
                 J.MethodDeclaration methodDeclaration = super.visitMethodDeclaration(md, ctx);
-                if (methodDeclaration.isConstructor() && (methodDeclaration.getBody() == null
-                        || methodDeclaration.getBody().getStatements().isEmpty())) {
+                if (methodDeclaration.isConstructor() && (methodDeclaration.getBody() == null ||
+                        methodDeclaration.getBody().getStatements().isEmpty())) {
                     // noinspection DataFlowIssue
                     return null;
                 }
@@ -120,8 +120,8 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
                 .filter(J.MethodDeclaration.class::isInstance)
                 .map(org.openrewrite.java.tree.J.MethodDeclaration.class::cast)
                 .filter(method -> method.getAllAnnotations().stream()
-                        .anyMatch(ann -> ann.getAnnotationType().getType() != null
-                                && ((JavaType.Class) ann.getAnnotationType().getType()).getPackageName()
+                        .anyMatch(ann -> ann.getAnnotationType().getType() != null &&
+                                ((JavaType.Class) ann.getAnnotationType().getType()).getPackageName()
                                         .startsWith(IO_CUCUMBER_JAVA)))
                 .map(method -> method.getCoordinates().after())
                 .reduce((a, b) -> b)

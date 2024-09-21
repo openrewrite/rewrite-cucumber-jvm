@@ -42,10 +42,10 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
     private static final String IO_CUCUMBER_JAVA8_HOOK_BODY = "io.cucumber.java8.HookBody";
     private static final String IO_CUCUMBER_JAVA8_HOOK_NO_ARGS_BODY = "io.cucumber.java8.HookNoArgsBody";
 
-    private static final String HOOK_BODY_DEFINITION = IO_CUCUMBER_JAVA8
-            + ".LambdaGlue *(.., " + IO_CUCUMBER_JAVA8_HOOK_BODY + ")";
-    private static final String HOOK_NO_ARGS_BODY_DEFINITION = IO_CUCUMBER_JAVA8
-            + ".LambdaGlue *(.., " + IO_CUCUMBER_JAVA8_HOOK_NO_ARGS_BODY + ")";
+    private static final String HOOK_BODY_DEFINITION = IO_CUCUMBER_JAVA8 +
+            ".LambdaGlue *(.., " + IO_CUCUMBER_JAVA8_HOOK_BODY + ")";
+    private static final String HOOK_NO_ARGS_BODY_DEFINITION = IO_CUCUMBER_JAVA8 +
+            ".LambdaGlue *(.., " + IO_CUCUMBER_JAVA8_HOOK_NO_ARGS_BODY + ")";
 
     private static final MethodMatcher HOOK_BODY_DEFINITION_METHOD_MATCHER = new MethodMatcher(
             HOOK_BODY_DEFINITION);
@@ -81,8 +81,8 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
         @Override
         public J visitMethodInvocation(J.MethodInvocation mi, ExecutionContext ctx) {
             J.MethodInvocation methodInvocation = (J.MethodInvocation) super.visitMethodInvocation(mi, ctx);
-            if (!HOOK_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation)
-                    && !HOOK_NO_ARGS_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation)) {
+            if (!HOOK_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation) &&
+                    !HOOK_NO_ARGS_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation)) {
                 return methodInvocation;
             }
 
@@ -193,8 +193,8 @@ class HookArguments {
                 annotationName
                         .replaceFirst("^Before", "before")
                         .replaceFirst("^After", "after"),
-                tagExpression == null ? ""
-                        : "_tag_" + tagExpression
+                tagExpression == null ? "" :
+                        "_tag_" + tagExpression
                         .replaceAll("[^A-Za-z0-9]", "_"),
                 order == null ? "" : "_order_" + order);
     }
