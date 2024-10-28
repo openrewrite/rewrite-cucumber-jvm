@@ -78,8 +78,9 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
     }
 
     static final class CucumberJava8HooksVisitor extends JavaVisitor<ExecutionContext> {
+
         @Override
-        public J visitMethodInvocation(J.MethodInvocation mi, ExecutionContext ctx) {
+        public @Nullable J visitMethodInvocation(J.MethodInvocation mi, ExecutionContext ctx) {
             J.MethodInvocation methodInvocation = (J.MethodInvocation) super.visitMethodInvocation(mi, ctx);
             if (!HOOK_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation) &&
                     !HOOK_NO_ARGS_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation)) {

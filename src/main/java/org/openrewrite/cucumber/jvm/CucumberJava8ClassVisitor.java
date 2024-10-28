@@ -16,6 +16,7 @@
 package org.openrewrite.cucumber.jvm;
 
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.JavaParser;
@@ -26,6 +27,8 @@ import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.java.tree.Statement;
 import org.openrewrite.java.tree.TypeTree;
 import org.openrewrite.java.tree.TypeUtils;
+import org.openrewrite.staticanalysis.RemoveUnneededBlock;
+import org.openrewrite.staticanalysis.UnnecessaryThrows;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,7 +47,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
     private final Object[] templateParameters;
 
     @Override
-    public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, ExecutionContext ctx) {
+    public @Nullable J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, ExecutionContext ctx) {
         J.ClassDeclaration classDeclaration = super.visitClassDeclaration(cd, ctx);
         if (!TypeUtils.isOfType(classDeclaration.getType(), stepDefinitionsClass)) {
             // We aren't looking at the specified class so return without making
@@ -61,8 +64,9 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         // Remove empty constructor which might be left over after removing
         // method invocations with typical usage
         doAfterVisit(new JavaIsoVisitor<ExecutionContext>() {
+
             @Override
-            public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration md, ExecutionContext ctx) {
+            public @Nullable J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration md, ExecutionContext ctx) {
                 J.MethodDeclaration methodDeclaration = super.visitMethodDeclaration(md, ctx);
                 if (methodDeclaration.isConstructor() && (methodDeclaration.getBody() == null ||
                         methodDeclaration.getBody().getStatements().isEmpty())) {
@@ -74,10 +78,10 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         });
 
         // Remove nested braces from lambda body block inserted into new method
-        doAfterVisit(new org.openrewrite.staticanalysis.RemoveUnneededBlock().getVisitor());
+        doAfterVisit(new RemoveUnneededBlock().getVisitor());
 
         // Remove unnecessary throws from templates that maybe-throw-exceptions
-        doAfterVisit(new org.openrewrite.staticanalysis.UnnecessaryThrows().getVisitor());
+        doAfterVisit(new UnnecessaryThrows().getVisitor());
 
         // Update implements & add new method
         J.ClassDeclaration applied = JavaTemplate.builder(template)
