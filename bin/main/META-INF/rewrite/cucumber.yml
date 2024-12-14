@@ -1,0 +1,101 @@
+#
+# Copyright 2024 the original author or authors.
+# <p>
+# Licensed under the Moderne Source Available License (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# <p>
+# https://docs.moderne.io/licensing/moderne-source-available-license
+# <p>
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.UpgradeCucumber7x
+displayName: Upgrade to Cucumber-JVM 7.x
+description: Upgrade to Cucumber-JVM 7.x from any previous version.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  - org.openrewrite.cucumber.jvm.UpgradeCucumber5x
+  - org.openrewrite.cucumber.jvm.CucumberJava8ToJava
+  - org.openrewrite.cucumber.jvm.DropSummaryPrinter
+  - org.openrewrite.cucumber.jvm.RegexToCucumberExpression
+  - org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite
+  - org.openrewrite.java.dependencies.UpgradeDependencyVersion:
+      groupId: io.cucumber
+      artifactId: "*"
+      newVersion: 7.x
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.UpgradeCucumber5x
+displayName: Upgrade to Cucumber-JVM 5.x
+description: Upgrade to Cucumber-JVM 5.x from any previous version.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  - org.openrewrite.cucumber.jvm.UpgradeCucumber2x
+  - org.openrewrite.java.ChangePackage:
+      oldPackageName: cucumber.api
+      newPackageName: io.cucumber
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.UpgradeCucumber2x
+displayName: Upgrade to Cucumber-JVM 2.x
+description: Upgrade to Cucumber-JVM 2.x from any previous version.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-java
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-java
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-java8
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-java8
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.CucumberJava8ToJava
+displayName: Migrate `cucumber-java8` to `cucumber-java`
+description: Migrates `cucumber-java8` step definitions and `LambdaGlue` hooks to `cucumber-java` annotated methods.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  - org.openrewrite.cucumber.jvm.CucumberJava8HookDefinitionToCucumberJava
+  - org.openrewrite.cucumber.jvm.CucumberJava8StepDefinitionToCucumberJava
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: io.cucumber
+      oldArtifactId: cucumber-java8
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-java
+  - org.openrewrite.java.ChangePackage:
+      oldPackageName: io.cucumber.java8
+      newPackageName: io.cucumber.java
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite
+displayName: Cucumber to JUnit test `@Suite`
+description: Migrates Cucumber tests to JUnit test `@Suite`.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  - org.openrewrite.cucumber.jvm.CucumberAnnotationToSuite
+  - org.openrewrite.java.dependencies.AddDependency:
+      groupId: org.junit.platform
+      artifactId: junit-platform-suite
+      version: 1.9.x
+      onlyIfUsing: org.junit.platform.suite.api.*
+      acceptTransitive: true
