@@ -5,7 +5,7 @@ plugins {
 group = "org.openrewrite.recipe"
 description = "Cucumber JVM Migration"
 
-val rewriteVersion = rewriteRecipe.rewriteVersion.get()
+val rewriteVersion = "latest.release"
 dependencies {
     implementation("io.cucumber:cucumber-java:7.18.0")
     implementation("io.cucumber:cucumber-java8:7.18.0")
@@ -16,13 +16,13 @@ dependencies {
     compileOnly("org.projectlombok:lombok:latest.release")
     annotationProcessor("org.projectlombok:lombok:latest.release")
 
-    implementation(platform("org.openrewrite:rewrite-bom:$rewriteVersion"))
+    implementation(platform("org.openrewrite:rewrite-bom:8.41.1"))
     implementation("org.openrewrite:rewrite-java")
     implementation("org.openrewrite:rewrite-gradle")
     implementation("org.openrewrite:rewrite-maven")
 
-    implementation("org.openrewrite.recipe:rewrite-java-dependencies:$rewriteVersion")
-    implementation("org.openrewrite.recipe:rewrite-static-analysis:$rewriteVersion")
+    implementation("org.openrewrite.recipe:rewrite-java-dependencies:1.24.1")
+    implementation("org.openrewrite.recipe:rewrite-static-analysis:1.21.1")
 
     testImplementation("org.openrewrite:rewrite-java-17")
     testImplementation("org.openrewrite:rewrite-test")
