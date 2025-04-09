@@ -38,10 +38,10 @@ class DropSummaryPrinterTest implements RewriteTest {
     @DocumentExample
     void replaceSummaryPrinterWithPlugin() {
         rewriteRun(
-            version(
-                // language=java
-                java(
-                    """
+                version(
+                        // language=java
+                        java(
+                                """
                             package com.example.app;
 
                             import io.cucumber.plugin.SummaryPrinter;
@@ -55,16 +55,16 @@ class DropSummaryPrinterTest implements RewriteTest {
                             public class CucumberJava8Definitions implements Plugin {
                             }
                             """),
-                17));
+                        17));
     }
 
     @Test
     void dontDuplicatePlugin() {
         rewriteRun(
-            version(
-                // language=java
-                java(
-                    """
+                version(
+                        // language=java
+                        java(
+                                """
                             package com.example.app;
 
                             import io.cucumber.plugin.Plugin;
@@ -73,7 +73,7 @@ class DropSummaryPrinterTest implements RewriteTest {
                             public class CucumberJava8Definitions implements Plugin, SummaryPrinter {
                             }
                             """,
-                    """
+                                """
                             package com.example.app;
 
                             import io.cucumber.plugin.Plugin;
@@ -81,6 +81,6 @@ class DropSummaryPrinterTest implements RewriteTest {
                             public class CucumberJava8Definitions implements Plugin {
                             }
                             """),
-                17));
+                        17));
     }
 }

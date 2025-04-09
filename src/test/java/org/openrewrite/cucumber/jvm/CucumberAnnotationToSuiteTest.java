@@ -31,7 +31,7 @@ class CucumberAnnotationToSuiteTest implements RewriteTest {
     public void defaults(RecipeSpec spec) {
         spec.recipe(new CucumberAnnotationToSuite())
                 .parser(JavaParser.fromJavaVersion().classpath("cucumber-junit-platform-engine",
-                    "junit-platform-suite-api"));
+                        "junit-platform-suite-api"));
     }
 
     @Test
@@ -39,8 +39,8 @@ class CucumberAnnotationToSuiteTest implements RewriteTest {
     void shouldReplaceCucumberAnnotationWithSuiteWithSelectedClasspathResource() {
         // language=java
         rewriteRun(
-            java(
-                """
+                java(
+                        """
                         package com.example.app;
 
                         import io.cucumber.junit.platform.engine.Cucumber;
@@ -49,7 +49,7 @@ class CucumberAnnotationToSuiteTest implements RewriteTest {
                         public class CucumberJava8Definitions {
                         }
                         """,
-                """
+                        """
                         package com.example.app;
 
                         import org.junit.platform.suite.api.SelectClasspathResource;
