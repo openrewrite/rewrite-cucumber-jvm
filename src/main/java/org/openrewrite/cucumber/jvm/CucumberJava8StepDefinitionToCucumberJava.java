@@ -97,7 +97,7 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
             // argument
             if (!(possibleStepDefinitionBody instanceof J.Lambda) ||
                     !TypeUtils.isAssignableTo(IO_CUCUMBER_JAVA8_STEP_DEFINITION_BODY,
-                    possibleStepDefinitionBody.getType())) {
+                            possibleStepDefinitionBody.getType())) {
                 return SearchResult.found(m, "TODO Migrate manually");
             }
             J.Lambda lambda = (J.Lambda) possibleStepDefinitionBody;

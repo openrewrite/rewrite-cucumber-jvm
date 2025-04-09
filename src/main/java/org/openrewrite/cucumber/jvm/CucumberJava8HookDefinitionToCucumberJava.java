@@ -74,7 +74,7 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
                 Preconditions.or(
                         new UsesMethod<>(HOOK_BODY_DEFINITION, true),
                         new UsesMethod<>(HOOK_NO_ARGS_BODY_DEFINITION, true))
-                , new CucumberJava8HooksVisitor());
+        , new CucumberJava8HooksVisitor());
     }
 
     static final class CucumberJava8HooksVisitor extends JavaVisitor<ExecutionContext> {
@@ -196,7 +196,7 @@ class HookArguments {
                         .replaceFirst("^After", "after"),
                 tagExpression == null ? "" :
                         "_tag_" + tagExpression
-                        .replaceAll("[^A-Za-z0-9]", "_"),
+                                .replaceAll("[^A-Za-z0-9]", "_"),
                 order == null ? "" : "_order_" + order);
     }
 
