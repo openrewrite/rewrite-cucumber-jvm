@@ -69,7 +69,8 @@ class RegexToCucumberExpressionTest implements RewriteTest {
                     }
 
                 }
-                """, """
+                """,
+                """
                 package com.example.app;
 
                 import io.cucumber.java.Before;

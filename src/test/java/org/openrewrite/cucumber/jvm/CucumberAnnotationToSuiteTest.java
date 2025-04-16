@@ -59,6 +59,7 @@ class CucumberAnnotationToSuiteTest implements RewriteTest {
                         @SelectClasspathResource("com/example/app")
                         public class CucumberJava8Definitions {
                         }
-                        """));
+                        """
+            ));
     }
 }
