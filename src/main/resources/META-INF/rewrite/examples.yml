@@ -1,0 +1,201 @@
+# Copyright 2025 the original author or authors.
+# <p>
+# Licensed under the Moderne Source Available License (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# <p>
+# https://docs.moderne.io/licensing/moderne-source-available-license
+# <p>
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+type: specs.openrewrite.org/v1beta/example
+recipeName: org.openrewrite.cucumber.jvm.CucumberAnnotationToSuite
+examples:
+- description: ''
+  sources:
+  - before: |
+      package com.example.app;
+
+      import io.cucumber.junit.platform.engine.Cucumber;
+
+      @Cucumber
+      public class CucumberJava8Definitions {
+      }
+    after: |
+      package com.example.app;
+
+      import org.junit.platform.suite.api.SelectClasspathResource;
+      import org.junit.platform.suite.api.Suite;
+
+      @Suite
+      @SelectClasspathResource("com/example/app")
+      public class CucumberJava8Definitions {
+      }
+    language: java
+---
+type: specs.openrewrite.org/v1beta/example
+recipeName: org.openrewrite.cucumber.jvm.CucumberJava8ToJava
+examples:
+- description: ''
+  sources:
+  - before: |-
+      package com.example.app;
+
+      import io.cucumber.java8.En;
+      import io.cucumber.java8.Scenario;
+      import io.cucumber.java8.Status;
+
+      import static org.junit.jupiter.api.Assertions.assertEquals;
+
+      public class CucumberJava8Definitions implements En {
+
+          private int a;
+
+          public CucumberJava8Definitions() {
+              Before(() -> {
+                  a = 0;
+              });
+              When("I add {int}", (Integer b) -> {
+                  a += b;
+              });
+              Then("I expect {int}", (Integer c) -> assertEquals(c, a));
+
+              After((Scenario scn) -> {
+                  if (scn.getStatus() == Status.FAILED) {
+                      scn.log("failed");
+                  }
+              });
+
+          }
+
+      }
+    after: |
+      package com.example.app;
+
+      import io.cucumber.java.After;
+      import io.cucumber.java.Before;
+      import io.cucumber.java.en.Then;
+      import io.cucumber.java.en.When;
+      import io.cucumber.java.Scenario;
+      import io.cucumber.java.Status;
+
+      import static org.junit.jupiter.api.Assertions.assertEquals;
+
+      public class CucumberJava8Definitions {
+
+          private int a;
+
+          @Before
+          public void before() {
+              a = 0;
+          }
+
+          @After
+          public void after(io.cucumber.java.Scenario scn) {
+              if (scn.getStatus() == Status.FAILED) {
+                  scn.log("failed");
+              }
+          }
+
+          @When("I add {int}")
+          public void i_add_int(Integer b) {
+              a += b;
+          }
+
+          @Then("I expect {int}")
+          public void i_expect_int(Integer c) {
+              assertEquals(c, a);
+          }
+
+      }
+    language: java
+---
+type: specs.openrewrite.org/v1beta/example
+recipeName: org.openrewrite.cucumber.jvm.DropSummaryPrinter
+examples:
+- description: ''
+  sources:
+  - before: |-
+      package com.example.app;
+
+      import io.cucumber.plugin.SummaryPrinter;
+
+      public class CucumberJava8Definitions implements SummaryPrinter {
+      }
+    after: |
+      package com.example.app;
+
+      import io.cucumber.plugin.Plugin;
+
+      public class CucumberJava8Definitions implements Plugin {
+      }
+    language: java
+---
+type: specs.openrewrite.org/v1beta/example
+recipeName: org.openrewrite.cucumber.jvm.RegexToCucumberExpression
+examples:
+- description: ''
+  sources:
+  - before: |
+      package com.example.app;
+
+      import io.cucumber.java.Before;
+      import io.cucumber.java.en.Given;
+      import io.cucumber.java.en.Then;
+
+      import static org.junit.jupiter.api.Assertions.assertEquals;
+
+      public class ExpressionDefinitions {
+
+          private int a;
+
+          @Before
+          public void before() {
+              a = 0;
+          }
+
+          @Given("^five cukes$")
+          public void five_cukes() {
+              a = 5;
+          }
+
+          @Then("^I expect (\\d+)$")
+          public void i_expect_int(Integer c) {
+              assertEquals(c, a);
+          }
+
+      }
+    after: |
+      package com.example.app;
+
+      import io.cucumber.java.Before;
+      import io.cucumber.java.en.Given;
+      import io.cucumber.java.en.Then;
+
+      import static org.junit.jupiter.api.Assertions.assertEquals;
+
+      public class ExpressionDefinitions {
+
+          private int a;
+
+          @Before
+          public void before() {
+              a = 0;
+          }
+
+          @Given("five cukes")
+          public void five_cukes() {
+              a = 5;
+          }
+
+          @Then("^I expect (\\d+)$")
+          public void i_expect_int(Integer c) {
+              assertEquals(c, a);
+          }
+
+      }
+    language: java
