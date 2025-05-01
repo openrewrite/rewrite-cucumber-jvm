@@ -56,3 +56,7 @@ You can register bugs and feature requests in the
 
 If you'd like to contribute to the documentation, checkout
 [CONTRIBUTING.md](https://github.com/openrewrite/.github/blob/main/CONTRIBUTING.md).
+
+### Licensing
+
+For more information about licensing, please visit our [licensing page](https://docs.openrewrite.org/licensing/openrewrite-licensing).
