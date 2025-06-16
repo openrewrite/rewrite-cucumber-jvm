@@ -35,8 +35,8 @@ class RegexToCucumberExpressionTest implements RewriteTest {
                 .parser(JavaParser.fromJavaVersion().classpath("junit-jupiter-api", "cucumber-java"));
     }
 
-    @Test
     @DocumentExample
+    @Test
     void regexToCucumberExpression() {
         // language=java
         rewriteRun(java(
@@ -102,8 +102,8 @@ class RegexToCucumberExpressionTest implements RewriteTest {
                 """));
     }
 
-    @Nested
     @DisplayName("should convert")
+    @Nested
     class ShouldConvert {
 
         @Test
@@ -180,8 +180,8 @@ class RegexToCucumberExpressionTest implements RewriteTest {
 
     }
 
-    @Nested
     @DisplayName("should not convert")
+    @Nested
     class ShouldNotConvert {
 
         @Test

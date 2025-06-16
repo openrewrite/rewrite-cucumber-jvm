@@ -34,8 +34,8 @@ import org.openrewrite.marker.SearchResult;
 import java.time.Duration;
 import java.util.List;
 
-@Value
 @EqualsAndHashCode(callSuper = false)
+@Value
 public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
 
     private static final String IO_CUCUMBER_JAVA8 = "io.cucumber.java8";
@@ -153,12 +153,12 @@ class HookArguments {
 
     String annotationName;
 
-    @Nullable
     @With
+    @Nullable
     String tagExpression;
 
-    @Nullable
     @With
+    @Nullable
     Integer order;
 
     J.Lambda lambda;

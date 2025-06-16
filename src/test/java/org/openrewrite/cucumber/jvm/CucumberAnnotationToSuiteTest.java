@@ -34,8 +34,8 @@ class CucumberAnnotationToSuiteTest implements RewriteTest {
                     "junit-platform-suite-api"));
     }
 
-    @Test
     @DocumentExample
+    @Test
     void shouldReplaceCucumberAnnotationWithSuiteWithSelectedClasspathResource() {
         // language=java
         rewriteRun(

@@ -40,9 +40,9 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                 .classpath("junit-jupiter-api", "cucumber-java", "cucumber-java8"));
     }
 
+    @DocumentExample
     @SuppressWarnings("CodeBlock2Expr")
     @Test
-    @DocumentExample
     void cucumberJava8HooksAndSteps() {
         rewriteRun(
             version(

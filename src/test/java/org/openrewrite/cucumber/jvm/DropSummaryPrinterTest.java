@@ -34,8 +34,8 @@ class DropSummaryPrinterTest implements RewriteTest {
                 .parser(JavaParser.fromJavaVersion().classpath("cucumber-plugin"));
     }
 
-    @Test
     @DocumentExample
+    @Test
     void replaceSummaryPrinterWithPlugin() {
         rewriteRun(
             version(

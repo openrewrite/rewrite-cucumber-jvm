@@ -70,8 +70,8 @@ public class CucumberAnnotationToSuite extends Recipe {
         private final AnnotationMatcher cucumberAnnoMatcher = new AnnotationMatcher(
                 "@" + IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER);
 
-        @SneakyThrows
         @Override
+        @SneakyThrows
         public ClassDeclaration visitClassDeclaration(ClassDeclaration cd, ExecutionContext ctx) {
             ClassDeclaration classDecl = super.visitClassDeclaration(cd, ctx);
             if (classDecl.getAllAnnotations().stream().noneMatch(cucumberAnnoMatcher::matches)) {
