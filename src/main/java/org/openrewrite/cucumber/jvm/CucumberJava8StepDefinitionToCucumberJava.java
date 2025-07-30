@@ -32,7 +32,8 @@ import org.openrewrite.marker.SearchResult;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.joining;
 
 @EqualsAndHashCode(callSuper = false)
 @Value
@@ -156,7 +157,7 @@ class StepDefinitionArguments {
                 .filter(org.openrewrite.java.tree.J.VariableDeclarations.class::isInstance)
                 .map(org.openrewrite.java.tree.J.VariableDeclarations.class::cast)
                 .map(J.VariableDeclarations::toString)
-                .collect(Collectors.joining(", "));
+                .collect(joining(", "));
     }
 
     Object[] parameters() {

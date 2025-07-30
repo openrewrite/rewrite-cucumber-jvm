@@ -31,9 +31,10 @@ import org.openrewrite.staticanalysis.RemoveUnneededBlock;
 import org.openrewrite.staticanalysis.UnnecessaryThrows;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+
+import static java.util.Collections.emptyList;
 
 @RequiredArgsConstructor
 class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
@@ -101,7 +102,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
     private List<TypeTree> filterImplementingInterfaces(J.ClassDeclaration classDeclaration) {
         List<TypeTree> retained = new ArrayList<>();
         for (TypeTree typeTree : Optional.ofNullable(classDeclaration.getImplements())
-                .orElse(Collections.emptyList())) {
+                .orElse(emptyList())) {
             if (typeTree.getType() instanceof JavaType.Class) {
                 JavaType.Class clazz = (JavaType.Class) typeTree.getType();
                 if (IO_CUCUMBER_JAVA8.equals(clazz.getPackageName())) {
