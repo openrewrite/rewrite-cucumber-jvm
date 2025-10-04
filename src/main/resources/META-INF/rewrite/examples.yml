@@ -15,7 +15,7 @@
 type: specs.openrewrite.org/v1beta/example
 recipeName: org.openrewrite.cucumber.jvm.CucumberAnnotationToSuite
 examples:
-- description: ''
+- description: '`CucumberAnnotationToSuiteTest#shouldReplaceCucumberAnnotationWithSuiteWithSelectedClasspathResource`'
   sources:
   - before: |
       package com.example.app;
@@ -40,7 +40,7 @@ examples:
 type: specs.openrewrite.org/v1beta/example
 recipeName: org.openrewrite.cucumber.jvm.CucumberJava8ToJava
 examples:
-- description: ''
+- description: '`CucumberJava8ToCucumberJavaTest#cucumberJava8HooksAndSteps`'
   sources:
   - before: |-
       package com.example.app;
@@ -117,7 +117,7 @@ examples:
 type: specs.openrewrite.org/v1beta/example
 recipeName: org.openrewrite.cucumber.jvm.DropSummaryPrinter
 examples:
-- description: ''
+- description: '`DropSummaryPrinterTest#replaceSummaryPrinterWithPlugin`'
   sources:
   - before: |-
       package com.example.app;
@@ -138,7 +138,7 @@ examples:
 type: specs.openrewrite.org/v1beta/example
 recipeName: org.openrewrite.cucumber.jvm.RegexToCucumberExpression
 examples:
-- description: ''
+- description: '`RegexToCucumberExpressionTest#regexToCucumberExpression`'
   sources:
   - before: |
       package com.example.app;
