@@ -53,15 +53,9 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
             HOOK_NO_ARGS_BODY_DEFINITION);
 
 
-    @Override
-    public String getDisplayName() {
-        return "Replace `cucumber-java8` hook definition with `cucumber-java`";
-    }
+    String displayName = "Replace `cucumber-java8` hook definition with `cucumber-java`";
 
-    @Override
-    public String getDescription() {
-        return "Replace `LambdaGlue` hook definitions with new annotated methods with the same body.";
-    }
+    String description = "Replace `LambdaGlue` hook definitions with new annotated methods with the same body.";
 
     @Override
     public @Nullable Duration getEstimatedEffortPerOccurrence() {

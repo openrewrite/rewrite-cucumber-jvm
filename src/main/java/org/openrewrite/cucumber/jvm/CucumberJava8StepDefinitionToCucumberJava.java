@@ -44,15 +44,9 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
     private static final MethodMatcher STEP_DEFINITION_METHOD_MATCHER = new MethodMatcher(
             IO_CUCUMBER_JAVA8_STEP_DEFINITION);
 
-    @Override
-    public String getDisplayName() {
-        return "Replace `cucumber-java8` step definitions with `cucumber-java`";
-    }
+    String displayName = "Replace `cucumber-java8` step definitions with `cucumber-java`";
 
-    @Override
-    public String getDescription() {
-        return "Replace `StepDefinitionBody` methods with `StepDefinitionAnnotations` on new methods with the same body.";
-    }
+    String description = "Replace `StepDefinitionBody` methods with `StepDefinitionAnnotations` on new methods with the same body.";
 
     @Override
     public @Nullable Duration getEstimatedEffortPerOccurrence() {
