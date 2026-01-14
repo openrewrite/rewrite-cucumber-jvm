@@ -15,6 +15,7 @@
  */
 package org.openrewrite.cucumber.jvm;
 
+import lombok.Getter;
 import lombok.SneakyThrows;
 import org.jspecify.annotations.Nullable;
 import org.openrewrite.ExecutionContext;
@@ -44,15 +45,11 @@ public class CucumberAnnotationToSuite extends Recipe {
     private static final String SUITE = "org.junit.platform.suite.api.Suite";
     private static final String SELECT_CLASSPATH_RESOURCE = "org.junit.platform.suite.api.SelectClasspathResource";
 
-    @Override
-    public String getDisplayName() {
-        return "Replace `@Cucumber` with `@Suite`";
-    }
+    @Getter
+    final String displayName = "Replace `@Cucumber` with `@Suite`";
 
-    @Override
-    public String getDescription() {
-        return "Replace `@Cucumber` with `@Suite` and `@SelectClasspathResource(\"cucumber/annotated/class/package\")`.";
-    }
+    @Getter
+    final String description = "Replace `@Cucumber` with `@Suite` and `@SelectClasspathResource(\"cucumber/annotated/class/package\")`.";
 
     @Override
     public @Nullable Duration getEstimatedEffortPerOccurrence() {

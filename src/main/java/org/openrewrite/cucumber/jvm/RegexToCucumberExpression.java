@@ -15,6 +15,7 @@
  */
 package org.openrewrite.cucumber.jvm;
 
+import lombok.Getter;
 import org.jspecify.annotations.Nullable;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Preconditions;
@@ -40,15 +41,11 @@ public class RegexToCucumberExpression extends Recipe {
     private static final String IO_CUCUMBER_JAVA = "io.cucumber.java";
     private static final String IO_CUCUMBER_JAVA_STEP_DEFINITION = "io.cucumber.java.*.*";
 
-    @Override
-    public String getDisplayName() {
-        return "Replace `cucumber-java` step definition regexes with Cucumber expressions";
-    }
+    @Getter
+    final String displayName = "Replace `cucumber-java` step definition regexes with Cucumber expressions";
 
-    @Override
-    public String getDescription() {
-        return "Strip regex prefix and suffix from step annotation expressions arguments where possible.";
-    }
+    @Getter
+    final String description = "Strip regex prefix and suffix from step annotation expressions arguments where possible.";
 
     @Override
     public @Nullable Duration getEstimatedEffortPerOccurrence() {

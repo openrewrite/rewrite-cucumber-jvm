@@ -15,6 +15,7 @@
  */
 package org.openrewrite.cucumber.jvm;
 
+import lombok.Getter;
 import org.jspecify.annotations.Nullable;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Preconditions;
@@ -38,15 +39,11 @@ public class DropSummaryPrinter extends Recipe {
     private static final String IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER = "io.cucumber.plugin.SummaryPrinter";
     private static final String IO_CUCUMBER_PLUGIN_PLUGIN = "io.cucumber.plugin.Plugin";
 
-    @Override
-    public String getDisplayName() {
-        return "Drop `SummaryPrinter`";
-    }
+    @Getter
+    final String displayName = "Drop `SummaryPrinter`";
 
-    @Override
-    public String getDescription() {
-        return "Replace `SummaryPrinter` with `Plugin`, if not already present.";
-    }
+    @Getter
+    final String description = "Replace `SummaryPrinter` with `Plugin`, if not already present.";
 
     @Override
     public @Nullable Duration getEstimatedEffortPerOccurrence() {
