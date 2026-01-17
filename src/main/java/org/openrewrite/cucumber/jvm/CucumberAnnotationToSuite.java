@@ -51,10 +51,8 @@ public class CucumberAnnotationToSuite extends Recipe {
     @Getter
     final String description = "Replace `@Cucumber` with `@Suite` and `@SelectClasspathResource(\"cucumber/annotated/class/package\")`.";
 
-    @Override
-    public @Nullable Duration getEstimatedEffortPerOccurrence() {
-        return Duration.ofMinutes(2);
-    }
+    @Getter
+    final Duration estimatedEffortPerOccurrence = Duration.ofMinutes(2);
 
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {

@@ -47,10 +47,8 @@ public class RegexToCucumberExpression extends Recipe {
     @Getter
     final String description = "Strip regex prefix and suffix from step annotation expressions arguments where possible.";
 
-    @Override
-    public @Nullable Duration getEstimatedEffortPerOccurrence() {
-        return Duration.ofMinutes(1);
-    }
+    @Getter
+    final Duration estimatedEffortPerOccurrence = Duration.ofMinutes(1);
 
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {

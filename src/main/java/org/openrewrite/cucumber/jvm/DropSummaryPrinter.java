@@ -45,10 +45,8 @@ public class DropSummaryPrinter extends Recipe {
     @Getter
     final String description = "Replace `SummaryPrinter` with `Plugin`, if not already present.";
 
-    @Override
-    public @Nullable Duration getEstimatedEffortPerOccurrence() {
-        return Duration.ofMinutes(1);
-    }
+    @Getter
+    final Duration estimatedEffortPerOccurrence = Duration.ofMinutes(1);
 
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {

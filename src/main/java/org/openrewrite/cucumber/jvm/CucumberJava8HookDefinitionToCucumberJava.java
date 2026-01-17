@@ -57,10 +57,7 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
 
     String description = "Replace `LambdaGlue` hook definitions with new annotated methods with the same body.";
 
-    @Override
-    public @Nullable Duration getEstimatedEffortPerOccurrence() {
-        return Duration.ofMinutes(10);
-    }
+    Duration estimatedEffortPerOccurrence = Duration.ofMinutes(10);
 
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {

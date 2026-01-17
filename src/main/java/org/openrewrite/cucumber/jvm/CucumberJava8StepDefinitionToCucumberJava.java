@@ -48,10 +48,7 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
 
     String description = "Replace `StepDefinitionBody` methods with `StepDefinitionAnnotations` on new methods with the same body.";
 
-    @Override
-    public @Nullable Duration getEstimatedEffortPerOccurrence() {
-        return Duration.ofMinutes(10);
-    }
+    Duration estimatedEffortPerOccurrence = Duration.ofMinutes(10);
 
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {
