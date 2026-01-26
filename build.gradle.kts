@@ -12,7 +12,7 @@ dependencies {
     implementation("io.cucumber:cucumber-java8:7.18.0")
     implementation("io.cucumber:cucumber-plugin:7.18.0")
     implementation("io.cucumber:cucumber-junit-platform-engine:7.18.0")
-    implementation("org.junit.platform:junit-platform-suite-api:1.9.3")
+    implementation("org.junit.platform:junit-platform-suite-api:1.14.2")
 
     compileOnly("org.projectlombok:lombok:latest.release")
     annotationProcessor("org.projectlombok:lombok:latest.release")
@@ -28,5 +28,5 @@ dependencies {
     testImplementation("org.openrewrite:rewrite-java-21")
     testImplementation("org.openrewrite:rewrite-test")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.3")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.14.2")
 }
