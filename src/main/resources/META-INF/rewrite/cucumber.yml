@@ -19,6 +19,8 @@ type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.UpgradeCucumber7x
 displayName: Upgrade to Cucumber-JVM 7.x
 description: Upgrade to Cucumber-JVM 7.x from any previous version.
+preconditions:
+  - org.openrewrite.Singleton
 tags:
   - testing
   - cucumber
@@ -37,6 +39,8 @@ type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.UpgradeCucumber5x
 displayName: Upgrade to Cucumber-JVM 5.x
 description: Upgrade to Cucumber-JVM 5.x from any previous version.
+preconditions:
+  - org.openrewrite.Singleton
 tags:
   - testing
   - cucumber
@@ -50,6 +54,8 @@ type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.UpgradeCucumber2x
 displayName: Upgrade to Cucumber-JVM 2.x
 description: Upgrade to Cucumber-JVM 2.x from any previous version.
+preconditions:
+  - org.openrewrite.Singleton
 tags:
   - testing
   - cucumber
@@ -69,6 +75,8 @@ type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.CucumberJava8ToJava
 displayName: Migrate `cucumber-java8` to `cucumber-java`
 description: Migrates `cucumber-java8` step definitions and `LambdaGlue` hooks to `cucumber-java` annotated methods.
+preconditions:
+  - org.openrewrite.Singleton
 tags:
   - testing
   - cucumber
@@ -88,6 +96,8 @@ type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite
 displayName: Cucumber to JUnit test `@Suite`
 description: Migrates Cucumber tests to JUnit test `@Suite`.
+preconditions:
+  - org.openrewrite.Singleton
 tags:
   - testing
   - cucumber
