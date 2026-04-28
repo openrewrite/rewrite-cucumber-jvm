@@ -24,7 +24,6 @@ import org.openrewrite.java.JavaTemplate;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaCoordinates;
 import org.openrewrite.java.tree.JavaType;
-import org.openrewrite.java.tree.Statement;
 import org.openrewrite.java.tree.TypeTree;
 import org.openrewrite.java.tree.TypeUtils;
 import org.openrewrite.staticanalysis.RemoveUnneededBlock;
