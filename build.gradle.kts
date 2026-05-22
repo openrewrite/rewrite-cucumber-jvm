@@ -27,6 +27,4 @@ dependencies {
 
     testImplementation("org.openrewrite:rewrite-java-21")
     testImplementation("org.openrewrite:rewrite-test")
-
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.14.2")
 }
