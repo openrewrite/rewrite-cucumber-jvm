@@ -29,3 +29,5 @@ libpeerconnection.log
 ehthumbs.db
 Icon?
 Thumbs.db
+
+.context/
