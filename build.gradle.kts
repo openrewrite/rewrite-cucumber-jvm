@@ -8,10 +8,10 @@ description = "Cucumber JVM Migration"
 
 val rewriteVersion = rewriteRecipe.rewriteVersion.get()
 dependencies {
-    implementation("io.cucumber:cucumber-java:7.18.0")
-    implementation("io.cucumber:cucumber-java8:7.18.0")
-    implementation("io.cucumber:cucumber-plugin:7.18.0")
-    implementation("io.cucumber:cucumber-junit-platform-engine:7.18.0")
+    implementation("io.cucumber:cucumber-java:7.34.4")
+    implementation("io.cucumber:cucumber-java8:7.34.4")
+    implementation("io.cucumber:cucumber-plugin:7.34.4")
+    implementation("io.cucumber:cucumber-junit-platform-engine:7.34.4")
     implementation("org.junit.platform:junit-platform-suite-api:1.14.2")
 
     compileOnly("org.projectlombok:lombok:latest.release")
