@@ -17,12 +17,7 @@ package org.openrewrite.cucumber.jvm;
 
 import lombok.Getter;
 import org.jspecify.annotations.Nullable;
-import org.openrewrite.Cursor;
-import org.openrewrite.ExecutionContext;
-import org.openrewrite.Recipe;
-import org.openrewrite.SourceFile;
-import org.openrewrite.Tree;
-import org.openrewrite.TreeVisitor;
+import org.openrewrite.*;
 import org.openrewrite.internal.ListUtils;
 import org.openrewrite.marker.Markers;
 import org.openrewrite.maven.MavenIsoVisitor;
@@ -32,13 +27,7 @@ import org.openrewrite.trait.Comments;
 import org.openrewrite.xml.tree.Content;
 import org.openrewrite.xml.tree.Xml;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -65,7 +54,9 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
     private static final String PUBLISH_ENABLED = "cucumber.publish.enabled";
     private static final String SNIPPET_TYPE = "cucumber.snippet-type";
 
-    /** The tokenizer Cucumber-JVM itself applied to `cucumber.options`, in `io.cucumber.core.options.ShellWords`. */
+    /**
+     * The tokenizer Cucumber-JVM itself applied to `cucumber.options`, in `io.cucumber.core.options.ShellWords`.
+     */
     private static final Pattern SHELL_WORDS = Pattern.compile("[^\\s'\"]+|'([^']*)'|\"([^\"]*)\"");
 
     private static final String MANUAL_MIGRATION = "TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; " +
@@ -219,8 +210,8 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
 
     /**
      * @return the `cucumber.options` value, or `null` if it can not be written back unchanged, as
-     *         {@link Xml.Tag#getValue()} skips markup that is not character data, and drops the whitespace
-     *         that surrounds an escaped character.
+     * {@link Xml.Tag#getValue()} skips markup that is not character data, and drops the whitespace
+     * that surrounds an escaped character.
      */
     private static @Nullable String optionsValue(Xml.Tag options) {
         List<? extends Content> content = options.getContent();
@@ -245,7 +236,7 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
 
     /**
      * @return the individual properties replacing the given `cucumber.options` value, in the order Cucumber-JVM
-     *         documents them, or `null` if the value contains options without a property equivalent.
+     * documents them, or `null` if the value contains options without a property equivalent.
      */
     private static @Nullable Map<String, String> individualProperties(String options) {
         List<String> glue = new ArrayList<>();
@@ -396,7 +387,9 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
         }
     }
 
-    /** Several `--tags` arguments are and-ed together, matching the deprecation warning Cucumber-JVM logged. */
+    /**
+     * Several `--tags` arguments are and-ed together, matching the deprecation warning Cucumber-JVM logged.
+     */
     private static String tagExpression(List<String> tags) {
         if (tags.size() < 2) {
             return tags.isEmpty() ? "" : tags.get(0);

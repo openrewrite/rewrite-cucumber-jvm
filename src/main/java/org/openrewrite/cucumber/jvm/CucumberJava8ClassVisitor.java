@@ -21,11 +21,7 @@ import org.openrewrite.ExecutionContext;
 import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.JavaTemplate;
-import org.openrewrite.java.tree.J;
-import org.openrewrite.java.tree.JavaCoordinates;
-import org.openrewrite.java.tree.JavaType;
-import org.openrewrite.java.tree.TypeTree;
-import org.openrewrite.java.tree.TypeUtils;
+import org.openrewrite.java.tree.*;
 import org.openrewrite.staticanalysis.RemoveUnneededBlock;
 import org.openrewrite.staticanalysis.UnnecessaryThrows;
 
@@ -47,7 +43,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
     private final Object[] templateParameters;
 
     @Override
-    public  J.@Nullable ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, ExecutionContext ctx) {
+    public J.@Nullable ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, ExecutionContext ctx) {
         J.ClassDeclaration classDeclaration = super.visitClassDeclaration(cd, ctx);
         if (!TypeUtils.isOfType(classDeclaration.getType(), stepDefinitionsClass)) {
             // We aren't looking at the specified class so return without making
@@ -66,7 +62,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         doAfterVisit(new JavaIsoVisitor<ExecutionContext>() {
 
             @Override
-            public  J.@Nullable MethodDeclaration visitMethodDeclaration(J.MethodDeclaration md, ExecutionContext ctx) {
+            public J.@Nullable MethodDeclaration visitMethodDeclaration(J.MethodDeclaration md, ExecutionContext ctx) {
                 J.MethodDeclaration methodDeclaration = super.visitMethodDeclaration(md, ctx);
                 if (methodDeclaration.isConstructor() && (methodDeclaration.getBody() == null ||
                         methodDeclaration.getBody().getStatements().isEmpty())) {

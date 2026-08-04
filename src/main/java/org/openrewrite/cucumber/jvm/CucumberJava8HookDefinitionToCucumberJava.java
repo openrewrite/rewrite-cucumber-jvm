@@ -185,7 +185,7 @@ class HookArguments {
                         .replaceFirst("^After", "after"),
                 tagExpression == null ? "" :
                         "_tag_" + tagExpression
-                        .replaceAll("[^A-Za-z0-9]", "_"),
+                                .replaceAll("[^A-Za-z0-9]", "_"),
                 order == null ? "" : "_order_" + order);
     }
 
