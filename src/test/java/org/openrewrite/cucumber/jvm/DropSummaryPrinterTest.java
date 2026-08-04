@@ -17,6 +17,7 @@ package org.openrewrite.cucumber.jvm;
 
 import org.junit.jupiter.api.Test;
 import org.openrewrite.DocumentExample;
+import org.openrewrite.InMemoryExecutionContext;
 import org.openrewrite.Issue;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
@@ -31,7 +32,7 @@ class DropSummaryPrinterTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipe(new DropSummaryPrinter())
-                .parser(JavaParser.fromJavaVersion().classpath("cucumber-plugin"));
+                .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(), "cucumber-plugin"));
     }
 
     @DocumentExample

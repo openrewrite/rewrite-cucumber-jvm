@@ -19,6 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.openrewrite.DocumentExample;
+import org.openrewrite.InMemoryExecutionContext;
 import org.openrewrite.Issue;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
@@ -32,7 +33,8 @@ class RegexToCucumberExpressionTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipe(new RegexToCucumberExpression())
-                .parser(JavaParser.fromJavaVersion().classpath("junit-jupiter-api", "cucumber-java"));
+                .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
+                    "junit-jupiter-api", "cucumber-java-7"));
     }
 
     @DocumentExample
