@@ -18,6 +18,7 @@ package org.openrewrite.cucumber.jvm;
 import org.junit.jupiter.api.Test;
 import org.openrewrite.DocumentExample;
 import org.openrewrite.InMemoryExecutionContext;
+import org.openrewrite.Issue;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
@@ -311,6 +312,126 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                   public void configureTypeRegistry(TypeRegistry typeRegistry) {
                       typeRegistry.defineParameterType(new ParameterType<>(
                               "author", "[A-Z][a-z]+", Author.class, TRANSFORMER));
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistry;
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+              import io.cucumber.cucumberexpressions.ParameterType;
+              import io.cucumber.cucumberexpressions.Transformer;
+
+              import java.util.Locale;
+
+              public class ParameterTypeConfigurer implements TypeRegistryConfigurer {
+                  private static final Transformer<Author> TRANSFORMER = Author::new;
+
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+
+                  @Override
+                  public void configureTypeRegistry(TypeRegistry typeRegistry) {
+                      // TODO Cucumber-JVM 7.0.0 removed TypeRegistryConfigurer; migrate to @ParameterType, @DataTableType and @DocStringType annotated methods by hand
+                      typeRegistry.defineParameterType(new ParameterType<>(
+                              "author", "[A-Z][a-z]+", Author.class, TRANSFORMER));
+                  }
+              }
+              """));
+    }
+
+    @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+    @Test
+    void flagOnlyTheRegistrationThatBlockedTheConversion() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistry;
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+              import io.cucumber.datatable.DataTableType;
+
+              import java.util.Locale;
+              import java.util.Map;
+
+              public class AuthorConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+
+                  @Override
+                  public void configureTypeRegistry(TypeRegistry typeRegistry) {
+                      typeRegistry.defineDataTableType(new DataTableType(Author.class,
+                              (Map<String, String> entry) -> new Author(entry.get("name"))));
+                      typeRegistry.setDefaultParameterTransformer((String fromValue, java.lang.reflect.Type toValueType) -> fromValue);
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistry;
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+              import io.cucumber.datatable.DataTableType;
+
+              import java.util.Locale;
+              import java.util.Map;
+
+              public class AuthorConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+
+                  @Override
+                  public void configureTypeRegistry(TypeRegistry typeRegistry) {
+                      typeRegistry.defineDataTableType(new DataTableType(Author.class,
+                              (Map<String, String> entry) -> new Author(entry.get("name"))));
+                      // TODO Cucumber-JVM 7.0.0 removed TypeRegistryConfigurer; migrate to @ParameterType, @DataTableType and @DocStringType annotated methods by hand
+                      typeRegistry.setDefaultParameterTransformer((String fromValue, java.lang.reflect.Type toValueType) -> fromValue);
+                  }
+              }
+              """));
+    }
+
+    @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+    @Test
+    void flagClassesThatDoNotDeclareConfigureTypeRegistry() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+
+              import java.util.Locale;
+
+              public abstract class BaseConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+
+              import java.util.Locale;
+
+              // TODO Cucumber-JVM 7.0.0 removed TypeRegistryConfigurer; migrate to @ParameterType, @DataTableType and @DocStringType annotated methods by hand
+              public abstract class BaseConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
                   }
               }
               """));
