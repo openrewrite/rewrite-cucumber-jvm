@@ -29,12 +29,12 @@ class CucumberApiToIoCucumberTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipeFromResources("org.openrewrite.cucumber.jvm.CucumberApiToIoCucumber")
-                .parser(JavaParser.fromJavaVersion()
-                        .classpathFromResources(new InMemoryExecutionContext(),
-                                "cucumber-core-4.8.1",
-                                "cucumber-java-4.8.1",
-                                "cucumber-junit-4.8.1",
-                                "cucumber-testng-4.8.1"));
+          .parser(JavaParser.fromJavaVersion()
+            .classpathFromResources(new InMemoryExecutionContext(),
+              "cucumber-core-4.8.1",
+              "cucumber-java-4.8.1",
+              "cucumber-junit-4.8.1",
+              "cucumber-testng-4.8.1"));
     }
 
     @DocumentExample

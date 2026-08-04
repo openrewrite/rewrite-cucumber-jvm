@@ -35,53 +35,53 @@ class FixTeluguLanguageCodeTest implements RewriteTest {
     @Test
     void featureFileLanguageHeader() {
         rewriteRun(
-                text(
-                        """
-                        # language: tl
-                        గుణము: మొదటి గుణము
-                        """,
-                        """
-                        # language: te
-                        గుణము: మొదటి గుణము
-                        """,
-                        spec -> spec.path("src/test/resources/features/telugu.feature")));
+          text(
+            """
+              # language: tl
+              గుణము: మొదటి గుణము
+              """,
+            """
+              # language: te
+              గుణము: మొదటి గుణము
+              """,
+            spec -> spec.path("src/test/resources/features/telugu.feature")));
     }
 
     @Test
     void retainBlankLinesAfterTheLanguageHeader() {
         rewriteRun(
-                text(
-                        """
-                        # language: tl
+          text(
+            """
+              # language: tl
 
-                        గుణము: మొదటి గుణము
-                        """,
-                        """
-                        # language: te
+              గుణము: మొదటి గుణము
+              """,
+            """
+              # language: te
 
-                        గుణము: మొదటి గుణము
-                        """,
-                        spec -> spec.path("src/test/resources/features/telugu.feature")));
+              గుణము: మొదటి గుణము
+              """,
+            spec -> spec.path("src/test/resources/features/telugu.feature")));
     }
 
     @Test
     void leaveOtherLanguagesAlone() {
         rewriteRun(
-                text(
-                        """
-                        # language: nl
-                        Functionaliteit: eerste functionaliteit
-                        """,
-                        spec -> spec.path("src/test/resources/features/dutch.feature")));
+          text(
+            """
+              # language: nl
+              Functionaliteit: eerste functionaliteit
+              """,
+            spec -> spec.path("src/test/resources/features/dutch.feature")));
     }
 
     @Test
     void leaveNonFeatureFilesAlone() {
         rewriteRun(
-                text(
-                        """
-                        # language: tl
-                        """,
-                        spec -> spec.path("src/test/resources/notes.txt")));
+          text(
+            """
+              # language: tl
+              """,
+            spec -> spec.path("src/test/resources/notes.txt")));
     }
 }

@@ -32,56 +32,56 @@ class DropSummaryPrinterTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipe(new DropSummaryPrinter())
-                .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(), "cucumber-plugin"));
+          .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(), "cucumber-plugin"));
     }
 
     @DocumentExample
     @Test
     void replaceSummaryPrinterWithPlugin() {
         rewriteRun(
-            version(
-                // language=java
-                java(
-                    """
-                            package com.example.app;
+          version(
+            // language=java
+            java(
+              """
+                package com.example.app;
 
-                            import io.cucumber.plugin.SummaryPrinter;
+                import io.cucumber.plugin.SummaryPrinter;
 
-                            public class CucumberJava8Definitions implements SummaryPrinter {
-                            }""", """
-                            package com.example.app;
+                public class CucumberJava8Definitions implements SummaryPrinter {
+                }""", """
+                package com.example.app;
 
-                            import io.cucumber.plugin.Plugin;
+                import io.cucumber.plugin.Plugin;
 
-                            public class CucumberJava8Definitions implements Plugin {
-                            }
-                            """),
-                17));
+                public class CucumberJava8Definitions implements Plugin {
+                }
+                """),
+            17));
     }
 
     @Test
     void dontDuplicatePlugin() {
         rewriteRun(
-            version(
-                // language=java
-                java(
-                    """
-                            package com.example.app;
+          version(
+            // language=java
+            java(
+              """
+                package com.example.app;
 
-                            import io.cucumber.plugin.Plugin;
-                            import io.cucumber.plugin.SummaryPrinter;
+                import io.cucumber.plugin.Plugin;
+                import io.cucumber.plugin.SummaryPrinter;
 
-                            public class CucumberJava8Definitions implements Plugin, SummaryPrinter {
-                            }
-                            """,
-                    """
-                            package com.example.app;
+                public class CucumberJava8Definitions implements Plugin, SummaryPrinter {
+                }
+                """,
+              """
+                package com.example.app;
 
-                            import io.cucumber.plugin.Plugin;
+                import io.cucumber.plugin.Plugin;
 
-                            public class CucumberJava8Definitions implements Plugin {
-                            }
-                            """),
-                17));
+                public class CucumberJava8Definitions implements Plugin {
+                }
+                """),
+            17));
     }
 }

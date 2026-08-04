@@ -31,8 +31,8 @@ class MigrateScenarioWriteAndEmbedTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipeFromResources("org.openrewrite.cucumber.jvm.MigrateScenarioWriteAndEmbed")
-                .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
-                    "cucumber-java-5", "cucumber-java8-5"));
+          .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
+            "cucumber-java-5", "cucumber-java8-5"));
     }
 
     @DocumentExample
@@ -40,83 +40,83 @@ class MigrateScenarioWriteAndEmbedTest implements RewriteTest {
     void writeToLogAndEmbedToAttach() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.java.Scenario;
-                import io.cucumber.java.en.Given;
+            import io.cucumber.java.Scenario;
+            import io.cucumber.java.en.Given;
 
-                class StepDefinitions {
-                    @Given("a step")
-                    void aStep(Scenario scenario) {
-                        scenario.write("a message");
-                        scenario.embed(new byte[0], "image/png");
-                        scenario.embed(new byte[0], "image/png", "a name");
-                    }
+            class StepDefinitions {
+                @Given("a step")
+                void aStep(Scenario scenario) {
+                    scenario.write("a message");
+                    scenario.embed(new byte[0], "image/png");
+                    scenario.embed(new byte[0], "image/png", "a name");
                 }
-                """,
-                """
-                package com.example.app;
+            }
+            """,
+          """
+            package com.example.app;
 
-                import io.cucumber.java.Scenario;
-                import io.cucumber.java.en.Given;
+            import io.cucumber.java.Scenario;
+            import io.cucumber.java.en.Given;
 
-                class StepDefinitions {
-                    @Given("a step")
-                    void aStep(Scenario scenario) {
-                        scenario.log("a message");
-                        scenario.attach(new byte[0], "image/png", null);
-                        scenario.attach(new byte[0], "image/png", "a name");
-                    }
+            class StepDefinitions {
+                @Given("a step")
+                void aStep(Scenario scenario) {
+                    scenario.log("a message");
+                    scenario.attach(new byte[0], "image/png", null);
+                    scenario.attach(new byte[0], "image/png", "a name");
                 }
-                """));
+            }
+            """));
     }
 
     @Test
     void migrateCucumberJava8Scenario() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.java8.Scenario;
+            import io.cucumber.java8.Scenario;
 
-                class StepDefinitions {
-                    void aStep(Scenario scenario) {
-                        scenario.write("a message");
-                        scenario.embed(new byte[0], "image/png");
-                    }
+            class StepDefinitions {
+                void aStep(Scenario scenario) {
+                    scenario.write("a message");
+                    scenario.embed(new byte[0], "image/png");
                 }
-                """,
-                """
-                package com.example.app;
+            }
+            """,
+          """
+            package com.example.app;
 
-                import io.cucumber.java8.Scenario;
+            import io.cucumber.java8.Scenario;
 
-                class StepDefinitions {
-                    void aStep(Scenario scenario) {
-                        scenario.log("a message");
-                        scenario.attach(new byte[0], "image/png", null);
-                    }
+            class StepDefinitions {
+                void aStep(Scenario scenario) {
+                    scenario.log("a message");
+                    scenario.attach(new byte[0], "image/png", null);
                 }
-                """));
+            }
+            """));
     }
 
     @Test
     void retainLogAndAttach() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.java.Scenario;
+            import io.cucumber.java.Scenario;
 
-                class StepDefinitions {
-                    void aStep(Scenario scenario) {
-                        scenario.log("a message");
-                        scenario.attach(new byte[0], "image/png", "a name");
-                    }
+            class StepDefinitions {
+                void aStep(Scenario scenario) {
+                    scenario.log("a message");
+                    scenario.attach(new byte[0], "image/png", "a name");
                 }
-                """));
+            }
+            """));
     }
 }

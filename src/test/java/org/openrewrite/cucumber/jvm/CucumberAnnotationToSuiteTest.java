@@ -31,8 +31,8 @@ class CucumberAnnotationToSuiteTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipe(new CucumberAnnotationToSuite())
-                .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
-                    "cucumber-junit-platform-engine", "junit-platform-suite-api-1"));
+          .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
+            "cucumber-junit-platform-engine", "junit-platform-suite-api-1"));
     }
 
     @DocumentExample
@@ -40,27 +40,27 @@ class CucumberAnnotationToSuiteTest implements RewriteTest {
     void shouldReplaceCucumberAnnotationWithSuiteWithSelectedClasspathResource() {
         // language=java
         rewriteRun(
-            java(
-                """
-                        package com.example.app;
+          java(
+            """
+              package com.example.app;
 
-                        import io.cucumber.junit.platform.engine.Cucumber;
+              import io.cucumber.junit.platform.engine.Cucumber;
 
-                        @Cucumber
-                        public class CucumberJava8Definitions {
-                        }
-                        """,
-                """
-                        package com.example.app;
+              @Cucumber
+              public class CucumberJava8Definitions {
+              }
+              """,
+            """
+              package com.example.app;
 
-                        import org.junit.platform.suite.api.SelectClasspathResource;
-                        import org.junit.platform.suite.api.Suite;
+              import org.junit.platform.suite.api.SelectClasspathResource;
+              import org.junit.platform.suite.api.Suite;
 
-                        @Suite
-                        @SelectClasspathResource("com/example/app")
-                        public class CucumberJava8Definitions {
-                        }
-                        """
-            ));
+              @Suite
+              @SelectClasspathResource("com/example/app")
+              public class CucumberJava8Definitions {
+              }
+              """
+          ));
     }
 }

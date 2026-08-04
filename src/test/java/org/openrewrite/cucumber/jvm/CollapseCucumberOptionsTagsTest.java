@@ -31,8 +31,8 @@ class CollapseCucumberOptionsTagsTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipe(new CollapseCucumberOptionsTags())
-                .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
-                    "cucumber-junit-5", "cucumber-testng-5"));
+          .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
+            "cucumber-junit-5", "cucumber-testng-5"));
     }
 
     @DocumentExample
@@ -40,78 +40,78 @@ class CollapseCucumberOptionsTagsTest implements RewriteTest {
     void combineTagsWithAnd() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.junit.CucumberOptions;
+            import io.cucumber.junit.CucumberOptions;
 
-                @CucumberOptions(features = "src/test/resources/features", tags = {"@smoke", "not @wip"})
-                public class RunCucumberTest {
-                }
-                """,
-                """
-                package com.example.app;
+            @CucumberOptions(features = "src/test/resources/features", tags = {"@smoke", "not @wip"})
+            public class RunCucumberTest {
+            }
+            """,
+          """
+            package com.example.app;
 
-                import io.cucumber.junit.CucumberOptions;
+            import io.cucumber.junit.CucumberOptions;
 
-                @CucumberOptions(features = "src/test/resources/features", tags = "(@smoke) and (not @wip)")
-                public class RunCucumberTest {
-                }
-                """));
+            @CucumberOptions(features = "src/test/resources/features", tags = "(@smoke) and (not @wip)")
+            public class RunCucumberTest {
+            }
+            """));
     }
 
     @Test
     void unwrapSingleElementArray() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.testng.CucumberOptions;
+            import io.cucumber.testng.CucumberOptions;
 
-                @CucumberOptions(tags = {"@smoke"})
-                public class RunCucumberTest {
-                }
-                """,
-                """
-                package com.example.app;
+            @CucumberOptions(tags = {"@smoke"})
+            public class RunCucumberTest {
+            }
+            """,
+          """
+            package com.example.app;
 
-                import io.cucumber.testng.CucumberOptions;
+            import io.cucumber.testng.CucumberOptions;
 
-                @CucumberOptions(tags = "@smoke")
-                public class RunCucumberTest {
-                }
-                """));
+            @CucumberOptions(tags = "@smoke")
+            public class RunCucumberTest {
+            }
+            """));
     }
 
     @Test
     void retainSingleTagExpression() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.junit.CucumberOptions;
+            import io.cucumber.junit.CucumberOptions;
 
-                @CucumberOptions(tags = "@smoke and not @wip")
-                public class RunCucumberTest {
-                }
-                """));
+            @CucumberOptions(tags = "@smoke and not @wip")
+            public class RunCucumberTest {
+            }
+            """));
     }
 
     @Test
     void retainTagsThatAreNotStringLiterals() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.junit.CucumberOptions;
+            import io.cucumber.junit.CucumberOptions;
 
-                @CucumberOptions(tags = {RunCucumberTest.SMOKE, "not @wip"})
-                public class RunCucumberTest {
-                    static final String SMOKE = "@smoke";
-                }
-                """));
+            @CucumberOptions(tags = {RunCucumberTest.SMOKE, "not @wip"})
+            public class RunCucumberTest {
+                static final String SMOKE = "@smoke";
+            }
+            """));
     }
 }

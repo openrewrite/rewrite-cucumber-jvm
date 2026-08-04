@@ -33,8 +33,8 @@ class RegexToCucumberExpressionTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipe(new RegexToCucumberExpression())
-                .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
-                    "junit-jupiter-api", "cucumber-java-7"));
+          .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
+            "junit-jupiter-api", "cucumber-java-7"));
     }
 
     @DocumentExample
@@ -42,66 +42,66 @@ class RegexToCucumberExpressionTest implements RewriteTest {
     void regexToCucumberExpression() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.java.Before;
-                import io.cucumber.java.en.Given;
-                import io.cucumber.java.en.Then;
+            import io.cucumber.java.Before;
+            import io.cucumber.java.en.Given;
+            import io.cucumber.java.en.Then;
 
-                import static org.junit.jupiter.api.Assertions.assertEquals;
+            import static org.junit.jupiter.api.Assertions.assertEquals;
 
-                public class ExpressionDefinitions {
+            public class ExpressionDefinitions {
 
-                    private int a;
+                private int a;
 
-                    @Before
-                    public void before() {
-                        a = 0;
-                    }
-
-                    @Given("^five cukes$")
-                    public void five_cukes() {
-                        a = 5;
-                    }
-
-                    @Then("^I expect (\\\\d+)$")
-                    public void i_expect_int(Integer c) {
-                        assertEquals(c, a);
-                    }
-
+                @Before
+                public void before() {
+                    a = 0;
                 }
-                """,
-                """
-                package com.example.app;
 
-                import io.cucumber.java.Before;
-                import io.cucumber.java.en.Given;
-                import io.cucumber.java.en.Then;
-
-                import static org.junit.jupiter.api.Assertions.assertEquals;
-
-                public class ExpressionDefinitions {
-
-                    private int a;
-
-                    @Before
-                    public void before() {
-                        a = 0;
-                    }
-
-                    @Given("five cukes")
-                    public void five_cukes() {
-                        a = 5;
-                    }
-
-                    @Then("^I expect (\\\\d+)$")
-                    public void i_expect_int(Integer c) {
-                        assertEquals(c, a);
-                    }
-
+                @Given("^five cukes$")
+                public void five_cukes() {
+                    a = 5;
                 }
-                """));
+
+                @Then("^I expect (\\\\d+)$")
+                public void i_expect_int(Integer c) {
+                    assertEquals(c, a);
+                }
+
+            }
+            """,
+          """
+            package com.example.app;
+
+            import io.cucumber.java.Before;
+            import io.cucumber.java.en.Given;
+            import io.cucumber.java.en.Then;
+
+            import static org.junit.jupiter.api.Assertions.assertEquals;
+
+            public class ExpressionDefinitions {
+
+                private int a;
+
+                @Before
+                public void before() {
+                    a = 0;
+                }
+
+                @Given("five cukes")
+                public void five_cukes() {
+                    a = 5;
+                }
+
+                @Then("^I expect (\\\\d+)$")
+                public void i_expect_int(Integer c) {
+                    assertEquals(c, a);
+                }
+
+            }
+            """));
     }
 
     @DisplayName("should convert")
@@ -112,72 +112,72 @@ class RegexToCucumberExpressionTest implements RewriteTest {
         void only_leading_anchor() {
             // language=java
             rewriteRun(java("""
-                    package com.example.app;
+              package com.example.app;
 
-                    import io.cucumber.java.en.Given;
+              import io.cucumber.java.en.Given;
 
-                    public class ExpressionDefinitions {
-                        @Given("^five cukes")
-                        public void five_cukes() {
-                        }
-                    }""", """
-                    package com.example.app;
+              public class ExpressionDefinitions {
+                  @Given("^five cukes")
+                  public void five_cukes() {
+                  }
+              }""", """
+              package com.example.app;
 
-                    import io.cucumber.java.en.Given;
+              import io.cucumber.java.en.Given;
 
-                    public class ExpressionDefinitions {
-                        @Given("five cukes")
-                        public void five_cukes() {
-                        }
-                    }"""));
+              public class ExpressionDefinitions {
+                  @Given("five cukes")
+                  public void five_cukes() {
+                  }
+              }"""));
         }
 
         @Test
         void only_trailing_anchor() {
             // language=java
             rewriteRun(java("""
-                    package com.example.app;
+              package com.example.app;
 
-                    import io.cucumber.java.en.Given;
+              import io.cucumber.java.en.Given;
 
-                    public class ExpressionDefinitions {
-                        @Given("five cukes$")
-                        public void five_cukes() {
-                        }
-                    }""", """
-                    package com.example.app;
+              public class ExpressionDefinitions {
+                  @Given("five cukes$")
+                  public void five_cukes() {
+                  }
+              }""", """
+              package com.example.app;
 
-                    import io.cucumber.java.en.Given;
+              import io.cucumber.java.en.Given;
 
-                    public class ExpressionDefinitions {
-                        @Given("five cukes")
-                        public void five_cukes() {
-                        }
-                    }"""));
+              public class ExpressionDefinitions {
+                  @Given("five cukes")
+                  public void five_cukes() {
+                  }
+              }"""));
         }
 
         @Test
         void forward_slashes() {
             // language=java
             rewriteRun(java("""
-                    package com.example.app;
+              package com.example.app;
 
-                    import io.cucumber.java.en.Given;
+              import io.cucumber.java.en.Given;
 
-                    public class ExpressionDefinitions {
-                        @Given("/five cukes/")
-                        public void five_cukes() {
-                        }
-                    }""", """
-                    package com.example.app;
+              public class ExpressionDefinitions {
+                  @Given("/five cukes/")
+                  public void five_cukes() {
+                  }
+              }""", """
+              package com.example.app;
 
-                    import io.cucumber.java.en.Given;
+              import io.cucumber.java.en.Given;
 
-                    public class ExpressionDefinitions {
-                        @Given("five cukes")
-                        public void five_cukes() {
-                        }
-                    }"""));
+              public class ExpressionDefinitions {
+                  @Given("five cukes")
+                  public void five_cukes() {
+                  }
+              }"""));
         }
 
     }
@@ -190,79 +190,79 @@ class RegexToCucumberExpressionTest implements RewriteTest {
         void unrecognized_capturing_groups() {
             // language=java
             rewriteRun(java("""
-                    package com.example.app;
+              package com.example.app;
 
-                    import io.cucumber.java.en.Given;
+              import io.cucumber.java.en.Given;
 
-                    public class ExpressionDefinitions {
-                        @Given("^some (foo|bar)$")
-                        public void five_cukes(String fooOrBar) {
-                        }
-                    }"""));
+              public class ExpressionDefinitions {
+                  @Given("^some (foo|bar)$")
+                  public void five_cukes(String fooOrBar) {
+                  }
+              }"""));
         }
 
         @Test
         void integer_matchers() {
             // language=java
             rewriteRun(java("""
-                    package com.example.app;
+              package com.example.app;
 
-                    import io.cucumber.java.en.Given;
+              import io.cucumber.java.en.Given;
 
-                    public class ExpressionDefinitions {
-                        @Given("^(\\\\d+) cukes$")
-                        public void int_cukes(int cukes) {
-                        }
-                    }"""));
+              public class ExpressionDefinitions {
+                  @Given("^(\\\\d+) cukes$")
+                  public void int_cukes(int cukes) {
+                  }
+              }"""));
         }
 
         @Test
         void regex_question_mark_optional() {
             // language=java
             rewriteRun(java("""
-                    package com.example.app;
+              package com.example.app;
 
-                    import io.cucumber.java.en.Given;
+              import io.cucumber.java.en.Given;
 
-                    public class ExpressionDefinitions {
-                        @Given("^cukes?$")
-                        public void cukes() {
-                        }
-                    }"""));
+              public class ExpressionDefinitions {
+                  @Given("^cukes?$")
+                  public void cukes() {
+                  }
+              }"""));
         }
 
         @Test
         void regex_one_or_more() {
             // language=java
             rewriteRun(java("""
-                    package com.example.app;
+              package com.example.app;
 
-                    import io.cucumber.java.en.Given;
+              import io.cucumber.java.en.Given;
 
-                    public class ExpressionDefinitions {
-                        @Given("^cukes+$")
-                        public void cukes() {
-                        }
-                    }"""));
+              public class ExpressionDefinitions {
+                  @Given("^cukes+$")
+                  public void cukes() {
+                  }
+              }"""));
         }
 
         @Test
         void disabled() {
             // language=java
             rewriteRun(java("""
-                    package com.example.app;
+              package com.example.app;
 
-                    import io.cucumber.java.en.Given;
-                    import org.junit.jupiter.api.Disabled;
+              import io.cucumber.java.en.Given;
+              import org.junit.jupiter.api.Disabled;
 
-                    public class ExpressionDefinitions {
-                        @Disabled("/for now/")
-                        public void disabled() {
-                        }
-                        @Given("trigger getSingleSourceApplicableTest")
-                        public void trigger() {
-                        }
-                    }"""));
+              public class ExpressionDefinitions {
+                  @Disabled("/for now/")
+                  public void disabled() {
+                  }
+                  @Given("trigger getSingleSourceApplicableTest")
+                  public void trigger() {
+                  }
+              }"""));
         }
 
     }

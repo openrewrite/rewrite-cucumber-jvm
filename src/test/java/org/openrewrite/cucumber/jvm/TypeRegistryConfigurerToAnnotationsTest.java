@@ -49,10 +49,10 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
         // The recipe migrates onto types from the current release, but away from `TypeRegistryConfigurer`,
         // which no release still ships, so that one comes from a type table
         spec.recipe(new TypeRegistryConfigurerToAnnotations())
-                .parser(JavaParser.fromJavaVersion()
-                        .classpathFromResources(new InMemoryExecutionContext(), "cucumber-java-7",
-                                "cucumber-expressions", "datatable", "docstring", "cucumber-core-6.11.0")
-                        .dependsOn(AUTHOR));
+          .parser(JavaParser.fromJavaVersion()
+            .classpathFromResources(new InMemoryExecutionContext(), "cucumber-java-7",
+              "cucumber-expressions", "datatable", "docstring", "cucumber-core-6.11.0")
+            .dependsOn(AUTHOR));
     }
 
     @DocumentExample

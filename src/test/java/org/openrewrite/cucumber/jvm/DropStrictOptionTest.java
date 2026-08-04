@@ -32,8 +32,8 @@ class DropStrictOptionTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipeFromResources("org.openrewrite.cucumber.jvm.DropStrictOption")
-                .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
-                    "cucumber-junit-7", "cucumber-testng-7"));
+          .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
+            "cucumber-junit-7", "cucumber-testng-7"));
     }
 
     @DocumentExample
@@ -41,75 +41,75 @@ class DropStrictOptionTest implements RewriteTest {
     void dropStrictFromJUnitCucumberOptions() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.junit.CucumberOptions;
+            import io.cucumber.junit.CucumberOptions;
 
-                @CucumberOptions(strict = true, features = "src/test/resources/features")
-                public class RunCucumberTest {
-                }
-                """,
-                """
-                package com.example.app;
+            @CucumberOptions(strict = true, features = "src/test/resources/features")
+            public class RunCucumberTest {
+            }
+            """,
+          """
+            package com.example.app;
 
-                import io.cucumber.junit.CucumberOptions;
+            import io.cucumber.junit.CucumberOptions;
 
-                @CucumberOptions(features = "src/test/resources/features")
-                public class RunCucumberTest {
-                }
-                """));
+            @CucumberOptions(features = "src/test/resources/features")
+            public class RunCucumberTest {
+            }
+            """));
     }
 
     @Test
     void dropStrictFromTestNgCucumberOptions() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.testng.CucumberOptions;
+            import io.cucumber.testng.CucumberOptions;
 
-                @CucumberOptions(features = "src/test/resources/features", strict = false)
-                public class RunCucumberTest {
-                }
-                """,
-                """
-                package com.example.app;
+            @CucumberOptions(features = "src/test/resources/features", strict = false)
+            public class RunCucumberTest {
+            }
+            """,
+          """
+            package com.example.app;
 
-                import io.cucumber.testng.CucumberOptions;
+            import io.cucumber.testng.CucumberOptions;
 
-                @CucumberOptions(features = "src/test/resources/features")
-                public class RunCucumberTest {
-                }
-                """));
+            @CucumberOptions(features = "src/test/resources/features")
+            public class RunCucumberTest {
+            }
+            """));
     }
 
     @Test
     void dropStrictExecutionProperty() {
         rewriteRun(properties(
-                """
-                cucumber.execution.strict=true
-                cucumber.glue=com.example.app
-                """,
-                """
-                cucumber.glue=com.example.app
-                """,
-                spec -> spec.path("src/test/resources/cucumber.properties")));
+          """
+            cucumber.execution.strict=true
+            cucumber.glue=com.example.app
+            """,
+          """
+            cucumber.glue=com.example.app
+            """,
+          spec -> spec.path("src/test/resources/cucumber.properties")));
     }
 
     @Test
     void retainOtherOptions() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.junit.CucumberOptions;
+            import io.cucumber.junit.CucumberOptions;
 
-                @CucumberOptions(features = "src/test/resources/features", plugin = "pretty")
-                public class RunCucumberTest {
-                }
-                """));
+            @CucumberOptions(features = "src/test/resources/features", plugin = "pretty")
+            public class RunCucumberTest {
+            }
+            """));
     }
 }
