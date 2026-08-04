@@ -18,6 +18,7 @@ package org.openrewrite.cucumber.jvm;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.openrewrite.DocumentExample;
+import org.openrewrite.InMemoryExecutionContext;
 import org.openrewrite.Issue;
 import org.openrewrite.config.Environment;
 import org.openrewrite.java.JavaParser;
@@ -37,7 +38,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                 .build().activateRecipes("org.openrewrite.cucumber.jvm.CucumberJava8ToJava"));
         spec.parser(JavaParser.fromJavaVersion()
                 .logCompilationWarningsAndErrors(true)
-                .classpath("junit-jupiter-api", "cucumber-java", "cucumber-java8"));
+                .classpathFromResources(new InMemoryExecutionContext(),
+                        "junit-jupiter-api", "cucumber-java-7", "cucumber-java8-7"));
     }
 
     @DocumentExample

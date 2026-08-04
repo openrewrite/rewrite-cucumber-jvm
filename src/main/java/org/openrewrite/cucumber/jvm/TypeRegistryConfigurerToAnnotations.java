@@ -165,7 +165,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                 }
                 c = JavaTemplate.builder(glueMethod.template())
                         .contextSensitive()
-                        .javaParser(JavaParser.fromJavaVersion().classpath("cucumber-java"))
+                        .javaParser(JavaParser.fromJavaVersion().classpathFromResources(ctx, "cucumber-java-7"))
                         .imports(imports)
                         .build()
                         .apply(updateCursor(c), c.getBody().getCoordinates().lastStatement(), glueMethod.getBody());

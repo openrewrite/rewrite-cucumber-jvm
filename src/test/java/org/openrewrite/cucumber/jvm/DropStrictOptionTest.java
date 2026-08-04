@@ -17,6 +17,7 @@ package org.openrewrite.cucumber.jvm;
 
 import org.junit.jupiter.api.Test;
 import org.openrewrite.DocumentExample;
+import org.openrewrite.InMemoryExecutionContext;
 import org.openrewrite.Issue;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
@@ -30,7 +31,8 @@ class DropStrictOptionTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipeFromResources("org.openrewrite.cucumber.jvm.DropStrictOption")
-                .parser(JavaParser.fromJavaVersion().classpath("cucumber-junit", "cucumber-testng"));
+                .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
+                    "cucumber-junit-7", "cucumber-testng-7"));
     }
 
     @DocumentExample

@@ -22,9 +22,6 @@ import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.openrewrite.java.Assertions.java;
 
@@ -59,10 +56,10 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
      * `cucumber.api` and the `io.cucumber.core.api` variant, so only ever put one release on the classpath.
      */
     private static JavaParser.Builder<?, ?> cucumberParser(String cucumberCore) {
-        List<Path> classpath = new ArrayList<>(JavaParser.dependenciesFromClasspath(
-                "cucumber-java", "cucumber-expressions", "datatable", "docstring"));
-        classpath.addAll(JavaParser.dependenciesFromResources(new InMemoryExecutionContext(), cucumberCore));
-        return JavaParser.fromJavaVersion().classpath(classpath).dependsOn(AUTHOR);
+        return JavaParser.fromJavaVersion()
+                .classpathFromResources(new InMemoryExecutionContext(),
+                        "cucumber-java-7", "cucumber-expressions", "datatable", "docstring", cucumberCore)
+                .dependsOn(AUTHOR);
     }
 
     @DocumentExample
