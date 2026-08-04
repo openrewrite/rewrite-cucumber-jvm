@@ -17,88 +17,52 @@ package org.openrewrite.cucumber.jvm;
 
 import org.junit.jupiter.api.Test;
 import org.openrewrite.DocumentExample;
+import org.openrewrite.InMemoryExecutionContext;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.openrewrite.java.Assertions.java;
 
 class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
 
+    //language=java
+    private static final String AUTHOR = """
+      package com.example.app;
+
+      public class Author {
+          private final String name;
+
+          public Author(String name) {
+              this.name = name;
+          }
+
+          public String getName() {
+              return name;
+          }
+      }
+      """;
+
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipe(new TypeRegistryConfigurerToAnnotations())
-                .parser(JavaParser.fromJavaVersion()
-                        .classpath("cucumber-java", "cucumber-expressions", "datatable", "docstring")
-                        .dependsOn(
-                                //language=java
-                                """
-                                  package io.cucumber.core.api;
+                .parser(cucumberParser("cucumber-core-6.11.0"));
+    }
 
-                                  import io.cucumber.cucumberexpressions.ParameterType;
-                                  import io.cucumber.datatable.DataTableType;
-                                  import io.cucumber.docstring.DocStringType;
-
-                                  public interface TypeRegistry {
-                                      void defineParameterType(ParameterType<?> parameterType);
-                                      void defineDataTableType(DataTableType tableType);
-                                      void defineDocStringType(DocStringType docStringType);
-                                  }
-                                  """,
-                                //language=java
-                                """
-                                  package io.cucumber.core.api;
-
-                                  import java.util.Locale;
-
-                                  public interface TypeRegistryConfigurer {
-                                      default Locale locale() {
-                                          return Locale.ENGLISH;
-                                      }
-
-                                      void configureTypeRegistry(TypeRegistry typeRegistry);
-                                  }
-                                  """,
-                                //language=java
-                                """
-                                  package cucumber.api;
-
-                                  import io.cucumber.cucumberexpressions.ParameterType;
-                                  import io.cucumber.datatable.DataTableType;
-
-                                  public interface TypeRegistry {
-                                      void defineParameterType(ParameterType<?> parameterType);
-                                      void defineDataTableType(DataTableType tableType);
-                                  }
-                                  """,
-                                //language=java
-                                """
-                                  package cucumber.api;
-
-                                  import java.util.Locale;
-
-                                  public interface TypeRegistryConfigurer {
-                                      Locale locale();
-
-                                      void configureTypeRegistry(TypeRegistry typeRegistry);
-                                  }
-                                  """,
-                                //language=java
-                                """
-                                  package com.example.app;
-
-                                  public class Author {
-                                      private final String name;
-
-                                      public Author(String name) {
-                                          this.name = name;
-                                      }
-
-                                      public String getName() {
-                                          return name;
-                                      }
-                                  }
-                                  """));
+    /**
+     * The recipe migrates onto types from the current release, but away from `TypeRegistryConfigurer`, which no
+     * release still ships; take that one from a type table. Note that Cucumber-JVM 4.x carries both the
+     * `cucumber.api` and the `io.cucumber.core.api` variant, so only ever put one release on the classpath.
+     */
+    private static JavaParser.Builder<?, ?> cucumberParser(String cucumberCore) {
+        List<Path> classpath = new ArrayList<>(JavaParser.dependenciesFromClasspath(
+                "cucumber-java", "cucumber-expressions", "datatable", "docstring"));
+        classpath.addAll(JavaParser.dependenciesFromResources(new InMemoryExecutionContext(), cucumberCore));
+        return JavaParser.fromJavaVersion().classpath(classpath).dependsOn(AUTHOR);
     }
 
     @DocumentExample
@@ -286,6 +250,7 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
     @Test
     void convertPreCucumber5TypeRegistryConfigurer() {
         rewriteRun(
+          spec -> spec.parser(cucumberParser("cucumber-core-4.8.1")),
           //language=java
           java(
             """

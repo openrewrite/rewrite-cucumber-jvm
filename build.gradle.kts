@@ -6,6 +6,16 @@ plugins {
 group = "org.openrewrite.recipe"
 description = "Cucumber JVM Migration"
 
+recipeDependencies {
+    // The `cucumber.api` types the upgrade recipes migrate away from, gone from every supported release
+    testParserClasspath("io.cucumber:cucumber-core:4.8.1")
+    testParserClasspath("io.cucumber:cucumber-java:4.8.1")
+    testParserClasspath("io.cucumber:cucumber-junit:4.8.1")
+    testParserClasspath("io.cucumber:cucumber-testng:4.8.1")
+    // The last release with `io.cucumber.core.api.TypeRegistryConfigurer`, removed in 7.0.0
+    testParserClasspath("io.cucumber:cucumber-core:6.11.0")
+}
+
 val rewriteVersion = rewriteRecipe.rewriteVersion.get()
 dependencies {
     implementation("io.cucumber:cucumber-java:latest.release")

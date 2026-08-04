@@ -26,6 +26,7 @@ import org.openrewrite.internal.ListUtils;
 import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.JavaTemplate;
+import org.openrewrite.java.TypeMatcher;
 import org.openrewrite.java.search.UsesType;
 import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
@@ -50,20 +51,19 @@ import java.util.Set;
 @Value
 public class TypeRegistryConfigurerToAnnotations extends Recipe {
 
-    private static final String CUCUMBER_API_TYPE_REGISTRY = "cucumber.api.TypeRegistry";
-    private static final String CUCUMBER_API_TYPE_REGISTRY_CONFIGURER = "cucumber.api.TypeRegistryConfigurer";
-    private static final String CORE_API_TYPE_REGISTRY = "io.cucumber.core.api.TypeRegistry";
-    private static final String CORE_API_TYPE_REGISTRY_CONFIGURER = "io.cucumber.core.api.TypeRegistryConfigurer";
+    // Cucumber-JVM 5.0.0 moved these from `cucumber.api` to `io.cucumber.core.api`
+    private static final TypeMatcher TYPE_REGISTRY = new TypeMatcher("*..api.TypeRegistry");
+    private static final TypeMatcher TYPE_REGISTRY_CONFIGURER = new TypeMatcher("*..api.TypeRegistryConfigurer");
 
     private static final String IO_CUCUMBER_JAVA_PARAMETER_TYPE = "io.cucumber.java.ParameterType";
     private static final String IO_CUCUMBER_JAVA_DATA_TABLE_TYPE = "io.cucumber.java.DataTableType";
     private static final String IO_CUCUMBER_JAVA_DOC_STRING_TYPE = "io.cucumber.java.DocStringType";
 
     private static final List<String> OBSOLETE_IMPORTS = Arrays.asList(
-            CUCUMBER_API_TYPE_REGISTRY,
-            CUCUMBER_API_TYPE_REGISTRY_CONFIGURER,
-            CORE_API_TYPE_REGISTRY,
-            CORE_API_TYPE_REGISTRY_CONFIGURER,
+            "cucumber.api.TypeRegistry",
+            "cucumber.api.TypeRegistryConfigurer",
+            "io.cucumber.core.api.TypeRegistry",
+            "io.cucumber.core.api.TypeRegistryConfigurer",
             "io.cucumber.cucumberexpressions.CaptureGroupTransformer",
             "io.cucumber.cucumberexpressions.ParameterType",
             "io.cucumber.cucumberexpressions.Transformer",
@@ -108,9 +108,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {
         return Preconditions.check(
-                Preconditions.or(
-                        new UsesType<>(CUCUMBER_API_TYPE_REGISTRY_CONFIGURER, true),
-                        new UsesType<>(CORE_API_TYPE_REGISTRY_CONFIGURER, true)),
+                new UsesType<>(TYPE_REGISTRY_CONFIGURER.getSignature(), true),
                 new TypeRegistryConfigurerVisitor());
     }
 
@@ -120,7 +118,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
         public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, ExecutionContext ctx) {
             J.ClassDeclaration c = super.visitClassDeclaration(cd, ctx);
             if (c.getImplements() == null || c.getImplements().stream()
-                    .noneMatch(i -> isTypeRegistryConfigurer(i.getType()))) {
+                    .noneMatch(TYPE_REGISTRY_CONFIGURER::matches)) {
                 return c;
             }
 
@@ -153,7 +151,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
             }
 
             J.MethodDeclaration removedConfigureTypeRegistry = configureTypeRegistry;
-            c = c.withImplements(ListUtils.map(c.getImplements(), i -> isTypeRegistryConfigurer(i.getType()) ? null : i))
+            c = c.withImplements(ListUtils.map(c.getImplements(), i -> TYPE_REGISTRY_CONFIGURER.matches(i) ? null : i))
                     .withBody(c.getBody().withStatements(ListUtils.map(c.getBody().getStatements(),
                             s -> s == removedConfigureTypeRegistry || isLocaleMethod(s) ? null : s)));
             OBSOLETE_IMPORTS.forEach(this::maybeRemoveImport);
@@ -205,7 +203,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                 return null;
             }
             J.MethodInvocation definition = (J.MethodInvocation) statement;
-            if (definition.getSelect() == null || !isTypeRegistry(definition.getSelect().getType()) ||
+            if (definition.getSelect() == null || !TYPE_REGISTRY.matches(definition.getSelect().getType()) ||
                     definition.getArguments().size() != 1 ||
                     !(definition.getArguments().get(0) instanceof J.NewClass)) {
                 return null;
@@ -336,16 +334,6 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
     private static @Nullable String fullyQualifiedName(@Nullable JavaType type) {
         JavaType.FullyQualified fullyQualified = TypeUtils.asFullyQualified(type);
         return fullyQualified == null ? null : fullyQualified.getFullyQualifiedName();
-    }
-
-    private static boolean isTypeRegistry(@Nullable JavaType type) {
-        return TypeUtils.isOfClassType(type, CUCUMBER_API_TYPE_REGISTRY) ||
-                TypeUtils.isOfClassType(type, CORE_API_TYPE_REGISTRY);
-    }
-
-    private static boolean isTypeRegistryConfigurer(@Nullable JavaType type) {
-        return TypeUtils.isOfClassType(type, CUCUMBER_API_TYPE_REGISTRY_CONFIGURER) ||
-                TypeUtils.isOfClassType(type, CORE_API_TYPE_REGISTRY_CONFIGURER);
     }
 
     private static boolean isLocaleMethod(Statement statement) {

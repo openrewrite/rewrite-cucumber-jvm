@@ -17,6 +17,7 @@ package org.openrewrite.cucumber.jvm;
 
 import org.junit.jupiter.api.Test;
 import org.openrewrite.DocumentExample;
+import org.openrewrite.InMemoryExecutionContext;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
@@ -28,142 +29,12 @@ class CucumberApiToIoCucumberTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipeFromResources("org.openrewrite.cucumber.jvm.CucumberApiToIoCucumber")
-                .parser(JavaParser.fromJavaVersion().dependsOn(
-                        //language=java
-                        """
-                          package cucumber.api;
-                          public interface TypeRegistry {
-                              void defineParameterType(Object parameterType);
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api;
-                          import java.util.Locale;
-                          public interface TypeRegistryConfigurer {
-                              Locale locale();
-                              void configureTypeRegistry(TypeRegistry typeRegistry);
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api;
-                          public @interface CucumberOptions {
-                              String[] features() default {};
-                              SnippetType snippets() default SnippetType.UNDERSCORE;
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api;
-                          public enum SnippetType { UNDERSCORE, CAMELCASE }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api;
-                          public interface Scenario {
-                              String getName();
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api;
-                          public class PendingException extends RuntimeException {
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api;
-                          public interface Plugin {
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api;
-                          public interface SummaryPrinter extends Plugin {
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api.cli;
-                          public class Main {
-                              public static void main(String[] argv) {
-                              }
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api.event;
-                          public interface EventPublisher {
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api.event;
-                          public class TestRunFinished {
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api.event;
-                          import cucumber.api.Plugin;
-                          public interface EventListener extends Plugin {
-                              void setEventPublisher(EventPublisher publisher);
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api.formatter;
-                          import cucumber.api.Plugin;
-                          public interface ColorAware extends Plugin {
-                              void setMonochrome(boolean monochrome);
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api.java;
-                          import java.lang.annotation.ElementType;
-                          import java.lang.annotation.Retention;
-                          import java.lang.annotation.RetentionPolicy;
-                          import java.lang.annotation.Target;
-                          @Retention(RetentionPolicy.RUNTIME)
-                          @Target(ElementType.METHOD)
-                          public @interface Before {
-                              String value() default "";
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api.java;
-                          public interface ObjectFactory {
-                              void start();
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api.java.en;
-                          import java.lang.annotation.ElementType;
-                          import java.lang.annotation.Retention;
-                          import java.lang.annotation.RetentionPolicy;
-                          import java.lang.annotation.Target;
-                          @Retention(RetentionPolicy.RUNTIME)
-                          @Target(ElementType.METHOD)
-                          public @interface Given {
-                              String value();
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api.junit;
-                          public class Cucumber {
-                          }
-                          """,
-                        //language=java
-                        """
-                          package cucumber.api.testng;
-                          public abstract class AbstractTestNGCucumberTests {
-                          }
-                          """));
+                .parser(JavaParser.fromJavaVersion()
+                        .classpathFromResources(new InMemoryExecutionContext(),
+                                "cucumber-core-4.8.1",
+                                "cucumber-java-4.8.1",
+                                "cucumber-junit-4.8.1",
+                                "cucumber-testng-4.8.1"));
     }
 
     @DocumentExample
@@ -376,10 +247,7 @@ class CucumberApiToIoCucumberTest implements RewriteTest {
 
               import cucumber.api.java.ObjectFactory;
 
-              public class MyObjectFactory implements ObjectFactory {
-                  @Override
-                  public void start() {
-                  }
+              public abstract class MyObjectFactory implements ObjectFactory {
               }
               """,
             """
@@ -387,10 +255,7 @@ class CucumberApiToIoCucumberTest implements RewriteTest {
 
               import io.cucumber.core.backend.ObjectFactory;
 
-              public class MyObjectFactory implements ObjectFactory {
-                  @Override
-                  public void start() {
-                  }
+              public abstract class MyObjectFactory implements ObjectFactory {
               }
               """));
     }
