@@ -33,6 +33,11 @@ recipeDependencies {
     testParserClasspath("info.cukes:cucumber-core:1.2.5")
     // The last release with `io.cucumber.core.api.TypeRegistryConfigurer`, removed in 7.0.0
     testParserClasspath("io.cucumber:cucumber-core:6.11.0")
+    // The last release with `Scenario.write`/`embed` and `@CucumberOptions(tags = {...})`, both gone in 6.0.0
+    testParserClasspath("io.cucumber:cucumber-java:5.7.0")
+    testParserClasspath("io.cucumber:cucumber-java8:5.7.0")
+    testParserClasspath("io.cucumber:cucumber-junit:5.7.0")
+    testParserClasspath("io.cucumber:cucumber-testng:5.7.0")
 }
 
 val rewriteVersion = rewriteRecipe.rewriteVersion.get()
