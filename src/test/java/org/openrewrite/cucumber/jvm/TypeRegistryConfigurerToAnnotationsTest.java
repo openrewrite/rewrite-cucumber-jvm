@@ -31,74 +31,74 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                 .parser(JavaParser.fromJavaVersion()
                         .classpath("cucumber-java", "cucumber-expressions", "datatable", "docstring")
                         .dependsOn(
-                          //language=java
-                          """
-                            package io.cucumber.core.api;
+                                //language=java
+                                """
+                                  package io.cucumber.core.api;
 
-                            import io.cucumber.cucumberexpressions.ParameterType;
-                            import io.cucumber.datatable.DataTableType;
-                            import io.cucumber.docstring.DocStringType;
+                                  import io.cucumber.cucumberexpressions.ParameterType;
+                                  import io.cucumber.datatable.DataTableType;
+                                  import io.cucumber.docstring.DocStringType;
 
-                            public interface TypeRegistry {
-                                void defineParameterType(ParameterType<?> parameterType);
-                                void defineDataTableType(DataTableType tableType);
-                                void defineDocStringType(DocStringType docStringType);
-                            }
-                            """,
-                          //language=java
-                          """
-                            package io.cucumber.core.api;
+                                  public interface TypeRegistry {
+                                      void defineParameterType(ParameterType<?> parameterType);
+                                      void defineDataTableType(DataTableType tableType);
+                                      void defineDocStringType(DocStringType docStringType);
+                                  }
+                                  """,
+                                //language=java
+                                """
+                                  package io.cucumber.core.api;
 
-                            import java.util.Locale;
+                                  import java.util.Locale;
 
-                            public interface TypeRegistryConfigurer {
-                                default Locale locale() {
-                                    return Locale.ENGLISH;
-                                }
+                                  public interface TypeRegistryConfigurer {
+                                      default Locale locale() {
+                                          return Locale.ENGLISH;
+                                      }
 
-                                void configureTypeRegistry(TypeRegistry typeRegistry);
-                            }
-                            """,
-                          //language=java
-                          """
-                            package cucumber.api;
+                                      void configureTypeRegistry(TypeRegistry typeRegistry);
+                                  }
+                                  """,
+                                //language=java
+                                """
+                                  package cucumber.api;
 
-                            import io.cucumber.cucumberexpressions.ParameterType;
-                            import io.cucumber.datatable.DataTableType;
+                                  import io.cucumber.cucumberexpressions.ParameterType;
+                                  import io.cucumber.datatable.DataTableType;
 
-                            public interface TypeRegistry {
-                                void defineParameterType(ParameterType<?> parameterType);
-                                void defineDataTableType(DataTableType tableType);
-                            }
-                            """,
-                          //language=java
-                          """
-                            package cucumber.api;
+                                  public interface TypeRegistry {
+                                      void defineParameterType(ParameterType<?> parameterType);
+                                      void defineDataTableType(DataTableType tableType);
+                                  }
+                                  """,
+                                //language=java
+                                """
+                                  package cucumber.api;
 
-                            import java.util.Locale;
+                                  import java.util.Locale;
 
-                            public interface TypeRegistryConfigurer {
-                                Locale locale();
+                                  public interface TypeRegistryConfigurer {
+                                      Locale locale();
 
-                                void configureTypeRegistry(TypeRegistry typeRegistry);
-                            }
-                            """,
-                          //language=java
-                          """
-                            package com.example.app;
+                                      void configureTypeRegistry(TypeRegistry typeRegistry);
+                                  }
+                                  """,
+                                //language=java
+                                """
+                                  package com.example.app;
 
-                            public class Author {
-                                private final String name;
+                                  public class Author {
+                                      private final String name;
 
-                                public Author(String name) {
-                                    this.name = name;
-                                }
+                                      public Author(String name) {
+                                          this.name = name;
+                                      }
 
-                                public String getName() {
-                                    return name;
-                                }
-                            }
-                            """));
+                                      public String getName() {
+                                          return name;
+                                      }
+                                  }
+                                  """));
     }
 
     @DocumentExample
