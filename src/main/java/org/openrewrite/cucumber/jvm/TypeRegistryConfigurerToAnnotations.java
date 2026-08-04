@@ -18,6 +18,7 @@ package org.openrewrite.cucumber.jvm;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 import org.jspecify.annotations.Nullable;
+import org.openrewrite.Cursor;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Preconditions;
 import org.openrewrite.Recipe;
@@ -28,6 +29,7 @@ import org.openrewrite.java.search.UsesType;
 import org.openrewrite.java.tree.*;
 import org.openrewrite.staticanalysis.RemoveUnneededBlock;
 import org.openrewrite.staticanalysis.UnnecessaryThrows;
+import org.openrewrite.trait.Comments;
 
 import java.time.Duration;
 import java.util.*;
@@ -42,6 +44,9 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
     private static final TypeMatcher TYPE_REGISTRY_CONFIGURER = new TypeMatcher("*..api.TypeRegistryConfigurer");
     private static final MethodMatcher CONFIGURE_TYPE_REGISTRY = new MethodMatcher(
             "*..api.TypeRegistryConfigurer configureTypeRegistry(*..api.TypeRegistry)", true);
+
+    private static final String MANUAL_MIGRATION = "TODO Cucumber-JVM 7.0.0 removed TypeRegistryConfigurer; " +
+            "migrate to @ParameterType, @DataTableType and @DocStringType annotated methods by hand";
 
     private static final String IO_CUCUMBER_JAVA_PARAMETER_TYPE = "io.cucumber.java.ParameterType";
     private static final String IO_CUCUMBER_JAVA_DATA_TABLE_TYPE = "io.cucumber.java.DataTableType";
@@ -89,7 +94,8 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
 
     String description = "Cucumber-JVM 7.0.0 removed `TypeRegistryConfigurer`; replace implementations with " +
             "`@ParameterType`, `@DataTableType` and `@DocStringType` annotated glue methods. " +
-            "Classes whose `configureTypeRegistry` method cannot be converted in full are left untouched.";
+            "Classes whose `configureTypeRegistry` method cannot be converted in full are left untouched, " +
+            "with a `TODO` comment added above the registration that could not be converted.";
 
     Duration estimatedEffortPerOccurrence = Duration.ofMinutes(15);
 
@@ -114,7 +120,10 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                             }
                         }
                         if (configureTypeRegistry == null || configureTypeRegistry.getBody() == null) {
-                            return c;
+                            // No registration to comment, so flag the class; the blank line the class is
+                            // separated from the imports by would otherwise land between the two
+                            return Comments.of(new Cursor(getCursor().getParent(), c))
+                                    .comment(" " + MANUAL_MIGRATION, Comments.Placement.BEFORE, "\n");
                         }
 
                         Set<String> methodNames = new LinkedHashSet<>();
@@ -129,7 +138,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                             GlueMethod glueMethod = glueMethod(statement, methodNames);
                             if (glueMethod == null) {
                                 // Leave the whole class for manual migration rather than convert it halfway
-                                return c;
+                                return flagForManualMigration(c, configureTypeRegistry, statement);
                             }
                             glueMethods.add(glueMethod);
                         }
@@ -160,6 +169,37 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                         doAfterVisit(new RemoveUnneededBlock().getVisitor());
                         doAfterVisit(new UnnecessaryThrows().getVisitor());
                         return c;
+                    }
+
+                    /**
+                     * Comment the registration that blocked the conversion, rather than the class as a whole, as
+                     * that is the line to pick the manual migration up from. Left uncommented, the class silently
+                     * keeps a `TypeRegistryConfigurer` that no longer exists on the version being upgraded to.
+                     */
+                    private J.ClassDeclaration flagForManualMigration(J.ClassDeclaration c,
+                                                                      J.MethodDeclaration configureTypeRegistry,
+                                                                      Statement unconvertible) {
+                        J.Block configureTypeRegistryBody = configureTypeRegistry.getBody();
+                        if (configureTypeRegistryBody == null) {
+                            return c;
+                        }
+                        Cursor classCursor = new Cursor(getCursor().getParent(), c);
+                        Cursor bodyCursor = new Cursor(new Cursor(classCursor, c.getBody()), configureTypeRegistry);
+                        Statement commented = Comments
+                                .of(new Cursor(new Cursor(bodyCursor, configureTypeRegistryBody), unconvertible))
+                                .comment(" " + MANUAL_MIGRATION);
+                        if (commented == unconvertible) {
+                            // Already commented, on an earlier cycle
+                            return c;
+                        }
+                        return c.withBody(c.getBody().withStatements(ListUtils.map(c.getBody().getStatements(), s -> {
+                            if (s != configureTypeRegistry) {
+                                return s;
+                            }
+                            return configureTypeRegistry.withBody(configureTypeRegistryBody.withStatements(
+                                    ListUtils.map(configureTypeRegistryBody.getStatements(),
+                                            statement -> statement == unconvertible ? commented : statement)));
+                        })));
                     }
 
                     /**
