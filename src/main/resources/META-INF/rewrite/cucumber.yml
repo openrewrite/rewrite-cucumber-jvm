@@ -25,7 +25,9 @@ tags:
 recipeList:
   - org.openrewrite.cucumber.jvm.UpgradeCucumber5x
   - org.openrewrite.cucumber.jvm.TypeRegistryConfigurerToAnnotations
+  - org.openrewrite.cucumber.jvm.FixTeluguLanguageCode
   - org.openrewrite.cucumber.jvm.CucumberJava8ToJava
+  - org.openrewrite.cucumber.jvm.DropStrictOption
   - org.openrewrite.cucumber.jvm.DropSummaryPrinter
   - org.openrewrite.cucumber.jvm.RegexToCucumberExpression
   - org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite
@@ -187,14 +189,174 @@ tags:
 recipeList:
   - org.openrewrite.java.dependencies.ChangeDependency:
       oldGroupId: info.cukes
+      oldArtifactId: cucumber-android
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-android
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-clojure
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-clojure
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-core
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-core
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-gosu
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-gosu
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-groovy
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-groovy
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-guice
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-guice
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
       oldArtifactId: cucumber-java
       newGroupId: io.cucumber
       newArtifactId: cucumber-java
+      newVersion: 2.x
   - org.openrewrite.java.dependencies.ChangeDependency:
       oldGroupId: info.cukes
       oldArtifactId: cucumber-java8
       newGroupId: io.cucumber
       newArtifactId: cucumber-java8
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-jruby
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-jruby
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-junit
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-junit
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-jython
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-jython
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-needle
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-needle
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-openejb
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-openejb
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-osgi
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-osgi
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-picocontainer
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-picocontainer
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-rhino
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-rhino
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-scala_2.10
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-scala_2.10
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-scala_2.11
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-scala_2.11
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-scala_2.12
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-scala_2.12
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-spring
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-spring
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-testng
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-testng
+      newVersion: 2.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-weld
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-weld
+      newVersion: 2.x
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.DropStrictOption
+displayName: Drop the `strict` option
+description: >-
+  Cucumber-JVM 7.0.0 removed the `strict` option, as scenarios are now always executed in strict mode.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  - org.openrewrite.java.RemoveAnnotationAttribute:
+      annotationType: io.cucumber.junit.CucumberOptions
+      attributeName: strict
+  - org.openrewrite.java.RemoveAnnotationAttribute:
+      annotationType: io.cucumber.testng.CucumberOptions
+      attributeName: strict
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.FixTeluguLanguageCode
+displayName: Fix the Telugu language code
+description: >-
+  Cucumber-JVM 7.0.0 removed the incorrect ISO 639-1 code `tl` for Telugu, which is now consistently `te`.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  - org.openrewrite.java.ChangePackage:
+      oldPackageName: io.cucumber.java.tl
+      newPackageName: io.cucumber.java.te
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: io.cucumber.java8.Tl
+      newFullyQualifiedTypeName: io.cucumber.java8.Te
+  - org.openrewrite.text.FindAndReplace:
+      find: ^(\s*#\s*language\s*:\s*)tl\s*$
+      replace: $1te
+      regex: true
+      multiline: true
+      filePattern: '**/*.feature'
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.CucumberJava8ToJava
