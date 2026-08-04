@@ -17,6 +17,7 @@ package org.openrewrite.cucumber.jvm;
 
 import lombok.Getter;
 import org.jspecify.annotations.Nullable;
+import org.openrewrite.Cursor;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
 import org.openrewrite.SourceFile;
@@ -27,11 +28,11 @@ import org.openrewrite.marker.Markers;
 import org.openrewrite.maven.MavenIsoVisitor;
 import org.openrewrite.properties.PropertiesVisitor;
 import org.openrewrite.properties.tree.Properties;
+import org.openrewrite.trait.Comments;
 import org.openrewrite.xml.tree.Content;
 import org.openrewrite.xml.tree.Xml;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -115,18 +116,18 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
                 if (options == null) {
                     return f;
                 }
-                String lineSeparator = lineSeparator(f);
                 Map<String, String> replacements = individualProperties(options.getValue().getText());
                 if (replacements == null) {
-                    return flagForManualMigration(f, options, lineSeparator);
+                    return flagForManualMigration(getCursor(), f, options);
                 }
                 Set<String> present = f.getContent().stream()
                         .filter(Properties.Entry.class::isInstance)
                         .map(entry -> ((Properties.Entry) entry).getKey())
                         .collect(Collectors.toSet());
                 if (present.stream().anyMatch(replacements::containsKey)) {
-                    return flagForManualMigration(f, options, lineSeparator);
+                    return flagForManualMigration(getCursor(), f, options);
                 }
+                String lineSeparator = lineSeparator(f);
                 List<Properties.Content> content = ListUtils.flatMap(f.getContent(), c -> {
                     if (c != options) {
                         return c;
@@ -153,25 +154,8 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
     }
 
     private static Properties.File flagForManualMigration(
-            Properties.File file, Properties.Entry options, String lineSeparator) {
-        int index = file.getContent().indexOf(options);
-        if (index > 0 && file.getContent().get(index - 1) instanceof Properties.Comment &&
-                ((Properties.Comment) file.getContent().get(index - 1)).getMessage().contains(MANUAL_MIGRATION)) {
-            return file;
-        }
-        return file.withContent(ListUtils.flatMap(file.getContent(), c -> {
-            if (c != options) {
-                return c;
-            }
-            return Arrays.asList(
-                    new Properties.Comment(
-                            randomId(),
-                            options.getPrefix(),
-                            Markers.EMPTY,
-                            Properties.Comment.Delimiter.HASH_TAG,
-                            " " + MANUAL_MIGRATION),
-                    options.withPrefix(lineSeparator));
-        }));
+            Cursor fileCursor, Properties.File file, Properties.Entry options) {
+        return Comments.of(cursorFor(fileCursor, file, options)).comment(" " + MANUAL_MIGRATION);
     }
 
     private static String lineSeparator(Properties.File file) {
@@ -194,15 +178,15 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
                 Xml.Tag options = maybeOptions.get();
                 String value = optionsValue(options);
                 if (value == null) {
-                    return flagForManualMigration(t, options);
+                    return flagForManualMigration(getCursor(), t, options);
                 }
                 Map<String, String> replacements = individualProperties(value);
                 if (replacements == null) {
-                    return flagForManualMigration(t, options);
+                    return flagForManualMigration(getCursor(), t, options);
                 }
                 Set<String> present = t.getChildren().stream().map(Xml.Tag::getName).collect(Collectors.toSet());
                 if (present.stream().anyMatch(replacements::containsKey)) {
-                    return flagForManualMigration(t, options);
+                    return flagForManualMigration(getCursor(), t, options);
                 }
                 return t.withContent(ListUtils.flatMap(t.getContent(), c -> {
                     if (c != options) {
@@ -219,24 +203,18 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
         };
     }
 
-    private static Xml.Tag flagForManualMigration(Xml.Tag systemPropertyVariables, Xml.Tag options) {
-        List<? extends Content> content = systemPropertyVariables.getContent();
-        if (content == null) {
-            return systemPropertyVariables;
-        }
-        int index = content.indexOf(options);
-        if (index > 0 && content.get(index - 1) instanceof Xml.Comment &&
-                ((Xml.Comment) content.get(index - 1)).getText().contains(MANUAL_MIGRATION)) {
-            return systemPropertyVariables;
-        }
-        return systemPropertyVariables.withContent(ListUtils.flatMap(content, c -> {
-            if (c != options) {
-                return c;
-            }
-            return Arrays.asList(
-                    new Xml.Comment(randomId(), options.getPrefix(), Markers.EMPTY, " " + MANUAL_MIGRATION + " "),
-                    options);
-        }));
+    private static Xml.Tag flagForManualMigration(
+            Cursor tagCursor, Xml.Tag systemPropertyVariables, Xml.Tag options) {
+        return Comments.of(cursorFor(tagCursor, systemPropertyVariables, options))
+                .comment(" " + MANUAL_MIGRATION + " ");
+    }
+
+    /**
+     * The comment services locate the element to comment within its parent by reference identity, so
+     * rebuild the cursor around the visited copy of the parent rather than the original under the cursor.
+     */
+    private static Cursor cursorFor(Cursor parentCursor, Tree parent, Tree element) {
+        return new Cursor(new Cursor(parentCursor.getParent(), parent), element);
     }
 
     /**

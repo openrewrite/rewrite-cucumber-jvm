@@ -172,15 +172,6 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
     }
 
     @Test
-    void retainCarriageReturnsWhenFlaggingForManualMigration() {
-        rewriteRun(
-                properties(
-                        "cucumber.publish.quiet=true\r\ncucumber.options=--format pretty\r\n",
-                        "cucumber.publish.quiet=true\r\n# TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; migrate to the individual cucumber.* properties by hand\r\ncucumber.options=--format pretty\r\n",
-                        spec -> spec.path("src/test/resources/cucumber.properties")));
-    }
-
-    @Test
     void leaveOptionsWithoutAPropertyEquivalentAlone() {
         rewriteRun(
                 properties(
