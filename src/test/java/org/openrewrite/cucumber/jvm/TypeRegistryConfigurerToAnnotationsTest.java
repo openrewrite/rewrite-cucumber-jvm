@@ -20,7 +20,6 @@ import org.openrewrite.DocumentExample;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
-import org.openrewrite.test.TypeValidation;
 
 import static org.openrewrite.java.Assertions.java;
 
@@ -29,8 +28,6 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipe(new TypeRegistryConfigurerToAnnotations())
-                // Generated method signatures name project types that the template parser has no classpath for
-                .typeValidationOptions(TypeValidation.builder().methodDeclarations(false).build())
                 .parser(JavaParser.fromJavaVersion()
                         .classpath("cucumber-java", "cucumber-expressions", "datatable", "docstring")
                         .dependsOn(

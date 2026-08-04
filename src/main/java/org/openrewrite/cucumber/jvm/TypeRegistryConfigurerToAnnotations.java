@@ -31,6 +31,7 @@ import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.java.tree.Statement;
+import org.openrewrite.java.tree.TypeTree;
 import org.openrewrite.java.tree.TypeUtils;
 import org.openrewrite.staticanalysis.RemoveUnneededBlock;
 import org.openrewrite.staticanalysis.UnnecessaryThrows;
@@ -159,20 +160,44 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
 
             for (GlueMethod glueMethod : glueMethods) {
                 maybeAddImport(glueMethod.getAnnotationImport());
+                String[] imports = {glueMethod.getAnnotationImport()};
                 if (glueMethod.getParameterTypeImport() != null) {
                     maybeAddImport(glueMethod.getParameterTypeImport(), null, false);
+                    imports = new String[]{glueMethod.getAnnotationImport(), glueMethod.getParameterTypeImport()};
                 }
                 c = JavaTemplate.builder(glueMethod.template())
                         .contextSensitive()
                         .javaParser(JavaParser.fromJavaVersion().classpath("cucumber-java"))
-                        .imports(glueMethod.getAnnotationImport())
+                        .imports(imports)
                         .build()
                         .apply(updateCursor(c), c.getBody().getCoordinates().lastStatement(), glueMethod.getBody());
+                c = c.withBody(c.getBody().withStatements(ListUtils.mapLast(c.getBody().getStatements(),
+                        s -> retypeReturnType(s, glueMethod.getReturnTypeTree()))));
             }
 
             doAfterVisit(new RemoveUnneededBlock().getVisitor());
             doAfterVisit(new UnnecessaryThrows().getVisitor());
             return c;
+        }
+
+        /**
+         * The template is parsed without the project on its classpath, so the return type of the new method comes
+         * back unattributed; copy the type back over from the {@code Foo.class} argument it was taken from.
+         */
+        private Statement retypeReturnType(Statement statement, TypeTree returnTypeTree) {
+            if (!(statement instanceof J.MethodDeclaration)) {
+                return statement;
+            }
+            J.MethodDeclaration method = (J.MethodDeclaration) statement;
+            JavaType returnType = returnTypeTree.getType();
+            if (method.getReturnTypeExpression() == null || method.getMethodType() == null || returnType == null) {
+                return statement;
+            }
+            JavaType.Method methodType = method.getMethodType().withReturnType(returnType);
+            return method
+                    .withReturnTypeExpression(returnTypeTree.withPrefix(method.getReturnTypeExpression().getPrefix()))
+                    .withMethodType(methodType)
+                    .withName(method.getName().withType(methodType));
         }
 
         private @Nullable GlueMethod glueMethod(Statement statement, Set<String> methodNames) {
@@ -208,7 +233,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
             }
             String name = stringLiteral(arguments.get(0));
             String regexp = literalSource(arguments.get(1));
-            String returnType = classLiteral(arguments.get(2));
+            TypeTree returnType = classLiteral(arguments.get(2));
             if (name == null || regexp == null || returnType == null) {
                 return null;
             }
@@ -224,11 +249,11 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
             if (arguments.size() != 2) {
                 return null;
             }
-            String returnType = classLiteral(arguments.get(0));
+            TypeTree returnType = classLiteral(arguments.get(0));
             if (returnType == null) {
                 return null;
             }
-            String methodName = uniqueMethodName(decapitalize(returnType), methodNames);
+            String methodName = uniqueMethodName(decapitalize(returnType.printTrimmed(getCursor())), methodNames);
             return glueMethod("@DataTableType", IO_CUCUMBER_JAVA_DATA_TABLE_TYPE, returnType, methodName, arguments.get(1));
         }
 
@@ -237,17 +262,17 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
             if (arguments.size() != 3) {
                 return null;
             }
-            String returnType = classLiteral(arguments.get(0));
+            TypeTree returnType = classLiteral(arguments.get(0));
             String contentType = literalSource(arguments.get(1));
             if (returnType == null || contentType == null) {
                 return null;
             }
-            String methodName = uniqueMethodName(decapitalize(returnType), methodNames);
+            String methodName = uniqueMethodName(decapitalize(returnType.printTrimmed(getCursor())), methodNames);
             return glueMethod("@DocStringType(contentType = " + contentType + ")",
                     IO_CUCUMBER_JAVA_DOC_STRING_TYPE, returnType, methodName, arguments.get(2));
         }
 
-        private @Nullable GlueMethod glueMethod(String annotation, String annotationImport, String returnType,
+        private @Nullable GlueMethod glueMethod(String annotation, String annotationImport, TypeTree returnType,
                                                 String methodName, Expression transformer) {
             String castParameterType = null;
             if (transformer instanceof J.TypeCast) {
@@ -266,7 +291,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                 return null;
             }
             return new GlueMethod(annotation, annotationImport, PARAMETER_TYPE_IMPORTS.get(implicitParameterType),
-                    returnType, methodName, parameters, lambda.getBody());
+                    returnType, returnType.printTrimmed(getCursor()), methodName, parameters, lambda.getBody());
         }
 
         /**
@@ -297,13 +322,14 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
         }
 
         /**
-         * @return the type named by a {@code Foo.class} expression, as written in the source
+         * @return the type named by a {@code Foo.class} expression
          */
-        private @Nullable String classLiteral(Expression expression) {
+        private @Nullable TypeTree classLiteral(Expression expression) {
             if (!(expression instanceof J.FieldAccess) || !"class".equals(((J.FieldAccess) expression).getSimpleName())) {
                 return null;
             }
-            return ((J.FieldAccess) expression).getTarget().printTrimmed(getCursor());
+            Expression target = ((J.FieldAccess) expression).getTarget();
+            return target instanceof TypeTree ? (TypeTree) target : null;
         }
     }
 
@@ -372,6 +398,7 @@ class GlueMethod {
     String annotationImport;
     @Nullable
     String parameterTypeImport;
+    TypeTree returnTypeTree;
     String returnType;
     String methodName;
     String parameters;
