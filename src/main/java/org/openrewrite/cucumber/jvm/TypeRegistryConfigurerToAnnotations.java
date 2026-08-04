@@ -109,226 +109,223 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
     public TreeVisitor<?, ExecutionContext> getVisitor() {
         return Preconditions.check(
                 new UsesType<>(TYPE_REGISTRY_CONFIGURER.getSignature(), true),
-                new TypeRegistryConfigurerVisitor());
-    }
+                new JavaIsoVisitor<ExecutionContext>() {
+                    @Override
+                    public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, ExecutionContext ctx) {
+                        J.ClassDeclaration c = super.visitClassDeclaration(cd, ctx);
+                        if (c.getImplements() == null || c.getImplements().stream()
+                                .noneMatch(TYPE_REGISTRY_CONFIGURER::matches)) {
+                            return c;
+                        }
 
-    static final class TypeRegistryConfigurerVisitor extends JavaIsoVisitor<ExecutionContext> {
+                        J.MethodDeclaration configureTypeRegistry = null;
+                        for (Statement statement : c.getBody().getStatements()) {
+                            if (statement instanceof J.MethodDeclaration &&
+                                    "configureTypeRegistry".equals(((J.MethodDeclaration) statement).getSimpleName())) {
+                                configureTypeRegistry = (J.MethodDeclaration) statement;
+                            }
+                        }
+                        if (configureTypeRegistry == null || configureTypeRegistry.getBody() == null) {
+                            return c;
+                        }
 
-        @Override
-        public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, ExecutionContext ctx) {
-            J.ClassDeclaration c = super.visitClassDeclaration(cd, ctx);
-            if (c.getImplements() == null || c.getImplements().stream()
-                    .noneMatch(TYPE_REGISTRY_CONFIGURER::matches)) {
-                return c;
-            }
+                        Set<String> methodNames = new LinkedHashSet<>();
+                        for (Statement statement : c.getBody().getStatements()) {
+                            if (statement instanceof J.MethodDeclaration) {
+                                methodNames.add(((J.MethodDeclaration) statement).getSimpleName());
+                            }
+                        }
 
-            J.MethodDeclaration configureTypeRegistry = null;
-            for (Statement statement : c.getBody().getStatements()) {
-                if (statement instanceof J.MethodDeclaration &&
-                        "configureTypeRegistry".equals(((J.MethodDeclaration) statement).getSimpleName())) {
-                    configureTypeRegistry = (J.MethodDeclaration) statement;
-                }
-            }
-            if (configureTypeRegistry == null || configureTypeRegistry.getBody() == null) {
-                return c;
-            }
+                        List<GlueMethod> glueMethods = new ArrayList<>();
+                        for (Statement statement : configureTypeRegistry.getBody().getStatements()) {
+                            GlueMethod glueMethod = glueMethod(statement, methodNames);
+                            if (glueMethod == null) {
+                                // Leave the whole class for manual migration rather than convert it halfway
+                                return c;
+                            }
+                            glueMethods.add(glueMethod);
+                        }
 
-            Set<String> methodNames = new LinkedHashSet<>();
-            for (Statement statement : c.getBody().getStatements()) {
-                if (statement instanceof J.MethodDeclaration) {
-                    methodNames.add(((J.MethodDeclaration) statement).getSimpleName());
-                }
-            }
+                        J.MethodDeclaration removedConfigureTypeRegistry = configureTypeRegistry;
+                        c = c.withImplements(ListUtils.map(c.getImplements(), i -> TYPE_REGISTRY_CONFIGURER.matches(i) ? null : i))
+                                .withBody(c.getBody().withStatements(ListUtils.map(c.getBody().getStatements(),
+                                        s -> s == removedConfigureTypeRegistry || isLocaleMethod(s) ? null : s)));
+                        OBSOLETE_IMPORTS.forEach(this::maybeRemoveImport);
 
-            List<GlueMethod> glueMethods = new ArrayList<>();
-            for (Statement statement : configureTypeRegistry.getBody().getStatements()) {
-                GlueMethod glueMethod = glueMethod(statement, methodNames);
-                if (glueMethod == null) {
-                    // Leave the whole class for manual migration rather than convert it halfway
-                    return c;
-                }
-                glueMethods.add(glueMethod);
-            }
+                        for (GlueMethod glueMethod : glueMethods) {
+                            maybeAddImport(glueMethod.getAnnotationImport());
+                            String[] imports = {glueMethod.getAnnotationImport()};
+                            if (glueMethod.getParameterTypeImport() != null) {
+                                maybeAddImport(glueMethod.getParameterTypeImport(), null, false);
+                                imports = new String[]{glueMethod.getAnnotationImport(), glueMethod.getParameterTypeImport()};
+                            }
+                            c = JavaTemplate.builder(glueMethod.template())
+                                    .contextSensitive()
+                                    .javaParser(JavaParser.fromJavaVersion().classpathFromResources(ctx, "cucumber-java-7"))
+                                    .imports(imports)
+                                    .build()
+                                    .apply(updateCursor(c), c.getBody().getCoordinates().lastStatement(), glueMethod.getBody());
+                            c = c.withBody(c.getBody().withStatements(ListUtils.mapLast(c.getBody().getStatements(),
+                                    s -> retypeReturnType(s, glueMethod.getReturnTypeTree()))));
+                        }
 
-            J.MethodDeclaration removedConfigureTypeRegistry = configureTypeRegistry;
-            c = c.withImplements(ListUtils.map(c.getImplements(), i -> TYPE_REGISTRY_CONFIGURER.matches(i) ? null : i))
-                    .withBody(c.getBody().withStatements(ListUtils.map(c.getBody().getStatements(),
-                            s -> s == removedConfigureTypeRegistry || isLocaleMethod(s) ? null : s)));
-            OBSOLETE_IMPORTS.forEach(this::maybeRemoveImport);
+                        doAfterVisit(new RemoveUnneededBlock().getVisitor());
+                        doAfterVisit(new UnnecessaryThrows().getVisitor());
+                        return c;
+                    }
 
-            for (GlueMethod glueMethod : glueMethods) {
-                maybeAddImport(glueMethod.getAnnotationImport());
-                String[] imports = {glueMethod.getAnnotationImport()};
-                if (glueMethod.getParameterTypeImport() != null) {
-                    maybeAddImport(glueMethod.getParameterTypeImport(), null, false);
-                    imports = new String[]{glueMethod.getAnnotationImport(), glueMethod.getParameterTypeImport()};
-                }
-                c = JavaTemplate.builder(glueMethod.template())
-                        .contextSensitive()
-                        .javaParser(JavaParser.fromJavaVersion().classpathFromResources(ctx, "cucumber-java-7"))
-                        .imports(imports)
-                        .build()
-                        .apply(updateCursor(c), c.getBody().getCoordinates().lastStatement(), glueMethod.getBody());
-                c = c.withBody(c.getBody().withStatements(ListUtils.mapLast(c.getBody().getStatements(),
-                        s -> retypeReturnType(s, glueMethod.getReturnTypeTree()))));
-            }
+                    /**
+                     * The template is parsed without the project on its classpath, so the return type of the new method comes
+                     * back unattributed; copy the type back over from the {@code Foo.class} argument it was taken from.
+                     */
+                    private Statement retypeReturnType(Statement statement, TypeTree returnTypeTree) {
+                        if (!(statement instanceof J.MethodDeclaration)) {
+                            return statement;
+                        }
+                        J.MethodDeclaration method = (J.MethodDeclaration) statement;
+                        JavaType returnType = returnTypeTree.getType();
+                        if (method.getReturnTypeExpression() == null || method.getMethodType() == null || returnType == null) {
+                            return statement;
+                        }
+                        JavaType.Method methodType = method.getMethodType().withReturnType(returnType);
+                        return method
+                                .withReturnTypeExpression(returnTypeTree.withPrefix(method.getReturnTypeExpression().getPrefix()))
+                                .withMethodType(methodType)
+                                .withName(method.getName().withType(methodType));
+                    }
 
-            doAfterVisit(new RemoveUnneededBlock().getVisitor());
-            doAfterVisit(new UnnecessaryThrows().getVisitor());
-            return c;
-        }
+                    private @Nullable GlueMethod glueMethod(Statement statement, Set<String> methodNames) {
+                        if (!(statement instanceof J.MethodInvocation)) {
+                            return null;
+                        }
+                        J.MethodInvocation definition = (J.MethodInvocation) statement;
+                        if (definition.getSelect() == null || !TYPE_REGISTRY.matches(definition.getSelect().getType()) ||
+                                definition.getArguments().size() != 1 ||
+                                !(definition.getArguments().get(0) instanceof J.NewClass)) {
+                            return null;
+                        }
+                        List<Expression> arguments = ((J.NewClass) definition.getArguments().get(0)).getArguments();
+                        if (arguments == null) {
+                            return null;
+                        }
+                        switch (definition.getSimpleName()) {
+                            case "defineParameterType":
+                                return parameterType(arguments, methodNames);
+                            case "defineDataTableType":
+                                return dataTableType(arguments, methodNames);
+                            case "defineDocStringType":
+                                return docStringType(arguments, methodNames);
+                            default:
+                                return null;
+                        }
+                    }
 
-        /**
-         * The template is parsed without the project on its classpath, so the return type of the new method comes
-         * back unattributed; copy the type back over from the {@code Foo.class} argument it was taken from.
-         */
-        private Statement retypeReturnType(Statement statement, TypeTree returnTypeTree) {
-            if (!(statement instanceof J.MethodDeclaration)) {
-                return statement;
-            }
-            J.MethodDeclaration method = (J.MethodDeclaration) statement;
-            JavaType returnType = returnTypeTree.getType();
-            if (method.getReturnTypeExpression() == null || method.getMethodType() == null || returnType == null) {
-                return statement;
-            }
-            JavaType.Method methodType = method.getMethodType().withReturnType(returnType);
-            return method
-                    .withReturnTypeExpression(returnTypeTree.withPrefix(method.getReturnTypeExpression().getPrefix()))
-                    .withMethodType(methodType)
-                    .withName(method.getName().withType(methodType));
-        }
+                    private @Nullable GlueMethod parameterType(List<Expression> arguments, Set<String> methodNames) {
+                        // ParameterType(String name, String regexp, Class<T> type, Transformer<T> transformer)
+                        if (arguments.size() != 4) {
+                            return null;
+                        }
+                        String name = stringLiteral(arguments.get(0));
+                        String regexp = literalSource(arguments.get(1));
+                        TypeTree returnType = classLiteral(arguments.get(2));
+                        if (name == null || regexp == null || returnType == null) {
+                            return null;
+                        }
+                        String methodName = uniqueMethodName(sanitize(name), methodNames);
+                        String annotation = methodName.equals(name) ?
+                                "@ParameterType(" + regexp + ")" :
+                                "@ParameterType(value = " + regexp + ", name = " + literalSource(arguments.get(0)) + ")";
+                        return glueMethod(annotation, IO_CUCUMBER_JAVA_PARAMETER_TYPE, returnType, methodName, arguments.get(3));
+                    }
 
-        private @Nullable GlueMethod glueMethod(Statement statement, Set<String> methodNames) {
-            if (!(statement instanceof J.MethodInvocation)) {
-                return null;
-            }
-            J.MethodInvocation definition = (J.MethodInvocation) statement;
-            if (definition.getSelect() == null || !TYPE_REGISTRY.matches(definition.getSelect().getType()) ||
-                    definition.getArguments().size() != 1 ||
-                    !(definition.getArguments().get(0) instanceof J.NewClass)) {
-                return null;
-            }
-            List<Expression> arguments = ((J.NewClass) definition.getArguments().get(0)).getArguments();
-            if (arguments == null) {
-                return null;
-            }
-            switch (definition.getSimpleName()) {
-                case "defineParameterType":
-                    return parameterType(arguments, methodNames);
-                case "defineDataTableType":
-                    return dataTableType(arguments, methodNames);
-                case "defineDocStringType":
-                    return docStringType(arguments, methodNames);
-                default:
-                    return null;
-            }
-        }
+                    private @Nullable GlueMethod dataTableType(List<Expression> arguments, Set<String> methodNames) {
+                        // DataTableType(Class<T> type, Table[Entry|Row|Cell]Transformer<T> transformer)
+                        if (arguments.size() != 2) {
+                            return null;
+                        }
+                        TypeTree returnType = classLiteral(arguments.get(0));
+                        if (returnType == null) {
+                            return null;
+                        }
+                        String methodName = uniqueMethodName(decapitalize(returnType.printTrimmed(getCursor())), methodNames);
+                        return glueMethod("@DataTableType", IO_CUCUMBER_JAVA_DATA_TABLE_TYPE, returnType, methodName, arguments.get(1));
+                    }
 
-        private @Nullable GlueMethod parameterType(List<Expression> arguments, Set<String> methodNames) {
-            // ParameterType(String name, String regexp, Class<T> type, Transformer<T> transformer)
-            if (arguments.size() != 4) {
-                return null;
-            }
-            String name = stringLiteral(arguments.get(0));
-            String regexp = literalSource(arguments.get(1));
-            TypeTree returnType = classLiteral(arguments.get(2));
-            if (name == null || regexp == null || returnType == null) {
-                return null;
-            }
-            String methodName = uniqueMethodName(sanitize(name), methodNames);
-            String annotation = methodName.equals(name) ?
-                    "@ParameterType(" + regexp + ")" :
-                    "@ParameterType(value = " + regexp + ", name = " + literalSource(arguments.get(0)) + ")";
-            return glueMethod(annotation, IO_CUCUMBER_JAVA_PARAMETER_TYPE, returnType, methodName, arguments.get(3));
-        }
+                    private @Nullable GlueMethod docStringType(List<Expression> arguments, Set<String> methodNames) {
+                        // DocStringType(Class<T> type, String contentType, Transformer<T> transformer)
+                        if (arguments.size() != 3) {
+                            return null;
+                        }
+                        TypeTree returnType = classLiteral(arguments.get(0));
+                        String contentType = literalSource(arguments.get(1));
+                        if (returnType == null || contentType == null) {
+                            return null;
+                        }
+                        String methodName = uniqueMethodName(decapitalize(returnType.printTrimmed(getCursor())), methodNames);
+                        return glueMethod("@DocStringType(contentType = " + contentType + ")",
+                                IO_CUCUMBER_JAVA_DOC_STRING_TYPE, returnType, methodName, arguments.get(2));
+                    }
 
-        private @Nullable GlueMethod dataTableType(List<Expression> arguments, Set<String> methodNames) {
-            // DataTableType(Class<T> type, Table[Entry|Row|Cell]Transformer<T> transformer)
-            if (arguments.size() != 2) {
-                return null;
-            }
-            TypeTree returnType = classLiteral(arguments.get(0));
-            if (returnType == null) {
-                return null;
-            }
-            String methodName = uniqueMethodName(decapitalize(returnType.printTrimmed(getCursor())), methodNames);
-            return glueMethod("@DataTableType", IO_CUCUMBER_JAVA_DATA_TABLE_TYPE, returnType, methodName, arguments.get(1));
-        }
+                    private @Nullable GlueMethod glueMethod(String annotation, String annotationImport, TypeTree returnType,
+                                                            String methodName, Expression transformer) {
+                        String castParameterType = null;
+                        if (transformer instanceof J.TypeCast) {
+                            castParameterType = TRANSFORMER_PARAMETER_TYPES.get(fullyQualifiedName(
+                                    ((J.TypeCast) transformer).getClazz().getTree().getType()));
+                            transformer = ((J.TypeCast) transformer).getExpression();
+                        }
+                        if (!(transformer instanceof J.Lambda)) {
+                            return null;
+                        }
+                        J.Lambda lambda = (J.Lambda) transformer;
+                        String implicitParameterType = castParameterType != null ? castParameterType :
+                                TRANSFORMER_PARAMETER_TYPES.get(fullyQualifiedName(lambda.getType()));
+                        String parameters = parameters(lambda, implicitParameterType);
+                        if (parameters == null) {
+                            return null;
+                        }
+                        return new GlueMethod(annotation, annotationImport, PARAMETER_TYPE_IMPORTS.get(implicitParameterType),
+                                returnType, returnType.printTrimmed(getCursor()), methodName, parameters, lambda.getBody());
+                    }
 
-        private @Nullable GlueMethod docStringType(List<Expression> arguments, Set<String> methodNames) {
-            // DocStringType(Class<T> type, String contentType, Transformer<T> transformer)
-            if (arguments.size() != 3) {
-                return null;
-            }
-            TypeTree returnType = classLiteral(arguments.get(0));
-            String contentType = literalSource(arguments.get(1));
-            if (returnType == null || contentType == null) {
-                return null;
-            }
-            String methodName = uniqueMethodName(decapitalize(returnType.printTrimmed(getCursor())), methodNames);
-            return glueMethod("@DocStringType(contentType = " + contentType + ")",
-                    IO_CUCUMBER_JAVA_DOC_STRING_TYPE, returnType, methodName, arguments.get(2));
-        }
+                    /**
+                     * @param implicitParameterType the parameter type of the transformer interface the lambda implements, used
+                     *                              where the lambda itself does not declare its parameter types
+                     */
+                    private @Nullable String parameters(J.Lambda lambda, @Nullable String implicitParameterType) {
+                        List<String> parameters = new ArrayList<>();
+                        for (J parameter : lambda.getParameters().getParameters()) {
+                            if (!(parameter instanceof J.VariableDeclarations)) {
+                                return null;
+                            }
+                            J.VariableDeclarations declaration = (J.VariableDeclarations) parameter;
+                            if (declaration.getVariables().size() != 1) {
+                                return null;
+                            }
+                            String type;
+                            if (declaration.getTypeExpression() != null) {
+                                type = declaration.getTypeExpression().printTrimmed(getCursor());
+                            } else if (implicitParameterType != null && parameters.isEmpty()) {
+                                type = implicitParameterType;
+                            } else {
+                                return null;
+                            }
+                            parameters.add(type + " " + declaration.getVariables().get(0).getSimpleName());
+                        }
+                        return String.join(", ", parameters);
+                    }
 
-        private @Nullable GlueMethod glueMethod(String annotation, String annotationImport, TypeTree returnType,
-                                                String methodName, Expression transformer) {
-            String castParameterType = null;
-            if (transformer instanceof J.TypeCast) {
-                castParameterType = TRANSFORMER_PARAMETER_TYPES.get(fullyQualifiedName(
-                        ((J.TypeCast) transformer).getClazz().getTree().getType()));
-                transformer = ((J.TypeCast) transformer).getExpression();
-            }
-            if (!(transformer instanceof J.Lambda)) {
-                return null;
-            }
-            J.Lambda lambda = (J.Lambda) transformer;
-            String implicitParameterType = castParameterType != null ? castParameterType :
-                    TRANSFORMER_PARAMETER_TYPES.get(fullyQualifiedName(lambda.getType()));
-            String parameters = parameters(lambda, implicitParameterType);
-            if (parameters == null) {
-                return null;
-            }
-            return new GlueMethod(annotation, annotationImport, PARAMETER_TYPE_IMPORTS.get(implicitParameterType),
-                    returnType, returnType.printTrimmed(getCursor()), methodName, parameters, lambda.getBody());
-        }
-
-        /**
-         * @param implicitParameterType the parameter type of the transformer interface the lambda implements, used
-         *                              where the lambda itself does not declare its parameter types
-         */
-        private @Nullable String parameters(J.Lambda lambda, @Nullable String implicitParameterType) {
-            List<String> parameters = new ArrayList<>();
-            for (J parameter : lambda.getParameters().getParameters()) {
-                if (!(parameter instanceof J.VariableDeclarations)) {
-                    return null;
-                }
-                J.VariableDeclarations declaration = (J.VariableDeclarations) parameter;
-                if (declaration.getVariables().size() != 1) {
-                    return null;
-                }
-                String type;
-                if (declaration.getTypeExpression() != null) {
-                    type = declaration.getTypeExpression().printTrimmed(getCursor());
-                } else if (implicitParameterType != null && parameters.isEmpty()) {
-                    type = implicitParameterType;
-                } else {
-                    return null;
-                }
-                parameters.add(type + " " + declaration.getVariables().get(0).getSimpleName());
-            }
-            return String.join(", ", parameters);
-        }
-
-        /**
-         * @return the type named by a {@code Foo.class} expression
-         */
-        private @Nullable TypeTree classLiteral(Expression expression) {
-            if (!(expression instanceof J.FieldAccess) || !"class".equals(((J.FieldAccess) expression).getSimpleName())) {
-                return null;
-            }
-            Expression target = ((J.FieldAccess) expression).getTarget();
-            return target instanceof TypeTree ? (TypeTree) target : null;
-        }
+                    /**
+                     * @return the type named by a {@code Foo.class} expression
+                     */
+                    private @Nullable TypeTree classLiteral(Expression expression) {
+                        if (!(expression instanceof J.FieldAccess) || !"class".equals(((J.FieldAccess) expression).getSimpleName())) {
+                            return null;
+                        }
+                        Expression target = ((J.FieldAccess) expression).getTarget();
+                        return target instanceof TypeTree ? (TypeTree) target : null;
+                    }
+                });
     }
 
     private static @Nullable String fullyQualifiedName(@Nullable JavaType type) {

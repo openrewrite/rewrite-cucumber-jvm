@@ -46,20 +46,13 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
 
     @Override
     public void defaults(RecipeSpec spec) {
+        // The recipe migrates onto types from the current release, but away from `TypeRegistryConfigurer`,
+        // which no release still ships, so that one comes from a type table
         spec.recipe(new TypeRegistryConfigurerToAnnotations())
-                .parser(cucumberParser("cucumber-core-6.11.0"));
-    }
-
-    /**
-     * The recipe migrates onto types from the current release, but away from `TypeRegistryConfigurer`, which no
-     * release still ships; take that one from a type table. Note that Cucumber-JVM 4.x carries both the
-     * `cucumber.api` and the `io.cucumber.core.api` variant, so only ever put one release on the classpath.
-     */
-    private static JavaParser.Builder<?, ?> cucumberParser(String cucumberCore) {
-        return JavaParser.fromJavaVersion()
-                .classpathFromResources(new InMemoryExecutionContext(),
-                        "cucumber-java-7", "cucumber-expressions", "datatable", "docstring", cucumberCore)
-                .dependsOn(AUTHOR);
+                .parser(JavaParser.fromJavaVersion()
+                        .classpathFromResources(new InMemoryExecutionContext(), "cucumber-java-7",
+                                "cucumber-expressions", "datatable", "docstring", "cucumber-core-6.11.0")
+                        .dependsOn(AUTHOR));
     }
 
     @DocumentExample
@@ -247,7 +240,12 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
     @Test
     void convertPreCucumber5TypeRegistryConfigurer() {
         rewriteRun(
-          spec -> spec.parser(cucumberParser("cucumber-core-4.8.1")),
+          // Cucumber-JVM 4.x carries both the `cucumber.api` and the `io.cucumber.core.api` variant, so swap
+          // the whole release out rather than adding it alongside the one the other tests parse against
+          spec -> spec.parser(JavaParser.fromJavaVersion()
+            .classpathFromResources(new InMemoryExecutionContext(), "cucumber-java-7",
+              "cucumber-expressions", "datatable", "docstring", "cucumber-core-4.8.1")
+            .dependsOn(AUTHOR)),
           //language=java
           java(
             """
