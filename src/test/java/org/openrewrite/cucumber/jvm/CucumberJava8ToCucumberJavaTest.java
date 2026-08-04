@@ -208,6 +208,82 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                 17));
         }
 
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+        @SuppressWarnings("CodeBlock2Expr")
+        @Test
+        void retainConstructorInjectedDependencies() {
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+
+                    public class CalculatorStepDefinitions implements En {
+
+                        public CalculatorStepDefinitions(RpnCalculator calc, Log log) {
+                            Given("a calculator I just turned on", () -> {
+                                calc.push(0);
+                            });
+
+                            Then("the result is {double}", (Double expected) -> {
+                                log.record(expected);
+                            });
+                        }
+
+                        static class RpnCalculator {
+                            void push(Object o) {
+                            }
+                        }
+
+                        static class Log {
+                            void record(Object o) {
+                            }
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java.en.Given;
+                    import io.cucumber.java.en.Then;
+
+                    public class CalculatorStepDefinitions {
+
+                        private final RpnCalculator calc;
+                        private final Log log;
+
+                        public CalculatorStepDefinitions(RpnCalculator calc, Log log) {
+                            this.calc = calc;
+                            this.log = log;
+                        }
+
+                        @Given("a calculator I just turned on")
+                        public void a_calculator_i_just_turned_on() {
+                            calc.push(0);
+                        }
+
+                        @Then("the result is {double}")
+                        public void the_result_is_double(Double expected) {
+                            log.record(expected);
+                        }
+
+                        static class RpnCalculator {
+                            void push(Object o) {
+                            }
+                        }
+
+                        static class Log {
+                            void record(Object o) {
+                            }
+                        }
+                    }
+                    """),
+                17));
+        }
+
         @SuppressWarnings("CodeBlock2Expr")
         @Test
         void methodInvocationsOutsideConstructor() {
