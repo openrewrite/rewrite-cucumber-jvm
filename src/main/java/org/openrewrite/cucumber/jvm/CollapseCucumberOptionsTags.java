@@ -61,76 +61,73 @@ public class CollapseCucumberOptionsTags extends Recipe {
                 Preconditions.or(
                         new UsesType<>(JUNIT_CUCUMBER_OPTIONS, null),
                         new UsesType<>(TESTNG_CUCUMBER_OPTIONS, null)),
-                new CollapseCucumberOptionsTagsVisitor());
+                new JavaIsoVisitor<ExecutionContext>() {
+                    @Override
+                    public J.Annotation visitAnnotation(J.Annotation annotation, ExecutionContext ctx) {
+                        J.Annotation a = super.visitAnnotation(annotation, ctx);
+                        if (!JUNIT_MATCHER.matches(a) && !TESTNG_MATCHER.matches(a)) {
+                            return a;
+                        }
+                        return a.withArguments(ListUtils.map(a.getArguments(), argument -> {
+                            if (!(argument instanceof J.Assignment)) {
+                                return argument;
+                            }
+                            J.Assignment assignment = (J.Assignment) argument;
+                            if (!(assignment.getVariable() instanceof J.Identifier) ||
+                                    !"tags".equals(((J.Identifier) assignment.getVariable()).getSimpleName()) ||
+                                    !(assignment.getAssignment() instanceof J.NewArray)) {
+                                return argument;
+                            }
+                            J.NewArray tags = (J.NewArray) assignment.getAssignment();
+                            J.Literal collapsed = collapse(tags.getInitializer());
+                            if (collapsed == null) {
+                                return argument;
+                            }
+                            return assignment.withAssignment(collapsed.withPrefix(tags.getPrefix()));
+                        }));
+                    }
+                });
     }
 
-    static final class CollapseCucumberOptionsTagsVisitor extends JavaIsoVisitor<ExecutionContext> {
-
-        @Override
-        public J.Annotation visitAnnotation(J.Annotation annotation, ExecutionContext ctx) {
-            J.Annotation a = super.visitAnnotation(annotation, ctx);
-            if (!JUNIT_MATCHER.matches(a) && !TESTNG_MATCHER.matches(a)) {
-                return a;
-            }
-            return a.withArguments(ListUtils.map(a.getArguments(), argument -> {
-                if (!(argument instanceof J.Assignment)) {
-                    return argument;
-                }
-                J.Assignment assignment = (J.Assignment) argument;
-                if (!(assignment.getVariable() instanceof J.Identifier) ||
-                        !"tags".equals(((J.Identifier) assignment.getVariable()).getSimpleName()) ||
-                        !(assignment.getAssignment() instanceof J.NewArray)) {
-                    return argument;
-                }
-                J.NewArray tags = (J.NewArray) assignment.getAssignment();
-                J.Literal collapsed = collapse(tags.getInitializer());
-                if (collapsed == null) {
-                    return argument;
-                }
-                return assignment.withAssignment(collapsed.withPrefix(tags.getPrefix()));
-            }));
+    private static J.@Nullable Literal collapse(@Nullable List<Expression> initializer) {
+        if (initializer == null) {
+            return null;
         }
-
-        private static J.@Nullable Literal collapse(@Nullable List<Expression> initializer) {
-            if (initializer == null) {
+        List<J.Literal> literals = new ArrayList<>(initializer.size());
+        for (Expression expression : initializer) {
+            if (expression instanceof J.Empty) {
+                continue;
+            }
+            if (!(expression instanceof J.Literal) || !(((J.Literal) expression).getValue() instanceof String) ||
+                    unquote((J.Literal) expression) == null) {
                 return null;
             }
-            List<J.Literal> literals = new ArrayList<>(initializer.size());
-            for (Expression expression : initializer) {
-                if (expression instanceof J.Empty) {
-                    continue;
-                }
-                if (!(expression instanceof J.Literal) || !(((J.Literal) expression).getValue() instanceof String) ||
-                        unquote((J.Literal) expression) == null) {
-                    return null;
-                }
-                literals.add((J.Literal) expression);
-            }
-            if (literals.size() == 1) {
-                return literals.get(0);
-            }
-
-            StringBuilder value = new StringBuilder();
-            StringBuilder valueSource = new StringBuilder();
-            for (J.Literal literal : literals) {
-                if (value.length() > 0) {
-                    value.append(" and ");
-                    valueSource.append(" and ");
-                }
-                value.append('(').append(literal.getValue()).append(')');
-                valueSource.append('(').append(unquote(literal)).append(')');
-            }
-            return new J.Literal(Tree.randomId(), Space.EMPTY, Markers.EMPTY,
-                    value.toString(), '"' + valueSource.toString() + '"', null, JavaType.Primitive.String);
+            literals.add((J.Literal) expression);
+        }
+        if (literals.size() == 1) {
+            return literals.get(0);
         }
 
-        private static @Nullable String unquote(J.Literal literal) {
-            String source = literal.getValueSource();
-            if (source == null || source.length() < 2 || source.charAt(0) != '"' ||
-                    source.charAt(source.length() - 1) != '"') {
-                return null;
+        StringBuilder value = new StringBuilder();
+        StringBuilder valueSource = new StringBuilder();
+        for (J.Literal literal : literals) {
+            if (value.length() > 0) {
+                value.append(" and ");
+                valueSource.append(" and ");
             }
-            return source.substring(1, source.length() - 1);
+            value.append('(').append(literal.getValue()).append(')');
+            valueSource.append('(').append(unquote(literal)).append(')');
         }
+        return new J.Literal(Tree.randomId(), Space.EMPTY, Markers.EMPTY,
+                value.toString(), '"' + valueSource.toString() + '"', null, JavaType.Primitive.String);
+    }
+
+    private static @Nullable String unquote(J.Literal literal) {
+        String source = literal.getValueSource();
+        if (source == null || source.length() < 2 || source.charAt(0) != '"' ||
+                source.charAt(source.length() - 1) != '"') {
+            return null;
+        }
+        return source.substring(1, source.length() - 1);
     }
 }

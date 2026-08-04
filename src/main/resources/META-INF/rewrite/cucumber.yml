@@ -24,6 +24,7 @@ tags:
   - cucumber
 recipeList:
   - org.openrewrite.cucumber.jvm.UpgradeCucumber6x
+  - org.openrewrite.cucumber.jvm.TypeRegistryConfigurerToAnnotations
   - org.openrewrite.cucumber.jvm.FixTeluguLanguageCode
   - org.openrewrite.cucumber.jvm.CucumberJava8ToJava
   - org.openrewrite.cucumber.jvm.DropStrictOption
@@ -56,11 +57,142 @@ tags:
   - cucumber
 recipeList:
   - org.openrewrite.cucumber.jvm.UpgradeCucumber2x
-  - org.openrewrite.java.ChangePackage:
-      oldPackageName: cucumber.api
-      newPackageName: io.cucumber
-      recursive: true
+  - org.openrewrite.cucumber.jvm.CucumberApiToIoCucumber
   - org.openrewrite.cucumber.jvm.DropTimeoutAttribute
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.CucumberApiToIoCucumber
+displayName: Migrate `cucumber.api` to `io.cucumber`
+description: >-
+  Cucumber-JVM 5.0.0 moved the `cucumber.api` types to `io.cucumber`, but not as a single package rename:
+  types were spread over `io.cucumber.java`, `io.cucumber.junit`, `io.cucumber.testng`, `io.cucumber.plugin`
+  and `io.cucumber.core`. This recipe maps each `cucumber.api` type onto the package it actually moved to.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  # `@CucumberOptions` split into a JUnit and a TestNG variant; map the TestNG variant first, based on the
+  # runner the source file uses, and fall through to the more common JUnit variant below.
+  - org.openrewrite.cucumber.jvm.CucumberOptionsToTestNgCucumberOptions
+  # Types that did not move along with the rest of their package
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.java.ObjectFactory
+      newFullyQualifiedTypeName: io.cucumber.core.backend.ObjectFactory
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.event.EventListener
+      newFullyQualifiedTypeName: io.cucumber.plugin.EventListener
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.event.ConcurrentEventListener
+      newFullyQualifiedTypeName: io.cucumber.plugin.ConcurrentEventListener
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.event.CanonicalEventOrder
+      newFullyQualifiedTypeName: io.cucumber.core.plugin.CanonicalEventOrder
+  # The remaining `cucumber.api.event` types all moved to `io.cucumber.plugin.event`
+  - org.openrewrite.java.ChangePackage:
+      oldPackageName: cucumber.api.event
+      newPackageName: io.cucumber.plugin.event
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.formatter.AnsiEscapes
+      newFullyQualifiedTypeName: io.cucumber.core.plugin.AnsiEscapes
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.formatter.ColorAware
+      newFullyQualifiedTypeName: io.cucumber.plugin.ColorAware
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.formatter.NiceAppendable
+      newFullyQualifiedTypeName: io.cucumber.core.plugin.NiceAppendable
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.formatter.StrictAware
+      newFullyQualifiedTypeName: io.cucumber.plugin.StrictAware
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.Argument
+      newFullyQualifiedTypeName: io.cucumber.plugin.event.Argument
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.CucumberOptions
+      newFullyQualifiedTypeName: io.cucumber.junit.CucumberOptions
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.DataTable
+      newFullyQualifiedTypeName: io.cucumber.datatable.DataTable
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.HookTestStep
+      newFullyQualifiedTypeName: io.cucumber.plugin.event.HookTestStep
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.HookType
+      newFullyQualifiedTypeName: io.cucumber.plugin.event.HookType
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.Pending
+      newFullyQualifiedTypeName: io.cucumber.core.backend.Pending
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.PendingException
+      newFullyQualifiedTypeName: io.cucumber.java.PendingException
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.PickleStepTestStep
+      newFullyQualifiedTypeName: io.cucumber.plugin.event.PickleStepTestStep
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.Plugin
+      newFullyQualifiedTypeName: io.cucumber.plugin.Plugin
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.Result
+      newFullyQualifiedTypeName: io.cucumber.plugin.event.Result
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.Scenario
+      newFullyQualifiedTypeName: io.cucumber.java.Scenario
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.SnippetType
+      newFullyQualifiedTypeName: io.cucumber.junit.CucumberOptions$SnippetType
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.SummaryPrinter
+      newFullyQualifiedTypeName: io.cucumber.plugin.SummaryPrinter
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.TestCase
+      newFullyQualifiedTypeName: io.cucumber.plugin.event.TestCase
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.TestStep
+      newFullyQualifiedTypeName: io.cucumber.plugin.event.TestStep
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.Transpose
+      newFullyQualifiedTypeName: io.cucumber.java.Transpose
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.TypeRegistry
+      newFullyQualifiedTypeName: io.cucumber.core.api.TypeRegistry
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.TypeRegistryConfigurer
+      newFullyQualifiedTypeName: io.cucumber.core.api.TypeRegistryConfigurer
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.cli.Main
+      newFullyQualifiedTypeName: io.cucumber.core.cli.Main
+  # Packages that did move one to one
+  - org.openrewrite.java.ChangePackage:
+      oldPackageName: cucumber.api.java8
+      newPackageName: io.cucumber.java8
+  # Recursive, as the ~70 `cucumber.api.java.<lang>` step definition annotation packages moved along
+  - org.openrewrite.java.ChangePackage:
+      oldPackageName: cucumber.api.java
+      newPackageName: io.cucumber.java
+      recursive: true
+  - org.openrewrite.java.ChangePackage:
+      oldPackageName: cucumber.api.junit
+      newPackageName: io.cucumber.junit
+  - org.openrewrite.java.ChangePackage:
+      oldPackageName: cucumber.api.testng
+      newPackageName: io.cucumber.testng
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.CucumberOptionsToTestNgCucumberOptions
+displayName: Migrate `cucumber.api.CucumberOptions` to `io.cucumber.testng.CucumberOptions`
+description: Replace `cucumber.api.CucumberOptions` with the TestNG variant in source files that run through a TestNG runner.
+tags:
+  - testing
+  - cucumber
+preconditions:
+  - org.openrewrite.java.search.FindTypes:
+      fullyQualifiedTypeName: '*..testng.*'
+recipeList:
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.CucumberOptions
+      newFullyQualifiedTypeName: io.cucumber.testng.CucumberOptions
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: cucumber.api.SnippetType
+      newFullyQualifiedTypeName: io.cucumber.testng.CucumberOptions$SnippetType
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.UpgradeCucumber2x
@@ -287,7 +419,7 @@ recipeList:
       oldFullyQualifiedTypeName: io.cucumber.java8.Tl
       newFullyQualifiedTypeName: io.cucumber.java8.Te
   - org.openrewrite.text.FindAndReplace:
-      find: ^(\s*#\s*language\s*:\s*)tl\s*$
+      find: ^([ \t]*#[ \t]*language[ \t]*:[ \t]*)tl[ \t]*$
       replace: $1te
       regex: true
       multiline: true

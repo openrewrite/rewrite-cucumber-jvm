@@ -7,36 +7,41 @@ group = "org.openrewrite.recipe"
 description = "Cucumber JVM Migration"
 
 recipeDependencies {
-    // The types the recipes generate code against, shipped with the recipe artifact
-    parserClasspath("io.cucumber:cucumber-java:latest.release")
-    parserClasspath("io.cucumber:cucumber-java8:latest.release")
+    // The types the recipes generate code against, shipped with the recipe artifact; the major version is
+    // pinned, as the recipes resolve these type tables by their `<artifactId>-<major>` resource name
+    parserClasspath("io.cucumber:cucumber-java:7.+")
+    parserClasspath("io.cucumber:cucumber-java8:7.+")
     // JUnit Platform 6.x requires Java 17; recipe modules still compile against Java 8
     parserClasspath("org.junit.platform:junit-platform-suite-api:1.+")
 
     // The types the tests parse against
-    testParserClasspath("io.cucumber:cucumber-junit:latest.release")
+    testParserClasspath("io.cucumber:cucumber-expressions:latest.release")
+    testParserClasspath("io.cucumber:cucumber-junit:7.+")
     testParserClasspath("io.cucumber:cucumber-junit-platform-engine:latest.release")
     testParserClasspath("io.cucumber:cucumber-plugin:latest.release")
-    testParserClasspath("io.cucumber:cucumber-testng:latest.release")
+    testParserClasspath("io.cucumber:cucumber-testng:7.+")
+    testParserClasspath("io.cucumber:datatable:latest.release")
+    testParserClasspath("io.cucumber:docstring:latest.release")
     testParserClasspath("org.junit.jupiter:junit-jupiter-api:latest.release")
 
-    // Older releases, to parse the sources that the upgrade recipes take as input
-    testParserClasspath("io.cucumber:cucumber-java:4.8.1") // @Given(timeout = ...), dropped in 5.0.0
-    testParserClasspath("io.cucumber:cucumber-java:5.7.0") // Scenario.write/embed, dropped in 6.0.0
-    testParserClasspath("io.cucumber:cucumber-java8:5.7.0") // Scenario.write/embed, dropped in 6.0.0
-    testParserClasspath("io.cucumber:cucumber-junit:5.7.0") // @CucumberOptions(tags = {...}), collapsed in 6.0.0
-    testParserClasspath("io.cucumber:cucumber-testng:5.7.0") // @CucumberOptions(tags = {...}), collapsed in 6.0.0
+    // The `cucumber.api` types the upgrade recipes migrate away from, gone from every supported release
+    testParserClasspath("io.cucumber:cucumber-core:4.8.1")
+    testParserClasspath("io.cucumber:cucumber-java:4.8.1")
+    testParserClasspath("io.cucumber:cucumber-junit:4.8.1")
+    testParserClasspath("io.cucumber:cucumber-testng:4.8.1")
+    // Cucumber-JVM 2.x and earlier, for the `cucumber.api` types that were already gone by 4.x
+    testParserClasspath("info.cukes:cucumber-core:1.2.5")
+    // The last release with `io.cucumber.core.api.TypeRegistryConfigurer`, removed in 7.0.0
+    testParserClasspath("io.cucumber:cucumber-core:6.11.0")
+    // The last release with `Scenario.write`/`embed` and `@CucumberOptions(tags = {...})`, both gone in 6.0.0
+    testParserClasspath("io.cucumber:cucumber-java:5.7.0")
+    testParserClasspath("io.cucumber:cucumber-java8:5.7.0")
+    testParserClasspath("io.cucumber:cucumber-junit:5.7.0")
+    testParserClasspath("io.cucumber:cucumber-testng:5.7.0")
 }
 
 val rewriteVersion = rewriteRecipe.rewriteVersion.get()
 dependencies {
-    implementation("io.cucumber:cucumber-java:latest.release")
-    implementation("io.cucumber:cucumber-java8:latest.release")
-    implementation("io.cucumber:cucumber-plugin:latest.release")
-    implementation("io.cucumber:cucumber-junit-platform-engine:latest.release")
-    // JUnit Platform 6.x requires Java 17; recipe modules still compile against Java 8
-    implementation("org.junit.platform:junit-platform-suite-api:1.+")
-
     compileOnly("org.projectlombok:lombok:latest.release")
     annotationProcessor("org.projectlombok:lombok:latest.release")
 

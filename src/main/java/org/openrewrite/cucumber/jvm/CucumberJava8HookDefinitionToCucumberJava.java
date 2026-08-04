@@ -65,76 +65,74 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
                 Preconditions.or(
                         new UsesMethod<>(HOOK_BODY_DEFINITION, true),
                         new UsesMethod<>(HOOK_NO_ARGS_BODY_DEFINITION, true))
-                , new CucumberJava8HooksVisitor());
+                , new JavaVisitor<ExecutionContext>() {
+
+                    @Override
+                    public @Nullable J visitMethodInvocation(J.MethodInvocation mi, ExecutionContext ctx) {
+                        J.MethodInvocation methodInvocation = (J.MethodInvocation) super.visitMethodInvocation(mi, ctx);
+                        if (!HOOK_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation) &&
+                                !HOOK_NO_ARGS_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation)) {
+                            return methodInvocation;
+                        }
+
+                        // Replacement annotations can only handle literals or constants
+                        if (methodInvocation.getArguments().stream()
+                                .anyMatch(arg -> !(arg instanceof J.Literal) && !(arg instanceof J.Lambda))) {
+                            return SearchResult.found(methodInvocation, "TODO Migrate manually");
+                        }
+
+                        // Extract arguments passed to method
+                        HookArguments hookArguments = parseHookArguments(methodInvocation.getSimpleName(),
+                                methodInvocation.getArguments());
+
+                        // Add new template method at end of class declaration
+                        J.ClassDeclaration parentClass = getCursor()
+                                .dropParentUntil(J.ClassDeclaration.class::isInstance)
+                                .getValue();
+                        doAfterVisit(new CucumberJava8ClassVisitor(
+                                parentClass.getType(),
+                                hookArguments.replacementImport(),
+                                hookArguments.template(),
+                                hookArguments.parameters()));
+
+                        // Remove original method invocation; it's replaced in the above
+                        // visitor
+                        // noinspection DataFlowIssue
+                        return null;
+                    }
+                });
     }
 
-    static final class CucumberJava8HooksVisitor extends JavaVisitor<ExecutionContext> {
-
-        @Override
-        public @Nullable J visitMethodInvocation(J.MethodInvocation mi, ExecutionContext ctx) {
-            J.MethodInvocation methodInvocation = (J.MethodInvocation) super.visitMethodInvocation(mi, ctx);
-            if (!HOOK_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation) &&
-                    !HOOK_NO_ARGS_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation)) {
-                return methodInvocation;
-            }
-
-            // Replacement annotations can only handle literals or constants
-            if (methodInvocation.getArguments().stream()
-                    .anyMatch(arg -> !(arg instanceof J.Literal) && !(arg instanceof J.Lambda))) {
-                return SearchResult.found(methodInvocation, "TODO Migrate manually");
-            }
-
-            // Extract arguments passed to method
-            HookArguments hookArguments = parseHookArguments(methodInvocation.getSimpleName(),
-                    methodInvocation.getArguments());
-
-            // Add new template method at end of class declaration
-            J.ClassDeclaration parentClass = getCursor()
-                    .dropParentUntil(J.ClassDeclaration.class::isInstance)
-                    .getValue();
-            doAfterVisit(new CucumberJava8ClassVisitor(
-                    parentClass.getType(),
-                    hookArguments.replacementImport(),
-                    hookArguments.template(),
-                    hookArguments.parameters()));
-
-            // Remove original method invocation; it's replaced in the above
-            // visitor
-            // noinspection DataFlowIssue
-            return null;
+    /**
+     * Parse up to three arguments: - last one is always a Lambda; - first
+     * can also be a String or int. - second can be an int;
+     */
+    private static HookArguments parseHookArguments(String methodName, List<Expression> arguments) {
+        // Lambda is always last, and can either contain a body with
+        // Scenario argument, or without
+        int argumentsSize = arguments.size();
+        Expression lambdaArgument = arguments.get(argumentsSize - 1);
+        HookArguments hookArguments = new HookArguments(
+                methodName,
+                null,
+                null,
+                (J.Lambda) lambdaArgument);
+        if (argumentsSize == 1) {
+            return hookArguments;
         }
 
-        /**
-         * Parse up to three arguments: - last one is always a Lambda; - first
-         * can also be a String or int. - second can be an int;
-         */
-        HookArguments parseHookArguments(String methodName, List<Expression> arguments) {
-            // Lambda is always last, and can either contain a body with
-            // Scenario argument, or without
-            int argumentsSize = arguments.size();
-            Expression lambdaArgument = arguments.get(argumentsSize - 1);
-            HookArguments hookArguments = new HookArguments(
-                    methodName,
-                    null,
-                    null,
-                    (J.Lambda) lambdaArgument);
-            if (argumentsSize == 1) {
-                return hookArguments;
+        J.Literal firstArgument = (J.Literal) arguments.get(0);
+        if (argumentsSize == 2) {
+            // First argument is either a String or an int
+            if (firstArgument.getType() == Primitive.String) {
+                return hookArguments.withTagExpression((String) firstArgument.getValue());
             }
-
-            J.Literal firstArgument = (J.Literal) arguments.get(0);
-            if (argumentsSize == 2) {
-                // First argument is either a String or an int
-                if (firstArgument.getType() == Primitive.String) {
-                    return hookArguments.withTagExpression((String) firstArgument.getValue());
-                }
-                return hookArguments.withOrder((Integer) firstArgument.getValue());
-            }
-            // First argument is always a String, second argument always an int
-            return hookArguments
-                    .withTagExpression((String) firstArgument.getValue())
-                    .withOrder((Integer) ((J.Literal) arguments.get(1)).getValue());
+            return hookArguments.withOrder((Integer) firstArgument.getValue());
         }
+        // First argument is always a String, second argument always an int
+        return hookArguments
+                .withTagExpression((String) firstArgument.getValue())
+                .withOrder((Integer) ((J.Literal) arguments.get(1)).getValue());
     }
 
 }
