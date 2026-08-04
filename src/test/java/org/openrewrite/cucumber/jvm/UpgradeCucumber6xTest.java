@@ -24,6 +24,7 @@ import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.java.Assertions.java;
+import static org.openrewrite.properties.Assertions.properties;
 
 @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/39")
 class UpgradeCucumber6xTest implements RewriteTest {
@@ -102,5 +103,19 @@ class UpgradeCucumber6xTest implements RewriteTest {
                             }
                         }
                         """));
+    }
+
+    @Test
+    void splitTheCucumberOptionsProperty() {
+        rewriteRun(
+                properties(
+                        """
+                        cucumber.options=--glue com.example.app --tags @smoke --tags "not @wip"
+                        """,
+                        """
+                        cucumber.filter.tags=(@smoke) and (not @wip)
+                        cucumber.glue=com.example.app
+                        """,
+                        spec -> spec.path("src/test/resources/cucumber.properties")));
     }
 }

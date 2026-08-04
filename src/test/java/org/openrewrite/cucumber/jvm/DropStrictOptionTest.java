@@ -24,6 +24,7 @@ import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.java.Assertions.java;
+import static org.openrewrite.properties.Assertions.properties;
 
 @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/39")
 class DropStrictOptionTest implements RewriteTest {
@@ -82,6 +83,19 @@ class DropStrictOptionTest implements RewriteTest {
                 public class RunCucumberTest {
                 }
                 """));
+    }
+
+    @Test
+    void dropStrictExecutionProperty() {
+        rewriteRun(properties(
+                """
+                cucumber.execution.strict=true
+                cucumber.glue=com.example.app
+                """,
+                """
+                cucumber.glue=com.example.app
+                """,
+                spec -> spec.path("src/test/resources/cucumber.properties")));
     }
 
     @Test

@@ -47,6 +47,7 @@ recipeList:
   - org.openrewrite.cucumber.jvm.UpgradeCucumber5x
   - org.openrewrite.cucumber.jvm.MigrateScenarioWriteAndEmbed
   - org.openrewrite.cucumber.jvm.CollapseCucumberOptionsTags
+  - org.openrewrite.cucumber.jvm.CucumberOptionsPropertyToIndividualProperties
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.UpgradeCucumber5x
@@ -350,6 +351,9 @@ recipeList:
   - org.openrewrite.java.RemoveAnnotationAttribute:
       annotationType: io.cucumber.testng.CucumberOptions
       attributeName: strict
+  - org.openrewrite.properties.DeleteProperty:
+      propertyKey: cucumber.execution.strict
+      relaxedBinding: false
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.DropTimeoutAttribute
