@@ -7,18 +7,19 @@ group = "org.openrewrite.recipe"
 description = "Cucumber JVM Migration"
 
 recipeDependencies {
-    // The types the recipes generate code against, shipped with the recipe artifact
-    parserClasspath("io.cucumber:cucumber-java:latest.release")
-    parserClasspath("io.cucumber:cucumber-java8:latest.release")
+    // The types the recipes generate code against, shipped with the recipe artifact; the major version is
+    // pinned, as the recipes resolve these type tables by their `<artifactId>-<major>` resource name
+    parserClasspath("io.cucumber:cucumber-java:7.+")
+    parserClasspath("io.cucumber:cucumber-java8:7.+")
     // JUnit Platform 6.x requires Java 17; recipe modules still compile against Java 8
     parserClasspath("org.junit.platform:junit-platform-suite-api:1.+")
 
     // The types the tests parse against
     testParserClasspath("io.cucumber:cucumber-expressions:latest.release")
-    testParserClasspath("io.cucumber:cucumber-junit:latest.release")
+    testParserClasspath("io.cucumber:cucumber-junit:7.+")
     testParserClasspath("io.cucumber:cucumber-junit-platform-engine:latest.release")
     testParserClasspath("io.cucumber:cucumber-plugin:latest.release")
-    testParserClasspath("io.cucumber:cucumber-testng:latest.release")
+    testParserClasspath("io.cucumber:cucumber-testng:7.+")
     testParserClasspath("io.cucumber:datatable:latest.release")
     testParserClasspath("io.cucumber:docstring:latest.release")
     testParserClasspath("org.junit.jupiter:junit-jupiter-api:latest.release")
@@ -36,13 +37,6 @@ recipeDependencies {
 
 val rewriteVersion = rewriteRecipe.rewriteVersion.get()
 dependencies {
-    implementation("io.cucumber:cucumber-java:latest.release")
-    implementation("io.cucumber:cucumber-java8:latest.release")
-    implementation("io.cucumber:cucumber-plugin:latest.release")
-    implementation("io.cucumber:cucumber-junit-platform-engine:latest.release")
-    // JUnit Platform 6.x requires Java 17; recipe modules still compile against Java 8
-    implementation("org.junit.platform:junit-platform-suite-api:1.+")
-
     compileOnly("org.projectlombok:lombok:latest.release")
     annotationProcessor("org.projectlombok:lombok:latest.release")
 

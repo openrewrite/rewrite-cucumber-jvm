@@ -352,7 +352,7 @@ recipeList:
       oldFullyQualifiedTypeName: io.cucumber.java8.Tl
       newFullyQualifiedTypeName: io.cucumber.java8.Te
   - org.openrewrite.text.FindAndReplace:
-      find: ^(\s*#\s*language\s*:\s*)tl\s*$
+      find: ^([ \t]*#[ \t]*language[ \t]*:[ \t]*)tl[ \t]*$
       replace: $1te
       regex: true
       multiline: true

@@ -247,7 +247,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                         if (returnType == null) {
                             return null;
                         }
-                        String methodName = uniqueMethodName(decapitalize(returnType.printTrimmed(getCursor())), methodNames);
+                        String methodName = uniqueMethodName(sanitize(decapitalize(returnType.printTrimmed(getCursor()))), methodNames);
                         return glueMethod("@DataTableType", IO_CUCUMBER_JAVA_DATA_TABLE_TYPE, returnType, methodName, arguments.get(1));
                     }
 
@@ -261,7 +261,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                         if (returnType == null || contentType == null) {
                             return null;
                         }
-                        String methodName = uniqueMethodName(decapitalize(returnType.printTrimmed(getCursor())), methodNames);
+                        String methodName = uniqueMethodName(sanitize(decapitalize(returnType.printTrimmed(getCursor()))), methodNames);
                         return glueMethod("@DocStringType(contentType = " + contentType + ")",
                                 IO_CUCUMBER_JAVA_DOC_STRING_TYPE, returnType, methodName, arguments.get(2));
                     }
