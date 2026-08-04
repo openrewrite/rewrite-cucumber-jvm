@@ -19,6 +19,13 @@ recipeDependencies {
     testParserClasspath("io.cucumber:cucumber-plugin:latest.release")
     testParserClasspath("io.cucumber:cucumber-testng:latest.release")
     testParserClasspath("org.junit.jupiter:junit-jupiter-api:latest.release")
+
+    // Older releases, to parse the sources that the upgrade recipes take as input
+    testParserClasspath("io.cucumber:cucumber-java:4.8.1") // @Given(timeout = ...), dropped in 5.0.0
+    testParserClasspath("io.cucumber:cucumber-java:5.7.0") // Scenario.write/embed, dropped in 6.0.0
+    testParserClasspath("io.cucumber:cucumber-java8:5.7.0") // Scenario.write/embed, dropped in 6.0.0
+    testParserClasspath("io.cucumber:cucumber-junit:5.7.0") // @CucumberOptions(tags = {...}), collapsed in 6.0.0
+    testParserClasspath("io.cucumber:cucumber-testng:5.7.0") // @CucumberOptions(tags = {...}), collapsed in 6.0.0
 }
 
 val rewriteVersion = rewriteRecipe.rewriteVersion.get()

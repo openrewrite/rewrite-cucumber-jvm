@@ -23,7 +23,7 @@ tags:
   - testing
   - cucumber
 recipeList:
-  - org.openrewrite.cucumber.jvm.UpgradeCucumber5x
+  - org.openrewrite.cucumber.jvm.UpgradeCucumber6x
   - org.openrewrite.cucumber.jvm.FixTeluguLanguageCode
   - org.openrewrite.cucumber.jvm.CucumberJava8ToJava
   - org.openrewrite.cucumber.jvm.DropStrictOption
@@ -34,6 +34,18 @@ recipeList:
       groupId: io.cucumber
       artifactId: "*"
       newVersion: 7.x
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.UpgradeCucumber6x
+displayName: Upgrade to Cucumber-JVM 6.x
+description: Upgrade to Cucumber-JVM 6.x from any previous version.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  - org.openrewrite.cucumber.jvm.UpgradeCucumber5x
+  - org.openrewrite.cucumber.jvm.MigrateScenarioWriteAndEmbed
+  - org.openrewrite.cucumber.jvm.CollapseCucumberOptionsTags
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.UpgradeCucumber5x
@@ -47,6 +59,8 @@ recipeList:
   - org.openrewrite.java.ChangePackage:
       oldPackageName: cucumber.api
       newPackageName: io.cucumber
+      recursive: true
+  - org.openrewrite.cucumber.jvm.DropTimeoutAttribute
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.UpgradeCucumber2x
@@ -204,6 +218,58 @@ recipeList:
   - org.openrewrite.java.RemoveAnnotationAttribute:
       annotationType: io.cucumber.testng.CucumberOptions
       attributeName: strict
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.DropTimeoutAttribute
+displayName: Drop the `timeout` attribute
+description: >-
+  Cucumber-JVM 5.0.0 removed the `timeout` attribute from step definition and hook annotations,
+  in favor of asserting on the duration from within the step definition itself.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  - org.openrewrite.java.RemoveAnnotationAttribute:
+      annotationType: cucumber.api.java..*
+      attributeName: timeout
+  - org.openrewrite.java.RemoveAnnotationAttribute:
+      annotationType: io.cucumber.java..*
+      attributeName: timeout
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.MigrateScenarioWriteAndEmbed
+displayName: Migrate `Scenario.write` and `Scenario.embed`
+description: >-
+  Cucumber-JVM 6.0.0 removed `Scenario.write(String)` and `Scenario.embed(byte[], String)` along with
+  `Scenario.embed(byte[], String, String)`, in favor of `Scenario.log(String)` and
+  `Scenario.attach(byte[], String, String)`. The two argument `embed` emitted an attachment without a
+  name, which `attach` expresses as a `null` name.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  - org.openrewrite.java.AddNullMethodArgument:
+      methodPattern: io.cucumber.java.Scenario embed(byte[], java.lang.String)
+      argumentIndex: 2
+      parameterType: java.lang.String
+      parameterName: name
+  - org.openrewrite.java.AddNullMethodArgument:
+      methodPattern: io.cucumber.java8.Scenario embed(byte[], java.lang.String)
+      argumentIndex: 2
+      parameterType: java.lang.String
+      parameterName: name
+  - org.openrewrite.java.ChangeMethodName:
+      methodPattern: io.cucumber.java.Scenario embed(byte[], java.lang.String, java.lang.String)
+      newMethodName: attach
+  - org.openrewrite.java.ChangeMethodName:
+      methodPattern: io.cucumber.java8.Scenario embed(byte[], java.lang.String, java.lang.String)
+      newMethodName: attach
+  - org.openrewrite.java.ChangeMethodName:
+      methodPattern: io.cucumber.java.Scenario write(java.lang.String)
+      newMethodName: log
+  - org.openrewrite.java.ChangeMethodName:
+      methodPattern: io.cucumber.java8.Scenario write(java.lang.String)
+      newMethodName: log
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.FixTeluguLanguageCode
