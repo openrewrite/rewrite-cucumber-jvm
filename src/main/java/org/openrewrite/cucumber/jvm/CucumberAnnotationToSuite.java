@@ -72,7 +72,7 @@ public class CucumberAnnotationToSuite extends Recipe {
                 return classDecl;
             }
 
-            JavaParser.Builder javaParserSupplier = JavaParser.fromJavaVersion().classpath("junit-platform-suite-api");
+            JavaParser.Builder javaParserSupplier = JavaParser.fromJavaVersion().classpathFromResources(ctx, "junit-platform-suite-api-1");
             JavaType.FullyQualified classFqn = TypeUtils.asFullyQualified(classDecl.getType());
             if (classFqn != null) {
                 // Add suite annotation and select classpath resource

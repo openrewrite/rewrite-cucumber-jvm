@@ -6,6 +6,21 @@ plugins {
 group = "org.openrewrite.recipe"
 description = "Cucumber JVM Migration"
 
+recipeDependencies {
+    // The types the recipes generate code against, shipped with the recipe artifact
+    parserClasspath("io.cucumber:cucumber-java:latest.release")
+    parserClasspath("io.cucumber:cucumber-java8:latest.release")
+    // JUnit Platform 6.x requires Java 17; recipe modules still compile against Java 8
+    parserClasspath("org.junit.platform:junit-platform-suite-api:1.+")
+
+    // The types the tests parse against
+    testParserClasspath("io.cucumber:cucumber-junit:latest.release")
+    testParserClasspath("io.cucumber:cucumber-junit-platform-engine:latest.release")
+    testParserClasspath("io.cucumber:cucumber-plugin:latest.release")
+    testParserClasspath("io.cucumber:cucumber-testng:latest.release")
+    testParserClasspath("org.junit.jupiter:junit-jupiter-api:latest.release")
+}
+
 val rewriteVersion = rewriteRecipe.rewriteVersion.get()
 dependencies {
     implementation("io.cucumber:cucumber-java:latest.release")
@@ -25,10 +40,6 @@ dependencies {
 
     implementation("org.openrewrite.recipe:rewrite-java-dependencies:$rewriteVersion")
     implementation("org.openrewrite.recipe:rewrite-static-analysis:$rewriteVersion")
-
-    // Only needed to resolve `@CucumberOptions` in tests; TestNG 7.12 requires Java 11
-    testImplementation("io.cucumber:cucumber-junit:latest.release")
-    testImplementation("io.cucumber:cucumber-testng:latest.release")
 
     testImplementation("org.openrewrite:rewrite-java-21")
     testImplementation("org.openrewrite:rewrite-test")
