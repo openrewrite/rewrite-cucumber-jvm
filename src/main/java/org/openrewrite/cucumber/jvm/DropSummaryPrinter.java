@@ -49,38 +49,37 @@ public class DropSummaryPrinter extends Recipe {
 
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {
-        return Preconditions.check(new UsesType<>(IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER, null), new DropSummaryPrinterVisitor());
-    }
+        return Preconditions.check(new UsesType<>(IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER, null), new JavaIsoVisitor<ExecutionContext>() {
 
-    static final class DropSummaryPrinterVisitor extends JavaIsoVisitor<ExecutionContext> {
-        @Override
-        public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, ExecutionContext ctx) {
-            J.ClassDeclaration classDeclaration = super.visitClassDeclaration(cd, ctx);
-            boolean implementsSummaryPrinter = Stream.of(classDeclaration.getImplements())
-                    .filter(Objects::nonNull)
-                    .flatMap(Collection::stream)
-                    .anyMatch(t -> TypeUtils.isOfClassType(t.getType(), IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER));
-            boolean alreadyImplementsPlugin = Stream.of(classDeclaration.getImplements())
-                    .filter(Objects::nonNull)
-                    .flatMap(Collection::stream)
-                    .anyMatch(t -> TypeUtils.isOfClassType(t.getType(), IO_CUCUMBER_PLUGIN_PLUGIN));
-            if (!implementsSummaryPrinter) {
-                return classDeclaration;
-            }
-            doAfterVisit(new ChangeType(
-                    IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER,
-                    IO_CUCUMBER_PLUGIN_PLUGIN,
-                    true).getVisitor());
-            doAfterVisit(new RemoveImport<>(IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER));
-            return classDeclaration.withImplements(ListUtils.map(classDeclaration.getImplements(), i -> {
-                // Remove duplicate implements
-                if (TypeUtils.isOfClassType(i.getType(), IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER) &&
-                        alreadyImplementsPlugin) {
-                    return null;
+            @Override
+            public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, ExecutionContext ctx) {
+                J.ClassDeclaration classDeclaration = super.visitClassDeclaration(cd, ctx);
+                boolean implementsSummaryPrinter = Stream.of(classDeclaration.getImplements())
+                        .filter(Objects::nonNull)
+                        .flatMap(Collection::stream)
+                        .anyMatch(t -> TypeUtils.isOfClassType(t.getType(), IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER));
+                boolean alreadyImplementsPlugin = Stream.of(classDeclaration.getImplements())
+                        .filter(Objects::nonNull)
+                        .flatMap(Collection::stream)
+                        .anyMatch(t -> TypeUtils.isOfClassType(t.getType(), IO_CUCUMBER_PLUGIN_PLUGIN));
+                if (!implementsSummaryPrinter) {
+                    return classDeclaration;
                 }
-                return i;
-            }));
-        }
+                doAfterVisit(new ChangeType(
+                        IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER,
+                        IO_CUCUMBER_PLUGIN_PLUGIN,
+                        true).getVisitor());
+                doAfterVisit(new RemoveImport<>(IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER));
+                return classDeclaration.withImplements(ListUtils.map(classDeclaration.getImplements(), i -> {
+                    // Remove duplicate implements
+                    if (TypeUtils.isOfClassType(i.getType(), IO_CUCUMBER_PLUGIN_SUMMARY_PRINTER) &&
+                            alreadyImplementsPlugin) {
+                        return null;
+                    }
+                    return i;
+                }));
+            }
+        });
     }
 
 }

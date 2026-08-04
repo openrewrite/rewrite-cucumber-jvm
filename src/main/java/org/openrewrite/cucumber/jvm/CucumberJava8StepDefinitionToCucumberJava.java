@@ -54,71 +54,69 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
     public TreeVisitor<?, ExecutionContext> getVisitor() {
         return Preconditions.check(
                 new UsesMethod<>(IO_CUCUMBER_JAVA8_STEP_DEFINITION, true),
-                new CucumberStepDefinitionBodyVisitor());
-    }
+                new JavaVisitor<ExecutionContext>() {
 
-    static final class CucumberStepDefinitionBodyVisitor extends JavaVisitor<ExecutionContext> {
+                    @Override
+                    public @Nullable J visitMethodInvocation(J.MethodInvocation methodInvocation, ExecutionContext ctx) {
+                        J.MethodInvocation m = (J.MethodInvocation) super.visitMethodInvocation(methodInvocation, ctx);
+                        if (!STEP_DEFINITION_METHOD_MATCHER.matches(m)) {
+                            return m;
+                        }
 
-        @Override
-        public @Nullable J visitMethodInvocation(J.MethodInvocation methodInvocation, ExecutionContext ctx) {
-            J.MethodInvocation m = (J.MethodInvocation) super.visitMethodInvocation(methodInvocation, ctx);
-            if (!STEP_DEFINITION_METHOD_MATCHER.matches(m)) {
-                return m;
-            }
+                        // Skip any methods not containing a second argument, such as
+                        // Scenario.log(String)
+                        List<Expression> arguments = m.getArguments();
+                        if (arguments.size() < 2) {
+                            return m;
+                        }
 
-            // Skip any methods not containing a second argument, such as
-            // Scenario.log(String)
-            List<Expression> arguments = m.getArguments();
-            if (arguments.size() < 2) {
-                return m;
-            }
+                        // Annotations require a String literal
+                        Expression stringExpression = arguments.get(0);
+                        if (!(stringExpression instanceof J.Literal)) {
+                            return SearchResult.found(m, "TODO Migrate manually");
+                        }
+                        J.Literal literal = (J.Literal) stringExpression;
 
-            // Annotations require a String literal
-            Expression stringExpression = arguments.get(0);
-            if (!(stringExpression instanceof J.Literal)) {
-                return SearchResult.found(m, "TODO Migrate manually");
-            }
-            J.Literal literal = (J.Literal) stringExpression;
+                        // Extract step definition body, when applicable
+                        Expression possibleStepDefinitionBody = arguments.get(1); // Always
+                        // available
+                        // after a
+                        // first
+                        // String
+                        // argument
+                        if (!(possibleStepDefinitionBody instanceof J.Lambda) ||
+                                !TypeUtils.isAssignableTo(IO_CUCUMBER_JAVA8_STEP_DEFINITION_BODY,
+                                        possibleStepDefinitionBody.getType())) {
+                            return SearchResult.found(m, "TODO Migrate manually");
+                        }
+                        J.Lambda lambda = (J.Lambda) possibleStepDefinitionBody;
 
-            // Extract step definition body, when applicable
-            Expression possibleStepDefinitionBody = arguments.get(1); // Always
-            // available
-            // after a
-            // first
-            // String
-            // argument
-            if (!(possibleStepDefinitionBody instanceof J.Lambda) ||
-                    !TypeUtils.isAssignableTo(IO_CUCUMBER_JAVA8_STEP_DEFINITION_BODY,
-                    possibleStepDefinitionBody.getType())) {
-                return SearchResult.found(m, "TODO Migrate manually");
-            }
-            J.Lambda lambda = (J.Lambda) possibleStepDefinitionBody;
+                        StepDefinitionArguments stepArguments = new StepDefinitionArguments(
+                                m.getSimpleName(), literal, lambda);
 
-            StepDefinitionArguments stepArguments = new StepDefinitionArguments(
-                    m.getSimpleName(), literal, lambda);
+                        // Determine step definitions class name
+                        J.ClassDeclaration parentClass = getCursor()
+                                .dropParentUntil(J.ClassDeclaration.class::isInstance)
+                                .getValue();
+                        if (m.getMethodType() == null) {
+                            return m;
+                        }
+                        String replacementImport = String.format("%s.%s",
+                                m.getMethodType().getDeclaringType().getFullyQualifiedName()
+                                        .replace("java8", "java").toLowerCase(),
+                                m.getSimpleName());
+                        doAfterVisit(new CucumberJava8ClassVisitor(
+                                parentClass.getType(),
+                                replacementImport,
+                                stepArguments.template(),
+                                stepArguments.parameters()));
 
-            // Determine step definitions class name
-            J.ClassDeclaration parentClass = getCursor()
-                    .dropParentUntil(J.ClassDeclaration.class::isInstance)
-                    .getValue();
-            if (m.getMethodType() == null) {
-                return m;
-            }
-            String replacementImport = String.format("%s.%s",
-                    m.getMethodType().getDeclaringType().getFullyQualifiedName()
-                            .replace("java8", "java").toLowerCase(),
-                    m.getSimpleName());
-            doAfterVisit(new CucumberJava8ClassVisitor(
-                    parentClass.getType(),
-                    replacementImport,
-                    stepArguments.template(),
-                    stepArguments.parameters()));
-
-            // Remove original method invocation; it's replaced in the above
-            // visitor
-            // noinspection DataFlowIssue
-            return null;
-        }
+                        // Remove original method invocation; it's replaced in the above
+                        // visitor
+                        // noinspection DataFlowIssue
+                        return null;
+                    }
+                });
     }
 
 }

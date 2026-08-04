@@ -44,6 +44,9 @@ public class CucumberAnnotationToSuite extends Recipe {
     private static final String SUITE = "org.junit.platform.suite.api.Suite";
     private static final String SELECT_CLASSPATH_RESOURCE = "org.junit.platform.suite.api.SelectClasspathResource";
 
+    private static final AnnotationMatcher CUCUMBER_ANNOTATION_MATCHER = new AnnotationMatcher(
+            "@" + IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER);
+
     @Getter
     final String displayName = "Replace `@Cucumber` with `@Suite`";
 
@@ -57,42 +60,38 @@ public class CucumberAnnotationToSuite extends Recipe {
     public TreeVisitor<?, ExecutionContext> getVisitor() {
         return Preconditions.check(
                 new UsesType<>(IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER, null),
-                new ExecutionContextJavaIsoVisitor());
-    }
+                new JavaIsoVisitor<ExecutionContext>() {
 
-    class ExecutionContextJavaIsoVisitor extends JavaIsoVisitor<ExecutionContext> {
-        private final AnnotationMatcher cucumberAnnoMatcher = new AnnotationMatcher(
-                "@" + IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER);
+                    @Override
+                    @SneakyThrows
+                    public ClassDeclaration visitClassDeclaration(ClassDeclaration cd, ExecutionContext ctx) {
+                        ClassDeclaration classDecl = super.visitClassDeclaration(cd, ctx);
+                        if (classDecl.getAllAnnotations().stream().noneMatch(CUCUMBER_ANNOTATION_MATCHER::matches)) {
+                            return classDecl;
+                        }
 
-        @Override
-        @SneakyThrows
-        public ClassDeclaration visitClassDeclaration(ClassDeclaration cd, ExecutionContext ctx) {
-            ClassDeclaration classDecl = super.visitClassDeclaration(cd, ctx);
-            if (classDecl.getAllAnnotations().stream().noneMatch(cucumberAnnoMatcher::matches)) {
-                return classDecl;
-            }
+                        JavaParser.Builder javaParserSupplier = JavaParser.fromJavaVersion().classpathFromResources(ctx, "junit-platform-suite-api-1");
+                        JavaType.FullyQualified classFqn = TypeUtils.asFullyQualified(classDecl.getType());
+                        if (classFqn != null) {
+                            // Add suite annotation and select classpath resource
+                            JavaCoordinates coordinates = classDecl.getCoordinates().addAnnotation(Comparator.comparing(
+                                    J.Annotation::getSimpleName, new RuleBasedCollator("< SelectClasspathResource")));
+                            classDecl = JavaTemplate.builder("@Suite @SelectClasspathResource(\"#{}\")")
+                                    .contextSensitive()
+                                    .javaParser(javaParserSupplier)
+                                    .imports(SUITE, SELECT_CLASSPATH_RESOURCE)
+                                    .build()
+                                    .apply(getCursor(), coordinates, classFqn.getPackageName().replace('.', '/'));
+                            maybeAddImport(SUITE);
+                            maybeAddImport(SELECT_CLASSPATH_RESOURCE);
 
-            JavaParser.Builder javaParserSupplier = JavaParser.fromJavaVersion().classpathFromResources(ctx, "junit-platform-suite-api-1");
-            JavaType.FullyQualified classFqn = TypeUtils.asFullyQualified(classDecl.getType());
-            if (classFqn != null) {
-                // Add suite annotation and select classpath resource
-                JavaCoordinates coordinates = classDecl.getCoordinates().addAnnotation(Comparator.comparing(
-                        J.Annotation::getSimpleName, new RuleBasedCollator("< SelectClasspathResource")));
-                classDecl = JavaTemplate.builder("@Suite @SelectClasspathResource(\"#{}\")")
-                        .contextSensitive()
-                        .javaParser(javaParserSupplier)
-                        .imports(SUITE, SELECT_CLASSPATH_RESOURCE)
-                        .build()
-                        .apply(getCursor(), coordinates, classFqn.getPackageName().replace('.', '/'));
-                maybeAddImport(SUITE);
-                maybeAddImport(SELECT_CLASSPATH_RESOURCE);
-
-                // Remove cucumber annotation
-                classDecl = classDecl.withLeadingAnnotations(ListUtils.map(classDecl.getLeadingAnnotations(),
-                        ann -> cucumberAnnoMatcher.matches(ann) ? null : ann));
-                maybeRemoveImport(IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER);
-            }
-            return classDecl;
-        }
+                            // Remove cucumber annotation
+                            classDecl = classDecl.withLeadingAnnotations(ListUtils.map(classDecl.getLeadingAnnotations(),
+                                    ann -> CUCUMBER_ANNOTATION_MATCHER.matches(ann) ? null : ann));
+                            maybeRemoveImport(IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER);
+                        }
+                        return classDecl;
+                    }
+                });
     }
 }
