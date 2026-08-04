@@ -31,8 +31,8 @@ class DropTimeoutAttributeTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
         spec.recipeFromResources("org.openrewrite.cucumber.jvm.DropTimeoutAttribute")
-                .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
-                    "cucumber-java-4"));
+          .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
+            "cucumber-java-4"));
     }
 
     @DocumentExample
@@ -40,138 +40,138 @@ class DropTimeoutAttributeTest implements RewriteTest {
     void dropTimeoutFromStepDefinition() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.java.en.Given;
+            import io.cucumber.java.en.Given;
 
-                class StepDefinitions {
-                    @Given(value = "a step", timeout = 1000)
-                    void aStep() {
-                    }
+            class StepDefinitions {
+                @Given(value = "a step", timeout = 1000)
+                void aStep() {
                 }
-                """,
-                """
-                package com.example.app;
+            }
+            """,
+          """
+            package com.example.app;
 
-                import io.cucumber.java.en.Given;
+            import io.cucumber.java.en.Given;
 
-                class StepDefinitions {
-                    @Given("a step")
-                    void aStep() {
-                    }
+            class StepDefinitions {
+                @Given("a step")
+                void aStep() {
                 }
-                """));
+            }
+            """));
     }
 
     @Test
     void dropTimeoutFromHooks() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.java.After;
-                import io.cucumber.java.Before;
+            import io.cucumber.java.After;
+            import io.cucumber.java.Before;
 
-                class StepDefinitions {
-                    @Before(timeout = 1000, order = 10)
-                    void before() {
-                    }
-
-                    @After(timeout = 1000)
-                    void after() {
-                    }
+            class StepDefinitions {
+                @Before(timeout = 1000, order = 10)
+                void before() {
                 }
-                """,
-                """
-                package com.example.app;
 
-                import io.cucumber.java.After;
-                import io.cucumber.java.Before;
-
-                class StepDefinitions {
-                    @Before(order = 10)
-                    void before() {
-                    }
-
-                    @After
-                    void after() {
-                    }
+                @After(timeout = 1000)
+                void after() {
                 }
-                """));
+            }
+            """,
+          """
+            package com.example.app;
+
+            import io.cucumber.java.After;
+            import io.cucumber.java.Before;
+
+            class StepDefinitions {
+                @Before(order = 10)
+                void before() {
+                }
+
+                @After
+                void after() {
+                }
+            }
+            """));
     }
 
     @Test
     void dropTimeoutFromNonEnglishStepDefinition() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.java.nl.Gegeven;
+            import io.cucumber.java.nl.Gegeven;
 
-                class StepDefinitions {
-                    @Gegeven(value = "een stap", timeout = 1000)
-                    void eenStap() {
-                    }
+            class StepDefinitions {
+                @Gegeven(value = "een stap", timeout = 1000)
+                void eenStap() {
                 }
-                """,
-                """
-                package com.example.app;
+            }
+            """,
+          """
+            package com.example.app;
 
-                import io.cucumber.java.nl.Gegeven;
+            import io.cucumber.java.nl.Gegeven;
 
-                class StepDefinitions {
-                    @Gegeven("een stap")
-                    void eenStap() {
-                    }
+            class StepDefinitions {
+                @Gegeven("een stap")
+                void eenStap() {
                 }
-                """));
+            }
+            """));
     }
 
     @Test
     void dropTimeoutBeforeThePackageRename() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import cucumber.api.java.en.When;
+            import cucumber.api.java.en.When;
 
-                class StepDefinitions {
-                    @When(value = "a step", timeout = 1000)
-                    void aStep() {
-                    }
+            class StepDefinitions {
+                @When(value = "a step", timeout = 1000)
+                void aStep() {
                 }
-                """,
-                """
-                package com.example.app;
+            }
+            """,
+          """
+            package com.example.app;
 
-                import cucumber.api.java.en.When;
+            import cucumber.api.java.en.When;
 
-                class StepDefinitions {
-                    @When("a step")
-                    void aStep() {
-                    }
+            class StepDefinitions {
+                @When("a step")
+                void aStep() {
                 }
-                """));
+            }
+            """));
     }
 
     @Test
     void retainStepDefinitionsWithoutTimeout() {
         // language=java
         rewriteRun(java(
-                """
-                package com.example.app;
+          """
+            package com.example.app;
 
-                import io.cucumber.java.en.Given;
+            import io.cucumber.java.en.Given;
 
-                class StepDefinitions {
-                    @Given("a step")
-                    void aStep() {
-                    }
+            class StepDefinitions {
+                @Given("a step")
+                void aStep() {
                 }
-                """));
+            }
+            """));
     }
 }

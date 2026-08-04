@@ -39,83 +39,83 @@ class UpgradeCucumber6xTest implements RewriteTest {
     void dropTimeoutAlongsideThePackageRename() {
         // language=java
         rewriteRun(
-                spec -> spec.parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
-                        "cucumber-java-4")),
-                java(
-                        """
-                        package com.example.app;
+          spec -> spec.parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
+            "cucumber-java-4")),
+          java(
+            """
+              package com.example.app;
 
-                        import cucumber.api.java.en.Given;
+              import cucumber.api.java.en.Given;
 
-                        class StepDefinitions {
-                            @Given(value = "a step", timeout = 1000)
-                            void aStep() {
-                            }
-                        }
-                        """,
-                        """
-                        package com.example.app;
+              class StepDefinitions {
+                  @Given(value = "a step", timeout = 1000)
+                  void aStep() {
+                  }
+              }
+              """,
+            """
+              package com.example.app;
 
-                        import io.cucumber.java.en.Given;
+              import io.cucumber.java.en.Given;
 
-                        class StepDefinitions {
-                            @Given("a step")
-                            void aStep() {
-                            }
-                        }
-                        """));
+              class StepDefinitions {
+                  @Given("a step")
+                  void aStep() {
+                  }
+              }
+              """));
     }
 
     @Test
     void collapseTagsAndMigrateScenario() {
         // language=java
         rewriteRun(
-                spec -> spec.parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
-                        "cucumber-java-5", "cucumber-junit-5")),
-                java(
-                        """
-                        package com.example.app;
+          spec -> spec.parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
+            "cucumber-java-5", "cucumber-junit-5")),
+          java(
+            """
+              package com.example.app;
 
-                        import io.cucumber.java.Scenario;
-                        import io.cucumber.java.en.Given;
-                        import io.cucumber.junit.CucumberOptions;
+              import io.cucumber.java.Scenario;
+              import io.cucumber.java.en.Given;
+              import io.cucumber.junit.CucumberOptions;
 
-                        @CucumberOptions(tags = {"@smoke", "not @wip"})
-                        public class RunCucumberTest {
-                            @Given("a step")
-                            void aStep(Scenario scenario) {
-                                scenario.write("a message");
-                            }
-                        }
-                        """,
-                        """
-                        package com.example.app;
+              @CucumberOptions(tags = {"@smoke", "not @wip"})
+              public class RunCucumberTest {
+                  @Given("a step")
+                  void aStep(Scenario scenario) {
+                      scenario.write("a message");
+                  }
+              }
+              """,
+            """
+              package com.example.app;
 
-                        import io.cucumber.java.Scenario;
-                        import io.cucumber.java.en.Given;
-                        import io.cucumber.junit.CucumberOptions;
+              import io.cucumber.java.Scenario;
+              import io.cucumber.java.en.Given;
+              import io.cucumber.junit.CucumberOptions;
 
-                        @CucumberOptions(tags = "(@smoke) and (not @wip)")
-                        public class RunCucumberTest {
-                            @Given("a step")
-                            void aStep(Scenario scenario) {
-                                scenario.log("a message");
-                            }
-                        }
-                        """));
+              @CucumberOptions(tags = "(@smoke) and (not @wip)")
+              public class RunCucumberTest {
+                  @Given("a step")
+                  void aStep(Scenario scenario) {
+                      scenario.log("a message");
+                  }
+              }
+              """));
     }
 
     @Test
     void splitTheCucumberOptionsProperty() {
         rewriteRun(
-                properties(
-                        """
-                        cucumber.options=--glue com.example.app --tags @smoke --tags "not @wip"
-                        """,
-                        """
-                        cucumber.filter.tags=(@smoke) and (not @wip)
-                        cucumber.glue=com.example.app
-                        """,
-                        spec -> spec.path("src/test/resources/cucumber.properties")));
+          properties(
+            """
+              cucumber.options=--glue com.example.app --tags @smoke --tags "not @wip"
+              """,
+            """
+              cucumber.filter.tags=(@smoke) and (not @wip)
+              cucumber.glue=com.example.app
+              """,
+            spec -> spec.path("src/test/resources/cucumber.properties")));
     }
 }
