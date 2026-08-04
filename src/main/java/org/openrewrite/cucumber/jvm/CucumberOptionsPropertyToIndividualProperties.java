@@ -166,7 +166,11 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
                     return t;
                 }
                 Xml.Tag options = maybeOptions.get();
-                Map<String, String> replacements = individualProperties(options.getValue().orElse(""));
+                String value = optionsValue(options);
+                if (value == null) {
+                    return t;
+                }
+                Map<String, String> replacements = individualProperties(value);
                 if (replacements == null) {
                     return t;
                 }
@@ -187,6 +191,28 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
                 }));
             }
         };
+    }
+
+    /**
+     * @return the `cucumber.options` value, or `null` if it can not be written back unchanged, as
+     *         {@link Xml.Tag#getValue()} skips markup that is not character data, and drops the whitespace
+     *         that surrounds an escaped character.
+     */
+    private static @Nullable String optionsValue(Xml.Tag options) {
+        List<? extends Content> content = options.getContent();
+        if (content == null) {
+            return "";
+        }
+        String value = options.getValue().orElse(null);
+        if (value == null) {
+            return null;
+        }
+        String source = content.stream()
+                .filter(Xml.CharData.class::isInstance)
+                .map(Xml.CharData.class::cast)
+                .map(charData -> charData.getPrefix() + charData.getText() + charData.getAfterText())
+                .collect(Collectors.joining());
+        return escape(value).equals(source.trim()) ? value : null;
     }
 
     private static String escape(String value) {
@@ -303,6 +329,11 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
         // A single name filter maps onto a single regular expression; several are combined with an `or` that
         // `cucumber.filter.name` cannot express
         if (names.size() > 1) {
+            return null;
+        }
+        // Cucumber-JVM 5.0.0 dropped the old style `~@tag` negation; `cucumber.filter.tags` parses such a value
+        // as a tag literal that matches nothing, rather than reporting an error, so there is no migration path
+        if (tags.stream().anyMatch(tag -> tag.contains("~@"))) {
             return null;
         }
         String joinedFeatures = joinOnComma(features);

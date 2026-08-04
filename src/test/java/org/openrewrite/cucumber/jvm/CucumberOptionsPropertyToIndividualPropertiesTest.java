@@ -201,6 +201,16 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
     }
 
     @Test
+    void leaveOldStyleTagNegationsAlone() {
+        rewriteRun(
+                properties(
+                        """
+                        cucumber.options=--tags ~@wip
+                        """,
+                        spec -> spec.path("src/test/resources/cucumber.properties")));
+    }
+
+    @Test
     void leaveValuesContainingTheSeparatorAlone() {
         rewriteRun(
                 properties(
@@ -319,6 +329,60 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
                                         <configuration>
                                             <systemPropertyVariables>
                                                 <cucumber.filter.name>&amp;lt;example&amp;gt;</cucumber.filter.name>
+                                            </systemPropertyVariables>
+                                        </configuration>
+                                    </plugin>
+                                </plugins>
+                            </build>
+                        </project>
+                        """));
+    }
+
+    @Test
+    void leaveWhitespaceAroundEscapedCharactersAlone() {
+        rewriteRun(
+                pomXml(
+                        """
+                        <project>
+                            <modelVersion>4.0.0</modelVersion>
+                            <groupId>com.example</groupId>
+                            <artifactId>app</artifactId>
+                            <version>1.0.0</version>
+                            <build>
+                                <plugins>
+                                    <plugin>
+                                        <groupId>org.apache.maven.plugins</groupId>
+                                        <artifactId>maven-surefire-plugin</artifactId>
+                                        <configuration>
+                                            <systemPropertyVariables>
+                                                <cucumber.options>--name 'first &amp; second'</cucumber.options>
+                                            </systemPropertyVariables>
+                                        </configuration>
+                                    </plugin>
+                                </plugins>
+                            </build>
+                        </project>
+                        """));
+    }
+
+    @Test
+    void leaveMarkupOtherThanCharacterDataAlone() {
+        rewriteRun(
+                pomXml(
+                        """
+                        <project>
+                            <modelVersion>4.0.0</modelVersion>
+                            <groupId>com.example</groupId>
+                            <artifactId>app</artifactId>
+                            <version>1.0.0</version>
+                            <build>
+                                <plugins>
+                                    <plugin>
+                                        <groupId>org.apache.maven.plugins</groupId>
+                                        <artifactId>maven-surefire-plugin</artifactId>
+                                        <configuration>
+                                            <systemPropertyVariables>
+                                                <cucumber.options><!-- legacy -->--glue com.example.app</cucumber.options>
                                             </systemPropertyVariables>
                                         </configuration>
                                     </plugin>
