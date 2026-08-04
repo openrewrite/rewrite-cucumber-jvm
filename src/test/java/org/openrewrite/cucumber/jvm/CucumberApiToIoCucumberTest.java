@@ -261,6 +261,36 @@ class CucumberApiToIoCucumberTest implements RewriteTest {
     }
 
     @Test
+    void dataTableMovesToIoCucumberDatatable() {
+        rewriteRun(
+          // `cucumber.api.DataTable` was gone by 4.x, and 1.2.5 redeclares most of the types used above
+          spec -> spec.parser(JavaParser.fromJavaVersion()
+            .classpathFromResources(new InMemoryExecutionContext(), "cucumber-core-1.2.5")),
+          //language=java
+          java(
+            """
+              package com.example.app;
+
+              import cucumber.api.DataTable;
+
+              public class StepDefinitions {
+                  public void aStep(DataTable table) {
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              import io.cucumber.datatable.DataTable;
+
+              public class StepDefinitions {
+                  public void aStep(DataTable table) {
+                  }
+              }
+              """));
+    }
+
+    @Test
     void cliMainMovesToCoreCli() {
         rewriteRun(
           //language=java

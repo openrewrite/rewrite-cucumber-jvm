@@ -12,6 +12,8 @@ recipeDependencies {
     testParserClasspath("io.cucumber:cucumber-java:4.8.1")
     testParserClasspath("io.cucumber:cucumber-junit:4.8.1")
     testParserClasspath("io.cucumber:cucumber-testng:4.8.1")
+    // Cucumber-JVM 2.x and earlier, for the `cucumber.api` types that were already gone by 4.x
+    testParserClasspath("info.cukes:cucumber-core:1.2.5")
     // The last release with `io.cucumber.core.api.TypeRegistryConfigurer`, removed in 7.0.0
     testParserClasspath("io.cucumber:cucumber-core:6.11.0")
 }
