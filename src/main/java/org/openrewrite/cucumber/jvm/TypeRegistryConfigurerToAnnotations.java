@@ -26,6 +26,7 @@ import org.openrewrite.internal.ListUtils;
 import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.JavaTemplate;
+import org.openrewrite.java.MethodMatcher;
 import org.openrewrite.java.TypeMatcher;
 import org.openrewrite.java.search.UsesType;
 import org.openrewrite.java.tree.Expression;
@@ -54,6 +55,8 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
     // Cucumber-JVM 5.0.0 moved these from `cucumber.api` to `io.cucumber.core.api`
     private static final TypeMatcher TYPE_REGISTRY = new TypeMatcher("*..api.TypeRegistry");
     private static final TypeMatcher TYPE_REGISTRY_CONFIGURER = new TypeMatcher("*..api.TypeRegistryConfigurer");
+    private static final MethodMatcher CONFIGURE_TYPE_REGISTRY = new MethodMatcher(
+            "*..api.TypeRegistryConfigurer configureTypeRegistry(*..api.TypeRegistry)", true);
 
     private static final String IO_CUCUMBER_JAVA_PARAMETER_TYPE = "io.cucumber.java.ParameterType";
     private static final String IO_CUCUMBER_JAVA_DATA_TABLE_TYPE = "io.cucumber.java.DataTableType";
@@ -121,7 +124,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                         J.MethodDeclaration configureTypeRegistry = null;
                         for (Statement statement : c.getBody().getStatements()) {
                             if (statement instanceof J.MethodDeclaration &&
-                                    "configureTypeRegistry".equals(((J.MethodDeclaration) statement).getSimpleName())) {
+                                    CONFIGURE_TYPE_REGISTRY.matches((J.MethodDeclaration) statement, c)) {
                                 configureTypeRegistry = (J.MethodDeclaration) statement;
                             }
                         }
