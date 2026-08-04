@@ -40,7 +40,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
     private static final String IO_CUCUMBER_JAVA8 = "io.cucumber.java8";
 
     private final JavaType.FullyQualified stepDefinitionsClass;
-    private final String replacementImport;
+    private final List<String> replacementImports;
     private final String template;
     private final Object[] templateParameters;
 
@@ -56,8 +56,8 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         // Remove implement of Java8 interfaces & imports; return retained
         List<TypeTree> retained = filterImplementingInterfaces(classDeclaration);
 
-        // Import Given/When/Then or Before/After as applicable
-        maybeAddImport(replacementImport);
+        // Import Given/When/Then or Before/After, and Scenario, as applicable
+        replacementImports.forEach(this::maybeAddImport);
 
         // Remove empty constructor which might be left over after removing
         // method invocations with typical usage
@@ -96,7 +96,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
                 .contextSensitive()
                 .javaParser(
                         JavaParser.fromJavaVersion().classpathFromResources(ctx, "cucumber-java-7", "cucumber-java8-7"))
-                .imports(replacementImport)
+                .imports(replacementImports.toArray(new String[0]))
                 .build().apply(getCursor(), coordinatesForNewMethod(classDeclaration.getBody()), templateParameters);
         return retainConstructorArguments(applied.withImplements(retained));
     }

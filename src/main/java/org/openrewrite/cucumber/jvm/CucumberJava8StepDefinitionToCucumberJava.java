@@ -33,6 +33,7 @@ import org.openrewrite.marker.SearchResult;
 import java.time.Duration;
 import java.util.List;
 
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 
 @EqualsAndHashCode(callSuper = false)
@@ -107,7 +108,7 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
                                 m.getSimpleName());
                         doAfterVisit(new CucumberJava8ClassVisitor(
                                 parentClass.getType(),
-                                replacementImport,
+                                singletonList(replacementImport),
                                 stepArguments.template(),
                                 stepArguments.parameters()));
 

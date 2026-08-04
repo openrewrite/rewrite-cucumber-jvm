@@ -32,7 +32,10 @@ import org.openrewrite.java.tree.JavaType.Primitive;
 import org.openrewrite.marker.SearchResult;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
+
+import static java.util.Collections.singletonList;
 
 @EqualsAndHashCode(callSuper = false)
 @Value
@@ -91,7 +94,7 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
                                 .getValue();
                         doAfterVisit(new CucumberJava8ClassVisitor(
                                 parentClass.getType(),
-                                hookArguments.replacementImport(),
+                                hookArguments.replacementImports(),
                                 hookArguments.template(),
                                 hookArguments.parameters()));
 
@@ -140,6 +143,13 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
 @Value
 class HookArguments {
 
+    /**
+     * Imported as the `io.cucumber.java8` type the hook body still accepts, rather than as the
+     * `io.cucumber.java.Scenario` it will become: the file is only retyped once every hook and step in it has
+     * migrated, and until then the simple name has to resolve against the import already there.
+     */
+    private static final String IO_CUCUMBER_JAVA8_SCENARIO = "io.cucumber.java8.Scenario";
+
     String annotationName;
 
     @With
@@ -152,8 +162,11 @@ class HookArguments {
 
     J.Lambda lambda;
 
-    String replacementImport() {
-        return String.format("io.cucumber.java.%s", annotationName);
+    List<String> replacementImports() {
+        String annotationImport = String.format("io.cucumber.java.%s", annotationName);
+        return takesScenario() ?
+                Arrays.asList(annotationImport, IO_CUCUMBER_JAVA8_SCENARIO) :
+                singletonList(annotationImport);
     }
 
     String template() {
@@ -189,13 +202,16 @@ class HookArguments {
                 order == null ? "" : "_order_" + order);
     }
 
+    private boolean takesScenario() {
+        return lambda.getParameters().getParameters().get(0) instanceof J.VariableDeclarations;
+    }
+
     private String formatMethodArguments() {
-        J firstLambdaParameter = lambda.getParameters().getParameters().get(0);
-        if (firstLambdaParameter instanceof J.VariableDeclarations) {
-            return String.format("io.cucumber.java.Scenario %s",
-                    ((J.VariableDeclarations) firstLambdaParameter).getVariables().get(0).getName());
+        if (!takesScenario()) {
+            return "";
         }
-        return "";
+        J.VariableDeclarations scenario = (J.VariableDeclarations) lambda.getParameters().getParameters().get(0);
+        return String.format("Scenario %s", scenario.getVariables().get(0).getName());
     }
 
     public Object[] parameters() {
