@@ -48,6 +48,23 @@ class FixTeluguLanguageCodeTest implements RewriteTest {
     }
 
     @Test
+    void retainBlankLinesAfterTheLanguageHeader() {
+        rewriteRun(
+                text(
+                        """
+                        # language: tl
+
+                        గుణము: మొదటి గుణము
+                        """,
+                        """
+                        # language: te
+
+                        గుణము: మొదటి గుణము
+                        """,
+                        spec -> spec.path("src/test/resources/features/telugu.feature")));
+    }
+
+    @Test
     void leaveOtherLanguagesAlone() {
         rewriteRun(
                 text(
