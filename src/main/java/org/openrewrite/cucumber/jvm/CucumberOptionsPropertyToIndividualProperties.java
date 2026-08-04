@@ -122,6 +122,7 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
                 if (present.stream().anyMatch(replacements::containsKey)) {
                     return f;
                 }
+                String lineSeparator = lineSeparator(f);
                 List<Properties.Content> content = ListUtils.flatMap(f.getContent(), c -> {
                     if (c != options) {
                         return c;
@@ -130,7 +131,7 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
                     for (Map.Entry<String, String> replacement : replacements.entrySet()) {
                         entries.add(new Properties.Entry(
                                 randomId(),
-                                entries.isEmpty() ? options.getPrefix() : "\n",
+                                entries.isEmpty() ? options.getPrefix() : lineSeparator,
                                 Markers.EMPTY,
                                 replacement.getKey(),
                                 options.getBeforeEquals(),
@@ -145,6 +146,11 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
                 return f.withContent(content);
             }
         };
+    }
+
+    private static String lineSeparator(Properties.File file) {
+        return file.getEof().contains("\r\n") ||
+                file.getContent().stream().anyMatch(content -> content.getPrefix().contains("\r\n")) ? "\r\n" : "\n";
     }
 
     private static MavenIsoVisitor<ExecutionContext> mavenVisitor() {

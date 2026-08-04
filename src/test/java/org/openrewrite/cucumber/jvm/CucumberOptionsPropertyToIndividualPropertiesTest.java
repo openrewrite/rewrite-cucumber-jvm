@@ -149,6 +149,28 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
     }
 
     @Test
+    void retainCarriageReturnsAndTheColonDelimiter() {
+        rewriteRun(
+                properties(
+                        "cucumber.options : --glue com.example.app --tags @wip\r\ncucumber.publish.quiet=true\r\n",
+                        "cucumber.filter.tags : @wip\r\ncucumber.glue : com.example.app\r\ncucumber.publish.quiet=true\r\n",
+                        spec -> spec.path("src/test/resources/cucumber.properties")));
+    }
+
+    @Test
+    void tagExpressionsMayContainCommas() {
+        rewriteRun(
+                properties(
+                        """
+                        cucumber.options=--tags @a,@b --tags "not @wip"
+                        """,
+                        """
+                        cucumber.filter.tags=(@a,@b) and (not @wip)
+                        """,
+                        spec -> spec.path("src/test/resources/cucumber.properties")));
+    }
+
+    @Test
     void leaveOptionsWithoutAPropertyEquivalentAlone() {
         rewriteRun(
                 properties(
@@ -249,6 +271,54 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
                                             <systemPropertyVariables>
                                                 <cucumber.filter.tags>@wip</cucumber.filter.tags>
                                                 <cucumber.glue>com.example.app</cucumber.glue>
+                                            </systemPropertyVariables>
+                                        </configuration>
+                                    </plugin>
+                                </plugins>
+                            </build>
+                        </project>
+                        """));
+    }
+
+    @Test
+    void retainMarkupAlreadyEscapedInThePom() {
+        rewriteRun(
+                pomXml(
+                        """
+                        <project>
+                            <modelVersion>4.0.0</modelVersion>
+                            <groupId>com.example</groupId>
+                            <artifactId>app</artifactId>
+                            <version>1.0.0</version>
+                            <build>
+                                <plugins>
+                                    <plugin>
+                                        <groupId>org.apache.maven.plugins</groupId>
+                                        <artifactId>maven-surefire-plugin</artifactId>
+                                        <configuration>
+                                            <systemPropertyVariables>
+                                                <cucumber.options>--name '&amp;lt;example&amp;gt;'</cucumber.options>
+                                            </systemPropertyVariables>
+                                        </configuration>
+                                    </plugin>
+                                </plugins>
+                            </build>
+                        </project>
+                        """,
+                        """
+                        <project>
+                            <modelVersion>4.0.0</modelVersion>
+                            <groupId>com.example</groupId>
+                            <artifactId>app</artifactId>
+                            <version>1.0.0</version>
+                            <build>
+                                <plugins>
+                                    <plugin>
+                                        <groupId>org.apache.maven.plugins</groupId>
+                                        <artifactId>maven-surefire-plugin</artifactId>
+                                        <configuration>
+                                            <systemPropertyVariables>
+                                                <cucumber.filter.name>&amp;lt;example&amp;gt;</cucumber.filter.name>
                                             </systemPropertyVariables>
                                         </configuration>
                                     </plugin>
