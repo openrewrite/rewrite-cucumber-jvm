@@ -211,6 +211,73 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
         @SuppressWarnings("CodeBlock2Expr")
         @Test
+        void retainEmptyConstructorsOfOtherClasses() {
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+
+                    public class CalculatorStepDefinitions implements En {
+                        public CalculatorStepDefinitions() {
+                            Given("a calculator I just turned on", () -> {
+                            });
+                        }
+
+                        static class Money {
+                            private int amount;
+
+                            Money(int amount) {
+                                this.amount = amount;
+                            }
+
+                            Money() {
+                            }
+                        }
+                    }
+
+                    class Helper {
+                        Helper() {
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java.en.Given;
+
+                    public class CalculatorStepDefinitions {
+
+                        @Given("a calculator I just turned on")
+                        public void a_calculator_i_just_turned_on() {
+                        }
+
+                        static class Money {
+                            private int amount;
+
+                            Money(int amount) {
+                                this.amount = amount;
+                            }
+
+                            Money() {
+                            }
+                        }
+                    }
+
+                    class Helper {
+                        Helper() {
+                        }
+                    }
+                    """),
+                17));
+        }
+
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+        @SuppressWarnings("CodeBlock2Expr")
+        @Test
         void retainConstructorInjectedDependencies() {
             rewriteRun(
               version(
@@ -283,6 +350,7 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                     """),
                 17));
         }
+
 
         @SuppressWarnings("CodeBlock2Expr")
         @Test

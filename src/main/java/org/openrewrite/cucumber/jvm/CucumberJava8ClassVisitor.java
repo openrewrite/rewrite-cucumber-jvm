@@ -64,12 +64,22 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
             @Override
             public J.@Nullable MethodDeclaration visitMethodDeclaration(J.MethodDeclaration md, ExecutionContext ctx) {
                 J.MethodDeclaration methodDeclaration = super.visitMethodDeclaration(md, ctx);
-                if (methodDeclaration.isConstructor() && (methodDeclaration.getBody() == null ||
-                        methodDeclaration.getBody().getStatements().isEmpty())) {
+                if (methodDeclaration.isConstructor() && isStepDefinitionsClassMember() &&
+                        (methodDeclaration.getBody() == null ||
+                                methodDeclaration.getBody().getStatements().isEmpty())) {
                     // noinspection DataFlowIssue
                     return null;
                 }
                 return methodDeclaration;
+            }
+
+            /**
+             * This visitor runs over the whole source file, which can hold classes other than the one being
+             * migrated; only the step definitions class has a constructor left empty by this recipe.
+             */
+            private boolean isStepDefinitionsClassMember() {
+                J.ClassDeclaration enclosing = getCursor().firstEnclosing(J.ClassDeclaration.class);
+                return enclosing != null && TypeUtils.isOfType(enclosing.getType(), stepDefinitionsClass);
             }
         });
 
