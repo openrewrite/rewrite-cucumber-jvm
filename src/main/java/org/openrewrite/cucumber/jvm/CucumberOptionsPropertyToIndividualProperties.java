@@ -31,6 +31,7 @@ import org.openrewrite.xml.tree.Content;
 import org.openrewrite.xml.tree.Xml;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -66,6 +67,9 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
     /** The tokenizer Cucumber-JVM itself applied to `cucumber.options`, in `io.cucumber.core.options.ShellWords`. */
     private static final Pattern SHELL_WORDS = Pattern.compile("[^\\s'\"]+|'([^']*)'|\"([^\"]*)\"");
 
+    private static final String MANUAL_MIGRATION = "TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; " +
+            "migrate to the individual cucumber.* properties by hand";
+
     @Getter
     final String displayName = "Migrate the `cucumber.options` property";
 
@@ -74,7 +78,7 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
             "as a single string, in favour of an individual property per option. This recipe splits the property " +
             "into its replacements, both in `.properties` files and in Maven Surefire or Failsafe " +
             "`systemPropertyVariables`. Options without a property equivalent, such as `--threads`, have no " +
-            "migration path, and leave the property untouched.";
+            "migration path; there the property is left untouched, with a `TODO` comment added above it.";
 
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {
@@ -111,18 +115,18 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
                 if (options == null) {
                     return f;
                 }
+                String lineSeparator = lineSeparator(f);
                 Map<String, String> replacements = individualProperties(options.getValue().getText());
                 if (replacements == null) {
-                    return f;
+                    return flagForManualMigration(f, options, lineSeparator);
                 }
                 Set<String> present = f.getContent().stream()
                         .filter(Properties.Entry.class::isInstance)
                         .map(entry -> ((Properties.Entry) entry).getKey())
                         .collect(Collectors.toSet());
                 if (present.stream().anyMatch(replacements::containsKey)) {
-                    return f;
+                    return flagForManualMigration(f, options, lineSeparator);
                 }
-                String lineSeparator = lineSeparator(f);
                 List<Properties.Content> content = ListUtils.flatMap(f.getContent(), c -> {
                     if (c != options) {
                         return c;
@@ -148,6 +152,28 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
         };
     }
 
+    private static Properties.File flagForManualMigration(
+            Properties.File file, Properties.Entry options, String lineSeparator) {
+        int index = file.getContent().indexOf(options);
+        if (index > 0 && file.getContent().get(index - 1) instanceof Properties.Comment &&
+                ((Properties.Comment) file.getContent().get(index - 1)).getMessage().contains(MANUAL_MIGRATION)) {
+            return file;
+        }
+        return file.withContent(ListUtils.flatMap(file.getContent(), c -> {
+            if (c != options) {
+                return c;
+            }
+            return Arrays.asList(
+                    new Properties.Comment(
+                            randomId(),
+                            options.getPrefix(),
+                            Markers.EMPTY,
+                            Properties.Comment.Delimiter.HASH_TAG,
+                            " " + MANUAL_MIGRATION),
+                    options.withPrefix(lineSeparator));
+        }));
+    }
+
     private static String lineSeparator(Properties.File file) {
         return file.getEof().contains("\r\n") ||
                 file.getContent().stream().anyMatch(content -> content.getPrefix().contains("\r\n")) ? "\r\n" : "\n";
@@ -168,15 +194,15 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
                 Xml.Tag options = maybeOptions.get();
                 String value = optionsValue(options);
                 if (value == null) {
-                    return t;
+                    return flagForManualMigration(t, options);
                 }
                 Map<String, String> replacements = individualProperties(value);
                 if (replacements == null) {
-                    return t;
+                    return flagForManualMigration(t, options);
                 }
                 Set<String> present = t.getChildren().stream().map(Xml.Tag::getName).collect(Collectors.toSet());
                 if (present.stream().anyMatch(replacements::containsKey)) {
-                    return t;
+                    return flagForManualMigration(t, options);
                 }
                 return t.withContent(ListUtils.flatMap(t.getContent(), c -> {
                     if (c != options) {
@@ -191,6 +217,26 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
                 }));
             }
         };
+    }
+
+    private static Xml.Tag flagForManualMigration(Xml.Tag systemPropertyVariables, Xml.Tag options) {
+        List<? extends Content> content = systemPropertyVariables.getContent();
+        if (content == null) {
+            return systemPropertyVariables;
+        }
+        int index = content.indexOf(options);
+        if (index > 0 && content.get(index - 1) instanceof Xml.Comment &&
+                ((Xml.Comment) content.get(index - 1)).getText().contains(MANUAL_MIGRATION)) {
+            return systemPropertyVariables;
+        }
+        return systemPropertyVariables.withContent(ListUtils.flatMap(content, c -> {
+            if (c != options) {
+                return c;
+            }
+            return Arrays.asList(
+                    new Xml.Comment(randomId(), options.getPrefix(), Markers.EMPTY, " " + MANUAL_MIGRATION + " "),
+                    options);
+        }));
     }
 
     /**
@@ -331,9 +377,10 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
         if (names.size() > 1) {
             return null;
         }
-        // Cucumber-JVM 5.0.0 dropped the old style `~@tag` negation; `cucumber.filter.tags` parses such a value
-        // as a tag literal that matches nothing, rather than reporting an error, so there is no migration path
-        if (tags.stream().anyMatch(tag -> tag.contains("~@"))) {
+        // Cucumber-JVM 5.0.0 dropped the old style `~@tag` negation and `@a,@b` disjunction; `cucumber.filter.tags`
+        // parses either as a tag literal that matches nothing, rather than reporting an error, so there is no
+        // migration path
+        if (tags.stream().anyMatch(tag -> tag.contains("~@") || tag.contains(","))) {
             return null;
         }
         String joinedFeatures = joinOnComma(features);

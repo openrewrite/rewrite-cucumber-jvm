@@ -158,15 +158,25 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
     }
 
     @Test
-    void tagExpressionsMayContainCommas() {
+    void leaveOldStyleTagDisjunctionsAlone() {
         rewriteRun(
                 properties(
                         """
                         cucumber.options=--tags @a,@b --tags "not @wip"
                         """,
                         """
-                        cucumber.filter.tags=(@a,@b) and (not @wip)
+                        # TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; migrate to the individual cucumber.* properties by hand
+                        cucumber.options=--tags @a,@b --tags "not @wip"
                         """,
+                        spec -> spec.path("src/test/resources/cucumber.properties")));
+    }
+
+    @Test
+    void retainCarriageReturnsWhenFlaggingForManualMigration() {
+        rewriteRun(
+                properties(
+                        "cucumber.publish.quiet=true\r\ncucumber.options=--format pretty\r\n",
+                        "cucumber.publish.quiet=true\r\n# TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; migrate to the individual cucumber.* properties by hand\r\ncucumber.options=--format pretty\r\n",
                         spec -> spec.path("src/test/resources/cucumber.properties")));
     }
 
@@ -175,6 +185,10 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
         rewriteRun(
                 properties(
                         """
+                        cucumber.options=--glue com.example.app --threads 4
+                        """,
+                        """
+                        # TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; migrate to the individual cucumber.* properties by hand
                         cucumber.options=--glue com.example.app --threads 4
                         """,
                         spec -> spec.path("src/test/resources/cucumber.properties")));
@@ -187,6 +201,10 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
                         """
                         cucumber.options=--format pretty
                         """,
+                        """
+                        # TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; migrate to the individual cucumber.* properties by hand
+                        cucumber.options=--format pretty
+                        """,
                         spec -> spec.path("src/test/resources/cucumber.properties")));
     }
 
@@ -195,6 +213,10 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
         rewriteRun(
                 properties(
                         """
+                        cucumber.options=--name '^first.*' --name '^second.*'
+                        """,
+                        """
+                        # TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; migrate to the individual cucumber.* properties by hand
                         cucumber.options=--name '^first.*' --name '^second.*'
                         """,
                         spec -> spec.path("src/test/resources/cucumber.properties")));
@@ -207,6 +229,10 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
                         """
                         cucumber.options=--tags ~@wip
                         """,
+                        """
+                        # TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; migrate to the individual cucumber.* properties by hand
+                        cucumber.options=--tags ~@wip
+                        """,
                         spec -> spec.path("src/test/resources/cucumber.properties")));
     }
 
@@ -215,6 +241,10 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
         rewriteRun(
                 properties(
                         """
+                        cucumber.options=--glue 'com.example.app,com.example.other'
+                        """,
+                        """
+                        # TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; migrate to the individual cucumber.* properties by hand
                         cucumber.options=--glue 'com.example.app,com.example.other'
                         """,
                         spec -> spec.path("src/test/resources/cucumber.properties")));
@@ -227,6 +257,22 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
                         """
                         cucumber.glue=com.example.other
                         cucumber.options=--glue com.example.app
+                        """,
+                        """
+                        cucumber.glue=com.example.other
+                        # TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; migrate to the individual cucumber.* properties by hand
+                        cucumber.options=--glue com.example.app
+                        """,
+                        spec -> spec.path("src/test/resources/cucumber.properties")));
+    }
+
+    @Test
+    void retainAnExistingManualMigrationComment() {
+        rewriteRun(
+                properties(
+                        """
+                        # TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; migrate to the individual cucumber.* properties by hand
+                        cucumber.options=--format pretty
                         """,
                         spec -> spec.path("src/test/resources/cucumber.properties")));
     }
@@ -362,6 +408,28 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
                                 </plugins>
                             </build>
                         </project>
+                        """,
+                        """
+                        <project>
+                            <modelVersion>4.0.0</modelVersion>
+                            <groupId>com.example</groupId>
+                            <artifactId>app</artifactId>
+                            <version>1.0.0</version>
+                            <build>
+                                <plugins>
+                                    <plugin>
+                                        <groupId>org.apache.maven.plugins</groupId>
+                                        <artifactId>maven-surefire-plugin</artifactId>
+                                        <configuration>
+                                            <systemPropertyVariables>
+                                                <!-- TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; migrate to the individual cucumber.* properties by hand -->
+                                                <cucumber.options>--name 'first &amp; second'</cucumber.options>
+                                            </systemPropertyVariables>
+                                        </configuration>
+                                    </plugin>
+                                </plugins>
+                            </build>
+                        </project>
                         """));
     }
 
@@ -382,6 +450,28 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
                                         <artifactId>maven-surefire-plugin</artifactId>
                                         <configuration>
                                             <systemPropertyVariables>
+                                                <cucumber.options><!-- legacy -->--glue com.example.app</cucumber.options>
+                                            </systemPropertyVariables>
+                                        </configuration>
+                                    </plugin>
+                                </plugins>
+                            </build>
+                        </project>
+                        """,
+                        """
+                        <project>
+                            <modelVersion>4.0.0</modelVersion>
+                            <groupId>com.example</groupId>
+                            <artifactId>app</artifactId>
+                            <version>1.0.0</version>
+                            <build>
+                                <plugins>
+                                    <plugin>
+                                        <groupId>org.apache.maven.plugins</groupId>
+                                        <artifactId>maven-surefire-plugin</artifactId>
+                                        <configuration>
+                                            <systemPropertyVariables>
+                                                <!-- TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; migrate to the individual cucumber.* properties by hand -->
                                                 <cucumber.options><!-- legacy -->--glue com.example.app</cucumber.options>
                                             </systemPropertyVariables>
                                         </configuration>
