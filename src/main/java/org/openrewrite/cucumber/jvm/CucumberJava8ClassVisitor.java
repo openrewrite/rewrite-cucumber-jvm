@@ -26,8 +26,10 @@ import org.openrewrite.staticanalysis.RemoveUnneededBlock;
 import org.openrewrite.staticanalysis.UnnecessaryThrows;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static java.util.Collections.emptyList;
 
@@ -96,7 +98,87 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
                         JavaParser.fromJavaVersion().classpathFromResources(ctx, "cucumber-java-7", "cucumber-java8-7"))
                 .imports(replacementImport)
                 .build().apply(getCursor(), coordinatesForNewMethod(classDeclaration.getBody()), templateParameters);
-        return applied.withImplements(retained);
+        return retainConstructorArguments(applied.withImplements(retained));
+    }
+
+    /**
+     * The lambdas moved out of the constructor commonly close over its arguments, which is how `cucumber-java8`
+     * glue receives its dependency injected collaborators. Those arguments are out of scope in the methods the
+     * lambda bodies now live in, so hold each one in a field that the constructor assigns.
+     */
+    private J.ClassDeclaration retainConstructorArguments(J.ClassDeclaration classDeclaration) {
+        J.MethodDeclaration constructor = soleConstructor(classDeclaration);
+        if (constructor == null) {
+            return classDeclaration;
+        }
+        Set<String> namesTaken = declaredFieldNames(classDeclaration);
+        StringBuilder fields = new StringBuilder();
+        StringBuilder assignments = new StringBuilder();
+        for (Statement parameter : constructor.getParameters()) {
+            if (!(parameter instanceof J.VariableDeclarations)) {
+                continue;
+            }
+            J.VariableDeclarations argument = (J.VariableDeclarations) parameter;
+            if (argument.getTypeExpression() == null || argument.getVariables().size() != 1) {
+                continue;
+            }
+            String name = argument.getVariables().get(0).getSimpleName();
+            if (!namesTaken.add(name)) {
+                // Already retained on an earlier pass over this same class, or taken by a field declared here
+                continue;
+            }
+            fields.append(String.format("private final %s %s;%n",
+                    argument.getTypeExpression().printTrimmed(getCursor()), name));
+            assignments.append(String.format("this.%s = %s;%n", name, name));
+        }
+        if (fields.length() == 0) {
+            return classDeclaration;
+        }
+
+        J.ClassDeclaration c = JavaTemplate.builder(fields.toString())
+                .contextSensitive()
+                .build()
+                .apply(updateCursor(classDeclaration), classDeclaration.getBody().getCoordinates().firstStatement());
+        J.MethodDeclaration reboundConstructor = soleConstructor(c);
+        if (reboundConstructor == null || reboundConstructor.getBody() == null) {
+            return c;
+        }
+        // Appended rather than prepended, as `firstStatement` anchors on a statement that may since have been
+        // replaced, and has nothing to anchor to at all once the lambdas have left the constructor empty
+        return JavaTemplate.builder(assignments.toString())
+                .contextSensitive()
+                .build()
+                .apply(updateCursor(c), reboundConstructor.getBody().getCoordinates().lastStatement());
+    }
+
+    /**
+     * @return the only constructor of the class, if it takes arguments; {@code null} when there is no such
+     * constructor, or more than one, as then there is no single place to assign the fields from
+     */
+    private static J.@Nullable MethodDeclaration soleConstructor(J.ClassDeclaration classDeclaration) {
+        J.MethodDeclaration constructor = null;
+        for (Statement statement : classDeclaration.getBody().getStatements()) {
+            if (statement instanceof J.MethodDeclaration && ((J.MethodDeclaration) statement).isConstructor()) {
+                if (constructor != null) {
+                    return null;
+                }
+                constructor = (J.MethodDeclaration) statement;
+            }
+        }
+        return constructor == null || constructor.getParameters().stream()
+                .noneMatch(J.VariableDeclarations.class::isInstance) ? null : constructor;
+    }
+
+    private static Set<String> declaredFieldNames(J.ClassDeclaration classDeclaration) {
+        Set<String> names = new HashSet<>();
+        for (Statement statement : classDeclaration.getBody().getStatements()) {
+            if (statement instanceof J.VariableDeclarations) {
+                for (J.VariableDeclarations.NamedVariable variable : ((J.VariableDeclarations) statement).getVariables()) {
+                    names.add(variable.getSimpleName());
+                }
+            }
+        }
+        return names;
     }
 
     /**
