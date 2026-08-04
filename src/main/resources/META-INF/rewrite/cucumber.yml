@@ -23,7 +23,7 @@ tags:
   - testing
   - cucumber
 recipeList:
-  - org.openrewrite.cucumber.jvm.UpgradeCucumber5x
+  - org.openrewrite.cucumber.jvm.UpgradeCucumber6x
   - org.openrewrite.cucumber.jvm.TypeRegistryConfigurerToAnnotations
   - org.openrewrite.cucumber.jvm.FixTeluguLanguageCode
   - org.openrewrite.cucumber.jvm.CucumberJava8ToJava
@@ -35,6 +35,17 @@ recipeList:
       groupId: io.cucumber
       artifactId: "*"
       newVersion: 7.x
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.UpgradeCucumber6x
+displayName: Upgrade to Cucumber-JVM 6.x
+description: Upgrade to Cucumber-JVM 6.x from any previous version.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  - org.openrewrite.cucumber.jvm.UpgradeCucumber5x
+  - org.openrewrite.cucumber.jvm.CucumberOptionsPropertyToIndividualProperties
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.UpgradeCucumber5x
@@ -335,6 +346,9 @@ recipeList:
   - org.openrewrite.java.RemoveAnnotationAttribute:
       annotationType: io.cucumber.testng.CucumberOptions
       attributeName: strict
+  - org.openrewrite.properties.DeleteProperty:
+      propertyKey: cucumber.execution.strict
+      relaxedBinding: false
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.FixTeluguLanguageCode
