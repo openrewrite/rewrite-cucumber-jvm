@@ -26,8 +26,10 @@ import org.openrewrite.staticanalysis.RemoveUnneededBlock;
 import org.openrewrite.staticanalysis.UnnecessaryThrows;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static java.util.Collections.emptyList;
 
@@ -109,6 +111,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         if (constructor == null) {
             return classDeclaration;
         }
+        Set<String> namesTaken = declaredFieldNames(classDeclaration);
         StringBuilder fields = new StringBuilder();
         StringBuilder assignments = new StringBuilder();
         for (Statement parameter : constructor.getParameters()) {
@@ -120,8 +123,8 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
                 continue;
             }
             String name = argument.getVariables().get(0).getSimpleName();
-            if (declaresField(classDeclaration, name)) {
-                // Already retained, on an earlier pass over this same class
+            if (!namesTaken.add(name)) {
+                // Already retained on an earlier pass over this same class, or taken by a field declared here
                 continue;
             }
             fields.append(String.format("private final %s %s;%n",
@@ -166,17 +169,16 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
                 .noneMatch(J.VariableDeclarations.class::isInstance) ? null : constructor;
     }
 
-    private static boolean declaresField(J.ClassDeclaration classDeclaration, String name) {
+    private static Set<String> declaredFieldNames(J.ClassDeclaration classDeclaration) {
+        Set<String> names = new HashSet<>();
         for (Statement statement : classDeclaration.getBody().getStatements()) {
             if (statement instanceof J.VariableDeclarations) {
                 for (J.VariableDeclarations.NamedVariable variable : ((J.VariableDeclarations) statement).getVariables()) {
-                    if (name.equals(variable.getSimpleName())) {
-                        return true;
-                    }
+                    names.add(variable.getSimpleName());
                 }
             }
         }
-        return false;
+        return names;
     }
 
     /**

@@ -351,7 +351,6 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                 17));
         }
 
-
         @SuppressWarnings("CodeBlock2Expr")
         @Test
         void methodInvocationsOutsideConstructor() {
