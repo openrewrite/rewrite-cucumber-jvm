@@ -26,6 +26,10 @@ dependencies {
     implementation("org.openrewrite.recipe:rewrite-java-dependencies:$rewriteVersion")
     implementation("org.openrewrite.recipe:rewrite-static-analysis:$rewriteVersion")
 
+    // Only needed to resolve `@CucumberOptions` in tests; TestNG 7.12 requires Java 11
+    testImplementation("io.cucumber:cucumber-junit:latest.release")
+    testImplementation("io.cucumber:cucumber-testng:latest.release")
+
     testImplementation("org.openrewrite:rewrite-java-21")
     testImplementation("org.openrewrite:rewrite-test")
 }
