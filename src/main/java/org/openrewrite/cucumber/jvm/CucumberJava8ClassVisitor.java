@@ -59,6 +59,12 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
     private final String template;
     private final Object[] templateParameters;
 
+    /**
+     * The template is parsed with only Cucumber on its classpath, so a return type declared by the project itself
+     * comes back unattributed.
+     */
+    private final @Nullable JavaType returnType;
+
     @Override
     public J.@Nullable ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, ExecutionContext ctx) {
         J.ClassDeclaration classDeclaration = super.visitClassDeclaration(cd, ctx);
@@ -100,10 +106,38 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         J.ClassDeclaration applied = JavaTemplate.builder(template)
                 .contextSensitive()
                 .javaParser(
-                        JavaParser.fromJavaVersion().classpathFromResources(ctx, "cucumber-java-7", "cucumber-java8-7"))
+                        JavaParser.fromJavaVersion()
+                                .classpathFromResources(ctx, "cucumber-java-7", "cucumber-java8-7", "datatable"))
                 .imports(replacementImports.toArray(new String[0]))
                 .build().apply(getCursor(), coordinatesForNewMethod(classDeclaration.getBody()), templateParameters);
-        return retainGlueDeclarationState(applied.withImplements(retained), ctx);
+        return retainGlueDeclarationState(retypeNewMethod(classDeclaration, applied).withImplements(retained), ctx);
+    }
+
+    /**
+     * Found by id rather than by position, as {@code coordinatesForNewMethod} does not always append.
+     */
+    private J.ClassDeclaration retypeNewMethod(J.ClassDeclaration before, J.ClassDeclaration after) {
+        if (returnType == null) {
+            return after;
+        }
+        Set<UUID> existing = new HashSet<>();
+        for (Statement statement : before.getBody().getStatements()) {
+            existing.add(statement.getId());
+        }
+        return after.withBody(after.getBody().withStatements(ListUtils.map(after.getBody().getStatements(), statement -> {
+            if (existing.contains(statement.getId()) || !(statement instanceof J.MethodDeclaration)) {
+                return statement;
+            }
+            J.MethodDeclaration method = (J.MethodDeclaration) statement;
+            if (method.getMethodType() == null || method.getReturnTypeExpression() == null) {
+                return statement;
+            }
+            JavaType.Method methodType = method.getMethodType().withReturnType(returnType);
+            return method
+                    .withReturnTypeExpression(method.getReturnTypeExpression().withType(returnType))
+                    .withMethodType(methodType)
+                    .withName(method.getName().withType(methodType));
+        })));
     }
 
     /**

@@ -452,13 +452,16 @@ recipeList:
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.CucumberJava8ToJava
 displayName: Migrate `cucumber-java8` to `cucumber-java`
-description: Migrates `cucumber-java8` step definitions and `LambdaGlue` hooks to `cucumber-java` annotated methods.
+description: >-
+  Migrates `cucumber-java8` step definitions, `LambdaGlue` hooks and `LambdaGlue` type registrations to
+  `cucumber-java` annotated methods.
 tags:
   - testing
   - cucumber
 recipeList:
   - org.openrewrite.cucumber.jvm.CucumberJava8HookDefinitionToCucumberJava
   - org.openrewrite.cucumber.jvm.CucumberJava8StepDefinitionToCucumberJava
+  - org.openrewrite.cucumber.jvm.CucumberJava8TypeDefinitionToCucumberJava
   - org.openrewrite.cucumber.jvm.MigrateCucumberJava8ScenarioAndStatus
   # Keyed off the `cucumber-java8` types that are there to begin with, rather than the `cucumber-java` types the
   # migration introduces: a scanning recipe only sees the sources as they were when the cycle it runs in started,
