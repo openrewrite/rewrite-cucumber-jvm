@@ -42,7 +42,7 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
         spec.parser(JavaParser.fromJavaVersion()
           .logCompilationWarningsAndErrors(true)
           .classpathFromResources(new InMemoryExecutionContext(),
-            "junit-jupiter-api", "cucumber-java-7", "cucumber-java8-7"));
+            "junit-jupiter-api", "cucumber-java-7", "cucumber-java8-7", "datatable"));
     }
 
     @DocumentExample
@@ -373,8 +373,10 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                             Given("a calculator I just turned on", () -> {
                             });
 
-                            DataTableType((String cell) -> new Money(cell));
+                            DataTableType(BLANK, (String cell) -> new Money(cell));
                         }
+
+                        static final String BLANK = "[blank]";
 
                         static class Money {
                             Money(String amount) {
@@ -391,12 +393,14 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                     public class CalculatorStepDefinitions implements En {
                         public CalculatorStepDefinitions() {
 
-                            DataTableType((String cell) -> new Money(cell));
+                            /*~~(TODO Migrate manually)~~>*/DataTableType(BLANK, (String cell) -> new Money(cell));
                         }
 
                         @Given("a calculator I just turned on")
                         public void a_calculator_i_just_turned_on() {
                         }
+
+                        static final String BLANK = "[blank]";
 
                         static class Money {
                             Money(String amount) {
@@ -1350,6 +1354,423 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
     }
 
     @Nested
+    @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/2")
+    class TypeDefinitionMigration {
+
+        @Test
+        void dataTableTypes() {
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.datatable.DataTable;
+                    import io.cucumber.java8.En;
+
+                    import java.util.List;
+                    import java.util.Map;
+
+                    public class TypeDefinitions implements En {
+
+                        public TypeDefinitions() {
+                            DataTableType((Map<String, String> entry) -> new Author(entry.get("name"), entry.get("birthDate")));
+
+                            DataTableType("[blank]", (List<String> row) -> {
+                                return new Author(row.get(0), row.get(1));
+                            });
+
+                            DataTableType((String cell) -> new Title(cell));
+
+                            DataTableType((DataTable table) -> new Library(table.asMaps()));
+                        }
+
+                        static class Author {
+                            Author(String name, String birthDate) {
+                            }
+                        }
+
+                        static class Title {
+                            Title(String value) {
+                            }
+                        }
+
+                        static class Library {
+                            Library(Object entries) {
+                            }
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.datatable.DataTable;
+                    import io.cucumber.java.DataTableType;
+
+                    import java.util.List;
+                    import java.util.Map;
+
+                    public class TypeDefinitions {
+
+                        @DataTableType
+                        public Author author(Map<String, String> entry) {
+                            return new Author(entry.get("name"), entry.get("birthDate"));
+                        }
+
+                        @DataTableType(replaceWithEmptyString = "[blank]")
+                        public Author author2(List<String> row) {
+                            return new Author(row.get(0), row.get(1));
+                        }
+
+                        @DataTableType
+                        public Title title(String cell) {
+                            return new Title(cell);
+                        }
+
+                        @DataTableType
+                        public Library library(DataTable table) {
+                            return new Library(table.asMaps());
+                        }
+
+                        static class Author {
+                            Author(String name, String birthDate) {
+                            }
+                        }
+
+                        static class Title {
+                            Title(String value) {
+                            }
+                        }
+
+                        static class Library {
+                            Library(Object entries) {
+                            }
+                        }
+                    }
+                    """),
+                17));
+        }
+
+        @Test
+        void parameterTypeAndDocStringType() {
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+
+                    public class TypeDefinitions implements En {
+
+                        public TypeDefinitions() {
+                            ParameterType("iso8601Date", "\\\\d{4}-\\\\d{2}-\\\\d{2}", (String date) -> new Title(date));
+
+                            ParameterType("amount in {word}", "(\\\\d+) (\\\\w+)", (String amount, String currency) -> new Title(amount + currency));
+
+                            DocStringType("json", (String docString) -> new Title(docString));
+                        }
+
+                        static class Title {
+                            Title(String value) {
+                            }
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java.DocStringType;
+                    import io.cucumber.java.ParameterType;
+
+                    public class TypeDefinitions {
+
+                        @ParameterType("\\\\d{4}-\\\\d{2}-\\\\d{2}")
+                        public Title iso8601Date(String date) {
+                            return new Title(date);
+                        }
+
+                        @ParameterType(name = "amount in {word}", value = "(\\\\d+) (\\\\w+)")
+                        public Title amountinword(String amount, String currency) {
+                            return new Title(amount + currency);
+                        }
+
+                        @DocStringType(contentType = "json")
+                        public Title title(String docString) {
+                            return new Title(docString);
+                        }
+
+                        static class Title {
+                            Title(String value) {
+                            }
+                        }
+                    }
+                    """),
+                17));
+        }
+
+        @Test
+        void defaultTransformers() {
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+
+                    import java.lang.reflect.Type;
+                    import java.util.Map;
+
+                    public class TypeDefinitions implements En {
+
+                        private final ObjectMapper mapper = new ObjectMapper();
+
+                        public TypeDefinitions() {
+                            DefaultParameterTransformer((String fromValue, Type toValueType) -> mapper.convert(fromValue, toValueType));
+
+                            DefaultDataTableCellTransformer((String fromValue, Type toValueType) -> mapper.convert(fromValue, toValueType));
+
+                            DefaultDataTableEntryTransformer("[blank]", (Map<String, String> fromValue, Type toValueType) -> mapper.convert(fromValue, toValueType));
+                        }
+
+                        static class ObjectMapper {
+                            Object convert(Object fromValue, Type toValueType) {
+                                return fromValue;
+                            }
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java.DefaultDataTableCellTransformer;
+                    import io.cucumber.java.DefaultDataTableEntryTransformer;
+                    import io.cucumber.java.DefaultParameterTransformer;
+
+                    import java.lang.reflect.Type;
+                    import java.util.Map;
+
+                    public class TypeDefinitions {
+
+                        private final ObjectMapper mapper = new ObjectMapper();
+
+                        @DefaultParameterTransformer
+                        public Object defaultParameterTransformer(String fromValue, Type toValueType) {
+                            return mapper.convert(fromValue, toValueType);
+                        }
+
+                        @DefaultDataTableCellTransformer
+                        public Object defaultDataTableCellTransformer(String fromValue, Type toValueType) {
+                            return mapper.convert(fromValue, toValueType);
+                        }
+
+                        @DefaultDataTableEntryTransformer(replaceWithEmptyString = "[blank]")
+                        public Object defaultDataTableEntryTransformer(Map<String, String> fromValue, Type toValueType) {
+                            return mapper.convert(fromValue, toValueType);
+                        }
+
+                        static class ObjectMapper {
+                            Object convert(Object fromValue, Type toValueType) {
+                                return fromValue;
+                            }
+                        }
+                    }
+                    """),
+                17));
+        }
+
+        @Test
+        void implicitLambdaParameterTypes() {
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+
+                    public class TypeDefinitions implements En {
+
+                        public TypeDefinitions() {
+                            DocStringType("json", docString -> new Title(docString));
+
+                            DefaultParameterTransformer((fromValue, toValueType) -> fromValue);
+                        }
+
+                        static class Title {
+                            Title(String value) {
+                            }
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java.DefaultParameterTransformer;
+                    import io.cucumber.java.DocStringType;
+
+                    import java.lang.reflect.Type;
+
+                    public class TypeDefinitions {
+
+                        @DocStringType(contentType = "json")
+                        public Title title(String docString) {
+                            return new Title(docString);
+                        }
+
+                        @DefaultParameterTransformer
+                        public Object defaultParameterTransformer(String fromValue, Type toValueType) {
+                            return fromValue;
+                        }
+
+                        static class Title {
+                            Title(String value) {
+                            }
+                        }
+                    }
+                    """),
+                17));
+        }
+
+        @Test
+        void importTheTypeARegistrationIsKeyedBy() {
+            rewriteRun(
+              // language=java
+              java(
+                """
+                  package com.example.model;
+
+                  import java.util.Map;
+
+                  public class Authors {
+                      public static Author of(Map<String, String> entry) {
+                          return new Author();
+                      }
+
+                      public static class Author {
+                      }
+                  }
+                  """
+              ),
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import com.example.model.Authors;
+                    import io.cucumber.java8.En;
+
+                    import java.util.Map;
+
+                    public class TypeDefinitions implements En {
+
+                        public TypeDefinitions() {
+                            DataTableType((Map<String, String> entry) -> Authors.of(entry));
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import com.example.model.Authors;
+                    import io.cucumber.java.DataTableType;
+
+                    import java.util.Map;
+
+                    public class TypeDefinitions {
+
+                        @DataTableType
+                        public Authors.Author author(Map<String, String> entry) {
+                            return Authors.of(entry);
+                        }
+                    }
+                    """),
+                17));
+        }
+
+        @SuppressWarnings("CodeBlock2Expr")
+        @Test
+        void stepsHooksAndTypeDefinitionsInOneClass() {
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+                    import io.cucumber.java8.Scenario;
+
+                    import java.util.Map;
+
+                    public class TypeDefinitions implements En {
+
+                        private Author author;
+
+                        public TypeDefinitions() {
+                            Before((Scenario scn) -> {
+                                author = null;
+                            });
+
+                            DataTableType((Map<String, String> entry) -> new Author(entry.get("name")));
+
+                            Given("an author {author}", (Author a) -> {
+                                author = a;
+                            });
+                        }
+
+                        static class Author {
+                            Author(String name) {
+                            }
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java.Before;
+                    import io.cucumber.java.DataTableType;
+                    import io.cucumber.java.Scenario;
+                    import io.cucumber.java.en.Given;
+
+                    import java.util.Map;
+
+                    public class TypeDefinitions {
+
+                        private Author author;
+
+                        @Before
+                        public void before(Scenario scn) {
+                            author = null;
+                        }
+
+                        @Given("an author {author}")
+                        public void an_author_author(Author a) {
+                            author = a;
+                        }
+
+                        @DataTableType
+                        public Author author(Map<String, String> entry) {
+                            return new Author(entry.get("name"));
+                        }
+
+                        static class Author {
+                            Author(String name) {
+                            }
+                        }
+                    }
+                    """),
+                17));
+        }
+    }
+
+    @Nested
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
     class DependencyMigration {
 
@@ -1442,8 +1863,10 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                                 Given("a calculator I just turned on", () -> {
                                 });
 
-                                DataTableType((String cell) -> new Money(cell));
+                                DataTableType(BLANK, (String cell) -> new Money(cell));
                             }
+
+                            static final String BLANK = "[blank]";
 
                             static class Money {
                                 Money(String amount) {
@@ -1460,12 +1883,14 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                         public class CalculatorStepDefinitions implements En {
                             public CalculatorStepDefinitions() {
 
-                                DataTableType((String cell) -> new Money(cell));
+                                /*~~(TODO Migrate manually)~~>*/DataTableType(BLANK, (String cell) -> new Money(cell));
                             }
 
                             @Given("a calculator I just turned on")
                             public void a_calculator_i_just_turned_on() {
                             }
+
+                            static final String BLANK = "[blank]";
 
                             static class Money {
                                 Money(String amount) {

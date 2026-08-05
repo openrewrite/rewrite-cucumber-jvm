@@ -60,7 +60,8 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
                     @Override
                     public @Nullable J visitMethodInvocation(J.MethodInvocation methodInvocation, ExecutionContext ctx) {
                         J.MethodInvocation m = (J.MethodInvocation) super.visitMethodInvocation(methodInvocation, ctx);
-                        if (!STEP_DEFINITION_METHOD_MATCHER.matches(m)) {
+                        if (!STEP_DEFINITION_METHOD_MATCHER.matches(m) ||
+                                CucumberJava8TypeDefinitionToCucumberJava.isTypeDefinition(m)) {
                             return m;
                         }
 
@@ -98,7 +99,8 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
                                 glueDeclaration == null ? null : glueDeclaration.getId(),
                                 singletonList(replacementImport),
                                 stepArguments.template(),
-                                stepArguments.parameters()));
+                                stepArguments.parameters(),
+                                null));
 
                         // Remove original method invocation; it's replaced in the above
                         // visitor
@@ -114,6 +116,10 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
      */
     static boolean converts(J.MethodInvocation methodInvocation) {
         if (!STEP_DEFINITION_METHOD_MATCHER.matches(methodInvocation)) {
+            return false;
+        }
+        if (CucumberJava8TypeDefinitionToCucumberJava.isTypeDefinition(methodInvocation)) {
+            // Registrations such as `DataTableType(String, DataTableEntryDefinitionBody)` merely look like a step
             return false;
         }
         List<Expression> arguments = methodInvocation.getArguments();
