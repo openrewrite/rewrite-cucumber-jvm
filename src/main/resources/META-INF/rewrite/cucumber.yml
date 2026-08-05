@@ -29,6 +29,7 @@ recipeList:
   - org.openrewrite.cucumber.jvm.CucumberJava8ToJava
   - org.openrewrite.cucumber.jvm.DropStrictOption
   - org.openrewrite.cucumber.jvm.DropSummaryPrinter
+  - org.openrewrite.cucumber.jvm.MigrateRuntimeOptionsBuilder
   - org.openrewrite.cucumber.jvm.RegexToCucumberExpression
   - org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite
   - org.openrewrite.java.dependencies.UpgradeDependencyVersion:
@@ -354,6 +355,25 @@ recipeList:
   - org.openrewrite.properties.DeleteProperty:
       propertyKey: cucumber.execution.strict
       relaxedBinding: false
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.MigrateRuntimeOptionsBuilder
+displayName: Migrate `RuntimeOptionsBuilder`
+description: >-
+  Cucumber-JVM 7.0.0 dropped `RuntimeOptionsBuilder.addDefaultFormatterIfAbsent()`, as no formatter is
+  added implicitly any more, and renamed `addDefaultSummaryPrinterIfAbsent()` to
+  `addDefaultSummaryPrinterIfNotDisabled()`, which defers to the new `setNoSummary()`. Mirrors the change
+  Cucumber-JVM made to its own `io.cucumber.core.cli.Main`, which projects that run Cucumber
+  programmatically tend to have copied.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  - org.openrewrite.java.RemoveMethodInvocations:
+      methodPattern: io.cucumber.core.options.RuntimeOptionsBuilder addDefaultFormatterIfAbsent()
+  - org.openrewrite.java.ChangeMethodName:
+      methodPattern: io.cucumber.core.options.RuntimeOptionsBuilder addDefaultSummaryPrinterIfAbsent()
+      newMethodName: addDefaultSummaryPrinterIfNotDisabled
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.DropTimeoutAttribute
