@@ -26,7 +26,10 @@ import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.java.Assertions.java;
+import static org.openrewrite.java.Assertions.mavenProject;
+import static org.openrewrite.java.Assertions.srcTestJava;
 import static org.openrewrite.java.Assertions.version;
+import static org.openrewrite.maven.Assertions.pomXml;
 
 @Issue("https://github.com/openrewrite/rewrite-testing-frameworks/issues/259")
 class CucumberJava8ToCucumberJavaTest implements RewriteTest {
@@ -85,10 +88,10 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
 
                 import io.cucumber.java.After;
                 import io.cucumber.java.Before;
-                import io.cucumber.java.en.Then;
-                import io.cucumber.java.en.When;
                 import io.cucumber.java.Scenario;
                 import io.cucumber.java.Status;
+                import io.cucumber.java.en.Then;
+                import io.cucumber.java.en.When;
 
                 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -383,7 +386,7 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                     package com.example.app;
 
                     import io.cucumber.java.en.Given;
-                    import io.cucumber.java.En;
+                    import io.cucumber.java8.En;
 
                     public class CalculatorStepDefinitions implements En {
                         public CalculatorStepDefinitions() {
@@ -710,7 +713,7 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   """
                     package com.example.app;
 
-                    import io.cucumber.java.En;
+                    import io.cucumber.java8.En;
 
                     public class CalculatorStepDefinitions implements En {
                         public CalculatorStepDefinitions() {
@@ -749,7 +752,7 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   """
                     package com.example.app;
 
-                    import io.cucumber.java.En;
+                    import io.cucumber.java8.En;
 
                     public class CalculatorStepDefinitions implements En {
                         private static final String expression = "{int} plus {int}";
@@ -782,7 +785,7 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                     }""", """
                     package com.example.app;
 
-                    import io.cucumber.java.En;
+                    import io.cucumber.java8.En;
 
                     public class CalculatorStepDefinitions implements En {
                         public CalculatorStepDefinitions() {
@@ -854,11 +857,7 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   """
                     package com.example.app;
 
-                    import io.cucumber.java.After;
-                    import io.cucumber.java.AfterStep;
-                    import io.cucumber.java.Before;
-                    import io.cucumber.java.Scenario;
-                    import io.cucumber.java.Status;
+                    import io.cucumber.java.*;
 
                     public class HookStepDefinitions {
 
@@ -997,10 +996,10 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   """
                     package com.example.app;
 
-                    import io.cucumber.java.En;
-                    import io.cucumber.java.HookBody;
-                    import io.cucumber.java.HookNoArgsBody;
-                    import io.cucumber.java.Scenario;
+                    import io.cucumber.java8.En;
+                    import io.cucumber.java8.HookBody;
+                    import io.cucumber.java8.HookNoArgsBody;
+                    import io.cucumber.java8.Scenario;
 
                     public class HookStepDefinitions implements En {
 
@@ -1056,7 +1055,7 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   """
                     package com.example.app;
 
-                    import io.cucumber.java.En;
+                    import io.cucumber.java8.En;
 
                     public class HookStepDefinitions implements En {
 
@@ -1072,6 +1071,172 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                     }
                     """),
                 17));
+        }
+    }
+
+    @Nested
+    @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+    class DependencyMigration {
+
+        @Test
+        void dropCucumberJava8OnceAllGlueIsMigrated() {
+            rewriteRun(
+              // The dependencies only follow in the cycle after the one that migrated the glue
+              spec -> spec.expectedCyclesThatMakeChanges(2),
+              mavenProject("app",
+                srcTestJava(
+                  // language=java
+                  version(
+                    java(
+                      """
+                        package com.example.app;
+
+                        import io.cucumber.java8.En;
+
+                        public class CalculatorStepDefinitions implements En {
+                            public CalculatorStepDefinitions() {
+                                Given("a calculator I just turned on", () -> {
+                                });
+                            }
+                        }
+                        """,
+                      """
+                        package com.example.app;
+
+                        import io.cucumber.java.en.Given;
+
+                        public class CalculatorStepDefinitions {
+
+                            @Given("a calculator I just turned on")
+                            public void a_calculator_i_just_turned_on() {
+                            }
+                        }
+                        """),
+                    17)),
+                //language=xml
+                pomXml(
+                  """
+                    <project>
+                        <groupId>com.example</groupId>
+                        <artifactId>app</artifactId>
+                        <version>1.0.0</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.cucumber</groupId>
+                                <artifactId>cucumber-java8</artifactId>
+                                <version>7.34.6</version>
+                                <scope>test</scope>
+                            </dependency>
+                        </dependencies>
+                    </project>
+                    """,
+                  """
+                    <project>
+                        <groupId>com.example</groupId>
+                        <artifactId>app</artifactId>
+                        <version>1.0.0</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.cucumber</groupId>
+                                <artifactId>cucumber-java</artifactId>
+                                <version>7.34.6</version>
+                                <scope>test</scope>
+                            </dependency>
+                        </dependencies>
+                    </project>
+                    """)));
+        }
+
+        @SuppressWarnings("CodeBlock2Expr")
+        @Test
+        void retainCucumberJava8WhereLambdaGlueRemains() {
+            rewriteRun(
+              spec -> spec.expectedCyclesThatMakeChanges(2),
+              mavenProject("app",
+                srcTestJava(
+                  // language=java
+                  version(
+                    java(
+                      """
+                        package com.example.app;
+
+                        import io.cucumber.java8.En;
+
+                        public class CalculatorStepDefinitions implements En {
+                            public CalculatorStepDefinitions() {
+                                Given("a calculator I just turned on", () -> {
+                                });
+
+                                DataTableType((String cell) -> new Money(cell));
+                            }
+
+                            static class Money {
+                                Money(String amount) {
+                                }
+                            }
+                        }
+                        """,
+                      """
+                        package com.example.app;
+
+                        import io.cucumber.java.en.Given;
+                        import io.cucumber.java8.En;
+
+                        public class CalculatorStepDefinitions implements En {
+                            public CalculatorStepDefinitions() {
+
+                                DataTableType((String cell) -> new Money(cell));
+                            }
+
+                            @Given("a calculator I just turned on")
+                            public void a_calculator_i_just_turned_on() {
+                            }
+
+                            static class Money {
+                                Money(String amount) {
+                                }
+                            }
+                        }
+                        """),
+                    17)),
+                //language=xml
+                pomXml(
+                  """
+                    <project>
+                        <groupId>com.example</groupId>
+                        <artifactId>app</artifactId>
+                        <version>1.0.0</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.cucumber</groupId>
+                                <artifactId>cucumber-java8</artifactId>
+                                <version>7.34.6</version>
+                                <scope>test</scope>
+                            </dependency>
+                        </dependencies>
+                    </project>
+                    """,
+                  """
+                    <project>
+                        <groupId>com.example</groupId>
+                        <artifactId>app</artifactId>
+                        <version>1.0.0</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.cucumber</groupId>
+                                <artifactId>cucumber-java</artifactId>
+                                <version>7.34.6</version>
+                                <scope>test</scope>
+                            </dependency>
+                            <dependency>
+                                <groupId>io.cucumber</groupId>
+                                <artifactId>cucumber-java8</artifactId>
+                                <version>7.34.6</version>
+                                <scope>test</scope>
+                            </dependency>
+                        </dependencies>
+                    </project>
+                    """)));
         }
     }
 }
