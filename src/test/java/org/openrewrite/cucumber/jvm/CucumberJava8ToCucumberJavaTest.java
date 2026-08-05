@@ -102,7 +102,7 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                     }
 
                     @After
-                    public void after(io.cucumber.java.Scenario scn) {
+                    public void after(Scenario scn) {
                         if (scn.getStatus() == Status.FAILED) {
                             scn.log("failed");
                         }
@@ -671,24 +671,68 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                         }
 
                         @Before(order = 2)
-                        public void before_order_2(io.cucumber.java.Scenario scn) {
+                        public void before_order_2(Scenario scn) {
                             a = 0;
                         }
 
                         @After
-                        public void after(io.cucumber.java.Scenario scn) {
+                        public void after(Scenario scn) {
                             if (scn.getStatus() == Status.FAILED) {
                                 scn.log("after scenario");
                             }
                         }
 
                         @After("abc")
-                        public void after_tag_abc(io.cucumber.java.Scenario scn) {
+                        public void after_tag_abc(Scenario scn) {
                             scn.log("after scenario");
                         }
 
                         @AfterStep
-                        public void afterStep(io.cucumber.java.Scenario scn) {
+                        public void afterStep(Scenario scn) {
+                            a = 0;
+                        }
+
+                    }
+                    """),
+                17));
+        }
+
+        @SuppressWarnings("CodeBlock2Expr")
+        @Test
+        void importScenarioWhereTheHookBodyLeavesItImplicit() {
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+
+                    public class HookStepDefinitions implements En {
+
+                        private int a;
+
+                        public HookStepDefinitions() {
+                            After(scn -> {
+                                a = 0;
+                            });
+                        }
+
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java.After;
+                    import io.cucumber.java.Scenario;
+
+                    public class HookStepDefinitions {
+
+                        private int a;
+
+                        @After
+                        public void after(Scenario scn) {
                             a = 0;
                         }
 
