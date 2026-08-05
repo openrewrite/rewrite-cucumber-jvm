@@ -35,6 +35,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 @EqualsAndHashCode(callSuper = false)
@@ -58,7 +59,8 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
 
     String displayName = "Replace `cucumber-java8` hook definition with `cucumber-java`";
 
-    String description = "Replace `LambdaGlue` hook definitions with new annotated methods with the same body.";
+    String description = "Replace `LambdaGlue` hook definitions with new annotated methods with the same body, or, " +
+            "for a method reference, with a body calling the method it refers to.";
 
     Duration estimatedEffortPerOccurrence = Duration.ofMinutes(10);
 
@@ -77,14 +79,11 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
                             return methodInvocation;
                         }
 
-                        // Replacement annotations can only handle literals or constants
-                        if (!converts(methodInvocation)) {
+                        // Extract arguments passed to method
+                        HookArguments hookArguments = parseHookArguments(methodInvocation);
+                        if (hookArguments == null) {
                             return SearchResult.found(methodInvocation, "TODO Migrate manually");
                         }
-
-                        // Extract arguments passed to method
-                        HookArguments hookArguments = parseHookArguments(methodInvocation.getSimpleName(),
-                                methodInvocation.getArguments());
 
                         // Add new template method at end of class declaration
                         J.ClassDeclaration parentClass = getCursor()
@@ -95,6 +94,7 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
                                 parentClass.getType(),
                                 glueDeclaration == null ? null : glueDeclaration.getId(),
                                 hookArguments.replacementImports(),
+                                emptyList(),
                                 hookArguments.template(),
                                 hookArguments.parameters()));
 
@@ -116,25 +116,30 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
      * than one it leaves where it is for a manual migration
      */
     static boolean converts(J.MethodInvocation methodInvocation) {
-        return isHookDefinition(methodInvocation) && methodInvocation.getArguments().stream()
-                .allMatch(argument -> argument instanceof J.Literal || argument instanceof J.Lambda);
+        return isHookDefinition(methodInvocation) && parseHookArguments(methodInvocation) != null;
     }
 
     /**
-     * Parse up to three arguments: - last one is always a Lambda; - first
+     * Parse up to three arguments: - last one is always the hook body; - first
      * can also be a String or int. - second can be an int;
+     *
+     * @return {@code null} where an argument is not one the replacing annotation or method can hold
      */
-    private static HookArguments parseHookArguments(String methodName, List<Expression> arguments) {
-        // Lambda is always last, and can either contain a body with
-        // Scenario argument, or without
+    private static @Nullable HookArguments parseHookArguments(J.MethodInvocation methodInvocation) {
+        List<Expression> arguments = methodInvocation.getArguments();
         int argumentsSize = arguments.size();
-        Expression lambdaArgument = arguments.get(argumentsSize - 1);
-        HookArguments hookArguments = new HookArguments(
-                methodName,
-                null,
-                null,
-                (J.Lambda) lambdaArgument);
-        if (argumentsSize == 1) {
+        // Replacement annotations can only handle literals or constants
+        for (int i = 0; i < argumentsSize - 1; i++) {
+            if (!(arguments.get(i) instanceof J.Literal)) {
+                return null;
+            }
+        }
+
+        // The body is always last, and can either take a Scenario argument, or none
+        HookArguments hookArguments = parseHookBody(methodInvocation.getSimpleName(),
+                arguments.get(argumentsSize - 1),
+                HOOK_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation));
+        if (hookArguments == null || argumentsSize == 1) {
             return hookArguments;
         }
 
@@ -150,6 +155,36 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
         return hookArguments
                 .withTagExpression((String) firstArgument.getValue())
                 .withOrder((Integer) ((J.Literal) arguments.get(1)).getValue());
+    }
+
+    /**
+     * @param takesScenario whether the hook body is a {@link #IO_CUCUMBER_JAVA8_HOOK_BODY} rather than a
+     *                      {@link #IO_CUCUMBER_JAVA8_HOOK_NO_ARGS_BODY}, and so is handed the running scenario
+     */
+    private static @Nullable HookArguments parseHookBody(String annotationName, Expression body,
+                                                         boolean takesScenario) {
+        if (body instanceof J.Lambda) {
+            J.Lambda lambda = (J.Lambda) body;
+            J parameter = lambda.getParameters().getParameters().get(0);
+            return new HookArguments(annotationName, null, null,
+                    parameter instanceof J.VariableDeclarations ?
+                            ((J.VariableDeclarations) parameter).getVariables().get(0).getSimpleName() : null,
+                    lambda.getBody());
+        }
+        if (!(body instanceof J.MemberReference)) {
+            return null;
+        }
+
+        J.MemberReference reference = (J.MemberReference) body;
+        int parameterCount = takesScenario ? 1 : 0;
+        MemberReferences.Kind kind = MemberReferences.kind(reference, parameterCount);
+        if (kind == null) {
+            return null;
+        }
+        List<String> parameterNames = MemberReferences.parameterNames(reference, kind, parameterCount);
+        return new HookArguments(annotationName, null, null,
+                takesScenario ? parameterNames.get(0) : null,
+                MemberReferences.body(reference, kind, parameterNames));
     }
 
 }
@@ -174,11 +209,14 @@ class HookArguments {
     @Nullable
     Integer order;
 
-    J.Lambda lambda;
+    @Nullable
+    String scenarioName;
+
+    J body;
 
     List<String> replacementImports() {
         String annotationImport = String.format("io.cucumber.java.%s", annotationName);
-        return takesScenario() ?
+        return scenarioName != null ?
                 Arrays.asList(annotationImport, IO_CUCUMBER_JAVA8_SCENARIO) :
                 singletonList(annotationImport);
     }
@@ -216,16 +254,8 @@ class HookArguments {
                 order == null ? "" : "_order_" + order);
     }
 
-    private boolean takesScenario() {
-        return lambda.getParameters().getParameters().get(0) instanceof J.VariableDeclarations;
-    }
-
     private String formatMethodArguments() {
-        if (!takesScenario()) {
-            return "";
-        }
-        J.VariableDeclarations scenario = (J.VariableDeclarations) lambda.getParameters().getParameters().get(0);
-        return String.format("Scenario %s", scenario.getVariables().get(0).getName());
+        return scenarioName == null ? "" : String.format("Scenario %s", scenarioName);
     }
 
     public Object[] parameters() {
@@ -234,7 +264,7 @@ class HookArguments {
                 formatAnnotationArguments(),
                 formatMethodName(),
                 formatMethodArguments(),
-                lambda.getBody()};
+                body};
     }
 
 }
