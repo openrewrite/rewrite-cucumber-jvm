@@ -354,6 +354,7 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
 
               import io.cucumber.core.api.TypeRegistry;
               import io.cucumber.core.api.TypeRegistryConfigurer;
+              import io.cucumber.cucumberexpressions.ParameterType;
               import io.cucumber.datatable.DataTableType;
 
               import java.util.Locale;
@@ -369,7 +370,11 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                   public void configureTypeRegistry(TypeRegistry typeRegistry) {
                       typeRegistry.defineDataTableType(new DataTableType(Author.class,
                               (Map<String, String> entry) -> new Author(entry.get("name"))));
-                      typeRegistry.setDefaultParameterTransformer((String fromValue, java.lang.reflect.Type toValueType) -> fromValue);
+                      typeRegistry.defineParameterType(authorParameterType());
+                  }
+
+                  private ParameterType<Author> authorParameterType() {
+                      return new ParameterType<>("author", "[A-Z][a-z]+", Author.class, Author::new);
                   }
               }
               """,
@@ -378,6 +383,7 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
 
               import io.cucumber.core.api.TypeRegistry;
               import io.cucumber.core.api.TypeRegistryConfigurer;
+              import io.cucumber.cucumberexpressions.ParameterType;
               import io.cucumber.datatable.DataTableType;
 
               import java.util.Locale;
@@ -394,7 +400,483 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       typeRegistry.defineDataTableType(new DataTableType(Author.class,
                               (Map<String, String> entry) -> new Author(entry.get("name"))));
                       // TODO Cucumber-JVM 7.0.0 removed TypeRegistryConfigurer; migrate to @ParameterType, @DataTableType and @DocStringType annotated methods by hand
-                      typeRegistry.setDefaultParameterTransformer((String fromValue, java.lang.reflect.Type toValueType) -> fromValue);
+                      typeRegistry.defineParameterType(authorParameterType());
+                  }
+
+                  private ParameterType<Author> authorParameterType() {
+                      return new ParameterType<>("author", "[A-Z][a-z]+", Author.class, Author::new);
+                  }
+              }
+              """));
+    }
+
+    @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+    @Test
+    void anonymousClassTransformer() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistry;
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+              import io.cucumber.datatable.DataTableType;
+              import io.cucumber.datatable.TableEntryTransformer;
+
+              import java.util.Locale;
+              import java.util.Map;
+
+              public class DataTableConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+
+                  @Override
+                  public void configureTypeRegistry(TypeRegistry typeRegistry) {
+                      typeRegistry.defineDataTableType(new DataTableType(Author.class, new TableEntryTransformer<Author>() {
+                          @Override
+                          public Author transform(Map<String, String> entry) {
+                              return new Author(entry.get("name"));
+                          }
+                      }));
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              import io.cucumber.java.DataTableType;
+
+              import java.util.Map;
+
+              public class DataTableConfigurer {
+                  @DataTableType
+                  public Author author(Map<String, String> entry) {
+                      return new Author(entry.get("name"));
+                  }
+              }
+              """));
+    }
+
+    @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+    @Test
+    void inlineLocalsHoldingTheTransformerAndTheRegistration() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistry;
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+              import io.cucumber.datatable.DataTableType;
+              import io.cucumber.datatable.TableEntryTransformer;
+
+              import java.util.Locale;
+              import java.util.Map;
+
+              public class DataTableConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+
+                  @Override
+                  public void configureTypeRegistry(TypeRegistry typeRegistry) {
+                      TableEntryTransformer<Author> transformer = new TableEntryTransformer<Author>() {
+                          @Override
+                          public Author transform(Map<String, String> entry) throws Throwable {
+                              return new Author(entry.get("name"));
+                          }
+                      };
+                      DataTableType tableType = new DataTableType(Author.class, transformer);
+                      typeRegistry.defineDataTableType(tableType);
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              import io.cucumber.java.DataTableType;
+
+              import java.util.Map;
+
+              public class DataTableConfigurer {
+                  @DataTableType
+                  public Author author(Map<String, String> entry) {
+                      return new Author(entry.get("name"));
+                  }
+              }
+              """));
+    }
+
+    @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+    @Test
+    void retainLocalsNoRegistrationReads() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistry;
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+              import io.cucumber.datatable.DataTableType;
+
+              import java.util.Locale;
+              import java.util.Map;
+
+              public class DataTableConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+
+                  @Override
+                  public void configureTypeRegistry(TypeRegistry typeRegistry) {
+                      String unused = register(typeRegistry);
+                      typeRegistry.defineDataTableType(new DataTableType(Author.class,
+                              (Map<String, String> entry) -> new Author(entry.get("name"))));
+                  }
+
+                  private String register(TypeRegistry typeRegistry) {
+                      return "registered";
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistry;
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+              import io.cucumber.datatable.DataTableType;
+
+              import java.util.Locale;
+              import java.util.Map;
+
+              public class DataTableConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+
+                  @Override
+                  public void configureTypeRegistry(TypeRegistry typeRegistry) {
+                      // TODO Cucumber-JVM 7.0.0 removed TypeRegistryConfigurer; migrate to @ParameterType, @DataTableType and @DocStringType annotated methods by hand
+                      String unused = register(typeRegistry);
+                      typeRegistry.defineDataTableType(new DataTableType(Author.class,
+                              (Map<String, String> entry) -> new Author(entry.get("name"))));
+                  }
+
+                  private String register(TypeRegistry typeRegistry) {
+                      return "registered";
+                  }
+              }
+              """));
+    }
+
+    @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+    @Test
+    void constructorReferenceTransformer() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistry;
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+              import io.cucumber.cucumberexpressions.ParameterType;
+
+              import java.util.Locale;
+
+              public class ParameterTypeConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+
+                  @Override
+                  public void configureTypeRegistry(TypeRegistry typeRegistry) {
+                      typeRegistry.defineParameterType(new ParameterType<>("author", "[A-Z][a-z]+", Author.class, Author::new));
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              import io.cucumber.java.ParameterType;
+
+              public class ParameterTypeConfigurer {
+                  @ParameterType("[A-Z][a-z]+")
+                  public Author author(String value) {
+                      return new Author(value);
+                  }
+              }
+              """));
+    }
+
+    @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+    @Test
+    void staticAndBoundMethodReferenceTransformers() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistry;
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+              import io.cucumber.datatable.DataTableType;
+              import io.cucumber.docstring.DocStringType;
+
+              import java.util.Locale;
+
+              public class AuthorConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+
+                  @Override
+                  public void configureTypeRegistry(TypeRegistry typeRegistry) {
+                      typeRegistry.defineDataTableType(new DataTableType(Author.class, AuthorConfigurer::parse));
+                      typeRegistry.defineDocStringType(new DocStringType(Author.class, "author", this::read));
+                  }
+
+                  static Author parse(String cell) {
+                      return new Author(cell);
+                  }
+
+                  Author read(String docString) {
+                      return new Author(docString.trim());
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              import io.cucumber.java.DataTableType;
+              import io.cucumber.java.DocStringType;
+
+              public class AuthorConfigurer {
+
+                  static Author parse(String cell) {
+                      return new Author(cell);
+                  }
+
+                  Author read(String docString) {
+                      return new Author(docString.trim());
+                  }
+
+                  @DataTableType
+                  public Author author(String cell) {
+                      return AuthorConfigurer.parse(cell);
+                  }
+
+                  @DocStringType(contentType = "author")
+                  public Author author2(String docString) {
+                      return this.read(docString);
+                  }
+              }
+              """));
+    }
+
+    @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+    @Test
+    void unboundMethodReferenceTransformer() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistry;
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+              import io.cucumber.cucumberexpressions.ParameterType;
+
+              import java.util.Locale;
+
+              public class ParameterTypeConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+
+                  @Override
+                  public void configureTypeRegistry(TypeRegistry typeRegistry) {
+                      typeRegistry.defineParameterType(new ParameterType<>("trimmed", ".*", String.class, String::trim));
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              import io.cucumber.java.ParameterType;
+
+              public class ParameterTypeConfigurer {
+                  @ParameterType(".*")
+                  public String trimmed(String value) {
+                      return value.trim();
+                  }
+              }
+              """));
+    }
+
+    @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+    @Test
+    void defaultTransformersBecomeAnnotatedGlueMethods() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistry;
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+
+              import java.util.Locale;
+
+              public class DefaultTransformerConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+
+                  @Override
+                  public void configureTypeRegistry(TypeRegistry typeRegistry) {
+                      typeRegistry.setDefaultParameterTransformer((fromValue, toValueType) -> fromValue);
+                      typeRegistry.setDefaultDataTableCellTransformer((fromValue, toValueType) -> fromValue);
+                      typeRegistry.setDefaultDataTableEntryTransformer((fromValue, toValueType, cellTransformer) -> fromValue);
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              import io.cucumber.java.DefaultDataTableCellTransformer;
+              import io.cucumber.java.DefaultDataTableEntryTransformer;
+              import io.cucumber.java.DefaultParameterTransformer;
+
+              import java.lang.reflect.Type;
+              import java.util.Map;
+
+              public class DefaultTransformerConfigurer {
+                  @DefaultParameterTransformer
+                  public Object defaultParameterTransformer(String fromValue, Type toValueType) {
+                      return fromValue;
+                  }
+
+                  @DefaultDataTableCellTransformer
+                  public Object defaultDataTableCellTransformer(String fromValue, Type toValueType) {
+                      return fromValue;
+                  }
+
+                  @DefaultDataTableEntryTransformer(headersToProperties = false)
+                  public Object defaultDataTableEntryTransformer(Map<String, String> fromValue, Type toValueType) {
+                      return fromValue;
+                  }
+              }
+              """));
+    }
+
+    @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+    @Test
+    void retainDefaultDataTableEntryTransformerThatReadsTheCellTransformer() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistry;
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+
+              import java.util.Locale;
+
+              public class DefaultTransformerConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+
+                  @Override
+                  public void configureTypeRegistry(TypeRegistry typeRegistry) {
+                      typeRegistry.setDefaultDataTableEntryTransformer(
+                              (fromValue, toValueType, cellTransformer) -> cellTransformer.transform(fromValue.toString(), toValueType));
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistry;
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+
+              import java.util.Locale;
+
+              public class DefaultTransformerConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+
+                  @Override
+                  public void configureTypeRegistry(TypeRegistry typeRegistry) {
+                      // TODO Cucumber-JVM 7.0.0 removed TypeRegistryConfigurer; migrate to @ParameterType, @DataTableType and @DocStringType annotated methods by hand
+                      typeRegistry.setDefaultDataTableEntryTransformer(
+                              (fromValue, toValueType, cellTransformer) -> cellTransformer.transform(fromValue.toString(), toValueType));
+                  }
+              }
+              """));
+    }
+
+    @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+    @Test
+    void parameterTypeOverloadsCarryTheirFlagsOntoTheAnnotation() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.core.api.TypeRegistry;
+              import io.cucumber.core.api.TypeRegistryConfigurer;
+              import io.cucumber.cucumberexpressions.ParameterType;
+
+              import java.util.Locale;
+
+              public class ParameterTypeConfigurer implements TypeRegistryConfigurer {
+                  @Override
+                  public Locale locale() {
+                      return Locale.ENGLISH;
+                  }
+
+                  @Override
+                  public void configureTypeRegistry(TypeRegistry typeRegistry) {
+                      typeRegistry.defineParameterType(new ParameterType<>(
+                              "author", "[A-Z][a-z]+", Author.class, (String name) -> new Author(name), false, true));
+                      typeRegistry.defineParameterType(new ParameterType<>(
+                              "writer", "[A-Z][a-z]+", Author.class, (String name) -> new Author(name), true, false, true));
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              import io.cucumber.java.ParameterType;
+
+              public class ParameterTypeConfigurer {
+                  @ParameterType(value = "[A-Z][a-z]+", preferForRegexMatch = true)
+                  public Author author(String name) {
+                      return new Author(name);
+                  }
+
+                  @ParameterType(value = "[A-Z][a-z]+", useForSnippets = true, useRegexpMatchAsStrongTypeHint = true)
+                  public Author writer(String name) {
+                      return new Author(name);
                   }
               }
               """));
