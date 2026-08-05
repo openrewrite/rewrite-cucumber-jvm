@@ -1694,6 +1694,57 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                 17));
         }
 
+        @Test
+        void flagRegistrationsTheAnnotationCannotExpress() {
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+
+                    public class TypeDefinitions implements En {
+
+                        static final String BLANK = "[blank]";
+
+                        public TypeDefinitions() {
+                            DataTableType(BLANK, (String cell) -> new Title(cell));
+
+                            DocStringType("json", Title::new);
+                        }
+
+                        static class Title {
+                            Title(String value) {
+                            }
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+
+                    public class TypeDefinitions implements En {
+
+                        static final String BLANK = "[blank]";
+
+                        public TypeDefinitions() {
+                            /*~~(TODO Migrate manually)~~>*/DataTableType(BLANK, (String cell) -> new Title(cell));
+
+                            /*~~(TODO Migrate manually)~~>*/DocStringType("json", Title::new);
+                        }
+
+                        static class Title {
+                            Title(String value) {
+                            }
+                        }
+                    }
+                    """),
+                17));
+        }
+
         @SuppressWarnings("CodeBlock2Expr")
         @Test
         void stepsHooksAndTypeDefinitionsInOneClass() {
@@ -1791,18 +1842,36 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                             public CalculatorStepDefinitions() {
                                 Given("a calculator I just turned on", () -> {
                                 });
+
+                                DataTableType((String cell) -> new Money(cell));
+                            }
+
+                            static class Money {
+                                Money(String amount) {
+                                }
                             }
                         }
                         """,
                       """
                         package com.example.app;
 
+                        import io.cucumber.java.DataTableType;
                         import io.cucumber.java.en.Given;
 
                         public class CalculatorStepDefinitions {
 
                             @Given("a calculator I just turned on")
                             public void a_calculator_i_just_turned_on() {
+                            }
+
+                            @DataTableType
+                            public Money money(String cell) {
+                                return new Money(cell);
+                            }
+
+                            static class Money {
+                                Money(String amount) {
+                                }
                             }
                         }
                         """),

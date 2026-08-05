@@ -27,6 +27,7 @@ import org.openrewrite.java.MethodMatcher;
 import org.openrewrite.java.search.UsesMethod;
 import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
+import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.java.tree.TypeUtils;
 import org.openrewrite.marker.SearchResult;
 
@@ -60,15 +61,7 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
                     @Override
                     public @Nullable J visitMethodInvocation(J.MethodInvocation methodInvocation, ExecutionContext ctx) {
                         J.MethodInvocation m = (J.MethodInvocation) super.visitMethodInvocation(methodInvocation, ctx);
-                        if (!STEP_DEFINITION_METHOD_MATCHER.matches(m) ||
-                                CucumberJava8TypeDefinitionToCucumberJava.isTypeDefinition(m)) {
-                            return m;
-                        }
-
-                        // Skip any methods not containing a second argument, such as
-                        // Scenario.log(String)
-                        List<Expression> arguments = m.getArguments();
-                        if (arguments.size() < 2) {
+                        if (!isStepDefinition(m)) {
                             return m;
                         }
 
@@ -77,6 +70,7 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
                             return SearchResult.found(m, "TODO Migrate manually");
                         }
 
+                        List<Expression> arguments = m.getArguments();
                         StepDefinitionArguments stepArguments = new StepDefinitionArguments(
                                 m.getSimpleName(),
                                 (J.Literal) arguments.get(0),
@@ -111,23 +105,29 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
     }
 
     /**
+     * The matcher is as wide as the cucumber expression overloads it has to span, so it also catches
+     * {@code Scenario.log(String)} and registrations such as {@code DataTableType(String, DataTableEntryDefinitionBody)}.
+     * What tells a step definition apart from those is the body it takes.
+     */
+    private static boolean isStepDefinition(J.MethodInvocation methodInvocation) {
+        if (!STEP_DEFINITION_METHOD_MATCHER.matches(methodInvocation) || methodInvocation.getMethodType() == null) {
+            return false;
+        }
+        List<JavaType> parameterTypes = methodInvocation.getMethodType().getParameterTypes();
+        return !parameterTypes.isEmpty() && TypeUtils.isAssignableTo(
+                IO_CUCUMBER_JAVA8_STEP_DEFINITION_BODY, parameterTypes.get(parameterTypes.size() - 1));
+    }
+
+    /**
      * @return whether this invocation is a step definition this recipe replaces with an annotated method, rather
      * than one it leaves where it is for a manual migration
      */
     static boolean converts(J.MethodInvocation methodInvocation) {
-        if (!STEP_DEFINITION_METHOD_MATCHER.matches(methodInvocation)) {
-            return false;
-        }
-        if (CucumberJava8TypeDefinitionToCucumberJava.isTypeDefinition(methodInvocation)) {
-            // Registrations such as `DataTableType(String, DataTableEntryDefinitionBody)` merely look like a step
-            return false;
-        }
         List<Expression> arguments = methodInvocation.getArguments();
-        // Skip any methods not containing a second argument, such as Scenario.log(String)
-        return arguments.size() >= 2 &&
+        return isStepDefinition(methodInvocation) &&
+                arguments.size() >= 2 &&
                 arguments.get(0) instanceof J.Literal &&
-                arguments.get(1) instanceof J.Lambda &&
-                TypeUtils.isAssignableTo(IO_CUCUMBER_JAVA8_STEP_DEFINITION_BODY, arguments.get(1).getType());
+                arguments.get(1) instanceof J.Lambda;
     }
 
 }
