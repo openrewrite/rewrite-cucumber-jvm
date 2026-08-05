@@ -275,25 +275,24 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         if (capturedNames.isEmpty()) {
             return emptyList();
         }
-        List<J.VariableDeclarations> captured = new ArrayList<>();
-        new JavaIsoVisitor<Integer>() {
+        return new JavaIsoVisitor<List<J.VariableDeclarations>>() {
 
             @Override
-            public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, Integer p) {
+            public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, List<J.VariableDeclarations> captured) {
                 // Members of a class declared inside the glue declaration are not what the lambdas closed over
                 return cd;
             }
 
             @Override
-            public J.VariableDeclarations visitVariableDeclarations(J.VariableDeclarations vd, Integer p) {
+            public J.VariableDeclarations visitVariableDeclarations(J.VariableDeclarations vd,
+                    List<J.VariableDeclarations> captured) {
                 if (vd.getVariables().stream()
                         .anyMatch(variable -> capturedNames.contains(variable.getSimpleName()))) {
                     captured.add(vd);
                 }
-                return super.visitVariableDeclarations(vd, p);
+                return super.visitVariableDeclarations(vd, captured);
             }
-        }.visit(glueDeclaration.getBody(), 0);
-        return captured;
+        }.reduce(glueDeclaration.getBody(), new ArrayList<>());
     }
 
     /**
@@ -310,27 +309,34 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
             if (method.getId().equals(glueDeclaration.getId()) || !isCucumberAnnotated(method)) {
                 continue;
             }
-            Set<String> declared = new HashSet<>();
-            Set<String> referenced = new HashSet<>();
-            new JavaIsoVisitor<Integer>() {
-
-                @Override
-                public J.VariableDeclarations.NamedVariable visitVariable(J.VariableDeclarations.NamedVariable v,
-                        Integer p) {
-                    declared.add(v.getSimpleName());
-                    return super.visitVariable(v, p);
-                }
-
-                @Override
-                public J.Identifier visitIdentifier(J.Identifier identifier, Integer p) {
-                    referenced.add(identifier.getSimpleName());
-                    return identifier;
-                }
-            }.visit(method, 0);
-            referenced.removeAll(declared);
+            Set<String> referenced = referencedNames(method);
+            referenced.removeAll(declaredNames(method));
             used.addAll(referenced);
         }
         return used;
+    }
+
+    private static Set<String> referencedNames(J.MethodDeclaration method) {
+        return new JavaIsoVisitor<Set<String>>() {
+
+            @Override
+            public J.Identifier visitIdentifier(J.Identifier identifier, Set<String> names) {
+                names.add(identifier.getSimpleName());
+                return identifier;
+            }
+        }.reduce(method, new HashSet<>());
+    }
+
+    private static Set<String> declaredNames(J.MethodDeclaration method) {
+        return new JavaIsoVisitor<Set<String>>() {
+
+            @Override
+            public J.VariableDeclarations.NamedVariable visitVariable(J.VariableDeclarations.NamedVariable variable,
+                    Set<String> names) {
+                names.add(variable.getSimpleName());
+                return super.visitVariable(variable, names);
+            }
+        }.reduce(method, new HashSet<>());
     }
 
     /**
@@ -424,8 +430,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
     }
 
     private static boolean lambdaGlueRemains(J.ClassDeclaration classDeclaration) {
-        AtomicBoolean remains = new AtomicBoolean();
-        new JavaIsoVisitor<AtomicBoolean>() {
+        return new JavaIsoVisitor<AtomicBoolean>() {
 
             @Override
             public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, AtomicBoolean found) {
@@ -445,8 +450,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
                 }
                 return super.visitMethodInvocation(mi, found);
             }
-        }.visit(classDeclaration, remains);
-        return remains.get();
+        }.reduce(classDeclaration, new AtomicBoolean()).get();
     }
 
     /**
