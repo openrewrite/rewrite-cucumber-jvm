@@ -29,14 +29,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Shared by the recipes that turn a registered transformation into a `cucumber-java` annotated method, whether it
- * was registered through `TypeRegistryConfigurer` or through `cucumber-java8` lambda glue.
+ * Shared by the recipes that turn a registered transformation into a `cucumber-java` annotated method.
  */
 final class GlueMethods {
 
-    /**
-     * The imports the parameters of a generated glue method need, keyed by the type as it is declared.
-     */
     static final Map<String, String> PARAMETER_TYPE_IMPORTS = new HashMap<>();
 
     static {
@@ -55,7 +51,7 @@ final class GlueMethods {
     }
 
     /**
-     * @return the string literal as it was written, escapes and all, rather than the value it stands for
+     * @return the literal as it was written, escapes and all, rather than the value it stands for
      */
     static @Nullable String literalSource(Expression expression) {
         return stringLiteral(expression) == null ? null : ((J.Literal) expression).getValueSource();
@@ -67,8 +63,8 @@ final class GlueMethods {
     }
 
     /**
-     * @return the name with everything a method name cannot hold dropped, as a cucumber expression or content type
-     * is free to contain spaces and punctuation
+     * Drops what a method name cannot hold, a cucumber expression or content type being free to contain spaces and
+     * punctuation.
      */
     static String sanitize(String name, String fallback) {
         StringBuilder methodName = new StringBuilder();
@@ -80,10 +76,6 @@ final class GlueMethods {
         return methodName.length() == 0 ? fallback : methodName.toString();
     }
 
-    /**
-     * @return the name a type reads as when it names a method rather than a type, dropping any package qualification,
-     * enclosing classes and type arguments
-     */
     static String decapitalize(String typeName) {
         int typeArguments = typeName.indexOf('<');
         String rawName = typeArguments == -1 ? typeName : typeName.substring(0, typeArguments);
@@ -101,8 +93,8 @@ final class GlueMethods {
     }
 
     /**
-     * Claims the name for the method about to be generated, so that a class registering several transformations to
-     * the same type gets a distinct name for each.
+     * Claims the name in {@code methodNames}, so that a class registering several transformations to the same type
+     * gets a distinct name for each.
      */
     static String uniqueMethodName(String candidate, Set<String> methodNames) {
         String methodName = candidate;

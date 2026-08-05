@@ -56,10 +56,6 @@ import static org.openrewrite.cucumber.jvm.GlueMethods.sanitize;
 import static org.openrewrite.cucumber.jvm.GlueMethods.stringLiteral;
 import static org.openrewrite.cucumber.jvm.GlueMethods.uniqueMethodName;
 
-/**
- * The `LambdaGlue` registrations that are not step or hook definitions: each registers a transformation keyed by the
- * type it returns, which `cucumber-java` expresses as an annotated method with that return type.
- */
 @EqualsAndHashCode(callSuper = false)
 @Value
 public class CucumberJava8TypeDefinitionToCucumberJava extends Recipe {
@@ -71,24 +67,18 @@ public class CucumberJava8TypeDefinitionToCucumberJava extends Recipe {
     private static final String PARAMETER_TYPE = "ParameterType";
     private static final String DOC_STRING_TYPE = "DocStringType";
 
-    /**
-     * The names of the registrations already claimed by the enclosing class, keyed by the invocation each was
-     * claimed for. Held per class, as the names have to be handed out in declaration order however many of the
-     * registrations are still to be visited.
-     */
     private static final String TYPE_DEFINITIONS = "cucumberTypeDefinitions";
 
     private static final List<MethodMatcher> TYPE_DEFINITION_MATCHERS = new ArrayList<>();
 
     /**
-     * The types the parameters of the annotated method take, per functional interface the lambda implements. None of
-     * these are generic, so the lambda only contributes the parameter names; one that leaves its types implicit is
-     * migrated just as well as one that spells them out.
+     * None of these are generic, so the lambda only contributes the parameter names; one leaving its types implicit
+     * migrates just as well as one spelling them out.
      */
     private static final Map<String, List<String>> BODY_PARAMETERS = new HashMap<>();
 
     /**
-     * The bodies that name no type of their own, as they are handed the type to convert to at runtime.
+     * These name no type of their own, being handed the type to convert to at runtime.
      */
     private static final Set<String> OBJECT_RETURNING_BODIES = new HashSet<>(asList(
             IO_CUCUMBER_JAVA8 + "DefaultParameterTransformerBody",
@@ -172,10 +162,6 @@ public class CucumberJava8TypeDefinitionToCucumberJava extends Recipe {
                 });
     }
 
-    /**
-     * @return whether this invocation registers a type transformation, which is neither a step nor a hook definition,
-     * even though the {@code String} prefixed overloads look like one
-     */
     static boolean isTypeDefinition(J.MethodInvocation methodInvocation) {
         for (MethodMatcher matcher : TYPE_DEFINITION_MATCHERS) {
             if (matcher.matches(methodInvocation)) {
@@ -186,19 +172,15 @@ public class CucumberJava8TypeDefinitionToCucumberJava extends Recipe {
     }
 
     /**
-     * @return whether this invocation is a registration this recipe replaces with an annotated method, rather than
-     * one it leaves where it is for a manual migration
+     * @return whether this recipe replaces the registration, rather than leaving it for a manual migration
      */
     static boolean converts(J.MethodInvocation methodInvocation) {
         return isTypeDefinition(methodInvocation) && parse(methodInvocation, null) != null;
     }
 
     /**
-     * The type a registration is keyed by names the method it becomes, so a class registering two transformations to
-     * the same type needs the second name told apart from the first. Resolved for the class as a whole, in
-     * declaration order, so that every registration lands on the same name whichever one is being replaced.
-     *
-     * @return what to declare the method replacing each convertible registration in the class with
+     * Names are handed out for the class as a whole, in declaration order, so that every registration lands on the
+     * same name whichever one is being replaced.
      */
     private static Map<UUID, TypeDefinitionArguments> typeDefinitions(J.ClassDeclaration classDeclaration) {
         Set<String> methodNames = declaredMethodNames(classDeclaration);
@@ -227,8 +209,7 @@ public class CucumberJava8TypeDefinitionToCucumberJava extends Recipe {
     }
 
     /**
-     * @return what to declare the method replacing this registration with, or {@code null} where the registration
-     * cannot be converted, such as a body passed as a method reference or a type that could not be resolved
+     * @return {@code null} where the registration cannot be converted, such as a body passed as a method reference
      */
     private static @Nullable TypeDefinitionArguments parse(J.MethodInvocation methodInvocation,
             JavaType.@Nullable FullyQualified parentClass) {
@@ -261,8 +242,7 @@ public class CucumberJava8TypeDefinitionToCucumberJava extends Recipe {
         }
 
         String annotationName = methodInvocation.getSimpleName();
-        // The registrations are keyed by the type they return, which the functional interface carries as its type
-        // argument; the default transformers declare none, as they return whichever type was asked for
+        // Registrations are keyed by the type they return, which the functional interface carries as its type argument
         JavaType returnJavaType = null;
         String returnType = "Object";
         if (!OBJECT_RETURNING_BODIES.contains(functionalInterface)) {
@@ -306,7 +286,6 @@ public class CucumberJava8TypeDefinitionToCucumberJava extends Recipe {
                 methodName = sanitize(decapitalize(returnType), "dataTableType");
                 break;
             default:
-                // The default transformers take no name of their own, only an empty string replacement
                 annotationArguments = replaceWithEmptyString(arguments);
                 methodName = decapitalize(annotationName);
                 break;
@@ -321,11 +300,6 @@ public class CucumberJava8TypeDefinitionToCucumberJava extends Recipe {
                 "(replaceWithEmptyString = " + literalSource(arguments.get(0)) + ")";
     }
 
-    /**
-     * @return the parameters of the annotated method, taking the names from the lambda and the types from the
-     * functional interface it implements, or {@code null} where the lambda declares something other than a plain
-     * parameter list
-     */
     private static @Nullable List<String> parameters(J.Lambda lambda, List<String> bodyParameters) {
         List<J> declared = lambda.getParameters().getParameters();
         if (declared.size() != bodyParameters.size()) {
@@ -390,8 +364,8 @@ public class CucumberJava8TypeDefinitionToCucumberJava extends Recipe {
     }
 
     /**
-     * @return how to name a type nested in the class the method is being added to, or in one of its outer classes,
-     * as those are named without going through the class declaring them; {@code null} for any other type
+     * A type nested in the class the method is added to, or in one of its outer classes, is already in scope
+     * unqualified.
      */
     private static @Nullable String nameInScope(JavaType.FullyQualified type,
             JavaType.@Nullable FullyQualified parentClass) {

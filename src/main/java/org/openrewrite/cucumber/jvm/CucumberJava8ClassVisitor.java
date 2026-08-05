@@ -61,7 +61,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
 
     /**
      * The template is parsed with only Cucumber on its classpath, so a return type declared by the project itself
-     * comes back unattributed; {@code null} where the template needs no return type attributed back onto it.
+     * comes back unattributed.
      */
     private final @Nullable JavaType returnType;
 
@@ -114,8 +114,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
     }
 
     /**
-     * The method the template added is the one statement of the class that was not there before it was applied;
-     * {@code coordinatesForNewMethod} does not always append, so it cannot be found by position.
+     * Found by id rather than by position, as {@code coordinatesForNewMethod} does not always append.
      */
     private J.ClassDeclaration retypeNewMethod(J.ClassDeclaration before, J.ClassDeclaration after) {
         if (returnType == null) {

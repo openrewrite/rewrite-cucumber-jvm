@@ -105,9 +105,8 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
     }
 
     /**
-     * The matcher is as wide as the cucumber expression overloads it has to span, so it also catches
-     * {@code Scenario.log(String)} and registrations such as {@code DataTableType(String, DataTableEntryDefinitionBody)}.
-     * What tells a step definition apart from those is the body it takes.
+     * The matcher also catches {@code Scenario.log(String)} and registrations such as
+     * {@code DataTableType(String, DataTableEntryDefinitionBody)}; the body taken is what tells a step from those.
      */
     private static boolean isStepDefinition(J.MethodInvocation methodInvocation) {
         if (!STEP_DEFINITION_METHOD_MATCHER.matches(methodInvocation) || methodInvocation.getMethodType() == null) {
