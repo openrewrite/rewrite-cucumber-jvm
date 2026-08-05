@@ -16,6 +16,7 @@
 package org.openrewrite.cucumber.jvm;
 
 import lombok.EqualsAndHashCode;
+import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import org.jspecify.annotations.Nullable;
 import org.openrewrite.Cursor;
@@ -30,11 +31,11 @@ import org.openrewrite.java.tree.*;
 import org.openrewrite.marker.Markers;
 import org.openrewrite.staticanalysis.RemoveUnneededBlock;
 import org.openrewrite.staticanalysis.UnnecessaryThrows;
+import org.openrewrite.staticanalysis.VariableReferences;
 import org.openrewrite.trait.Comments;
 
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -87,6 +88,12 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
     private static final Map<String, List<String>> TRANSFORMER_PARAMETERS = new HashMap<>();
 
     private static final Map<String, String> PARAMETER_TYPE_IMPORTS = new HashMap<>();
+
+    /**
+     * The trailing `ParameterType` constructor arguments, in order, as the annotation attributes they become.
+     */
+    private static final List<String> PARAMETER_TYPE_FLAGS = asList(
+            "useForSnippets", "preferForRegexMatch", "useRegexpMatchAsStrongTypeHint");
 
     static {
         TRANSFORMER_PARAMETERS.put("io.cucumber.cucumberexpressions.CaptureGroupTransformer", singletonList("String[] values"));
@@ -174,6 +181,8 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                                         s -> s == removedConfigureTypeRegistry || isLocaleMethod(s) ? null : s)));
                         OBSOLETE_IMPORTS.forEach(this::maybeRemoveImport);
 
+                        JavaParser.Builder<?, ?> javaParser = JavaParser.fromJavaVersion()
+                                .classpathFromResources(ctx, "cucumber-java-7");
                         for (GlueMethod glueMethod : glueMethods) {
                             maybeAddImport(glueMethod.getAnnotationImport());
                             List<String> imports = new ArrayList<>();
@@ -184,7 +193,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                             }
                             c = JavaTemplate.builder(glueMethod.template())
                                     .contextSensitive()
-                                    .javaParser(JavaParser.fromJavaVersion().classpathFromResources(ctx, "cucumber-java-7"))
+                                    .javaParser(javaParser)
                                     .imports(imports.toArray(new String[0]))
                                     .build()
                                     .apply(updateCursor(c), c.getBody().getCoordinates().lastStatement(), glueMethod.templateArguments());
@@ -236,8 +245,8 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                         if (glueMethod.getReturnTypeTree() != null) {
                             method = retypeReturnType(method, glueMethod.getReturnTypeTree());
                         }
-                        if (glueMethod.getReference() != null) {
-                            method = expandMemberReference(method, glueMethod.getReference());
+                        if (glueMethod.getReference() != null && glueMethod.getReferenceKind() != null) {
+                            method = expandMemberReference(method, glueMethod.getReference(), glueMethod.getReferenceKind());
                         }
                         return method;
                     }
@@ -262,7 +271,8 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                      * A method reference cannot be templated in as an expression the way a lambda body can, as the
                      * template is parsed without the type it refers to on the classpath.
                      */
-                    private J.MethodDeclaration expandMemberReference(J.MethodDeclaration method, J.MemberReference reference) {
+                    private J.MethodDeclaration expandMemberReference(J.MethodDeclaration method,
+                                                                     J.MemberReference reference, ReferenceKind kind) {
                         List<Expression> arguments = new ArrayList<>();
                         for (Statement parameter : method.getParameters()) {
                             if (parameter instanceof J.VariableDeclarations) {
@@ -270,9 +280,8 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                                         .withPrefix(Space.EMPTY));
                             }
                         }
-                        ReferenceKind kind = referenceKind(reference, arguments.size());
                         J.Block body = method.getBody();
-                        if (kind == null || body == null || body.getStatements().size() != 1 ||
+                        if (body == null || body.getStatements().size() != 1 ||
                                 !(body.getStatements().get(0) instanceof J.Return)) {
                             return method;
                         }
@@ -294,13 +303,13 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                         Expression argument = locals.read(definition.getArguments().get(0));
                         switch (definition.getSimpleName()) {
                             case "setDefaultParameterTransformer":
-                                return defaultTransformer("DefaultParameterTransformer", "", argument, methodNames);
+                                return defaultTransformer("DefaultParameterTransformer", argument, methodNames);
                             case "setDefaultDataTableCellTransformer":
-                                return defaultTransformer("DefaultDataTableCellTransformer", "", argument, methodNames);
+                                return defaultTransformer("DefaultDataTableCellTransformer", argument, methodNames);
                             case "setDefaultDataTableEntryTransformer":
                                 // The annotation camel cases the entry headers first, where the registry passed them through
-                                return defaultTransformer("DefaultDataTableEntryTransformer",
-                                        "(headersToProperties = false)", argument, methodNames);
+                                return defaultTransformer("DefaultDataTableEntryTransformer", argument, methodNames,
+                                        "headersToProperties = false");
                             default:
                                 break;
                         }
@@ -345,21 +354,17 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                             if (value == null) {
                                 return null;
                             }
-                            // Only spell out the attributes that differ from the annotation defaults,
-                            // which for `useForSnippets` is `false`, where the constructor defaults to `true`
-                            if (i == 4 && value) {
-                                attributes.add("useForSnippets = true");
-                            } else if (i == 5 && value) {
-                                attributes.add("preferForRegexMatch = true");
-                            } else if (i == 6 && value) {
-                                attributes.add("useRegexpMatchAsStrongTypeHint = true");
+                            // Each flag defaults to false on the annotation, where the constructor defaults
+                            // `useForSnippets` to true, so only a true has to be spelled out
+                            if (value) {
+                                attributes.add(PARAMETER_TYPE_FLAGS.get(i - 4) + " = true");
                             }
                         }
                         String annotation = attributes.isEmpty() ?
                                 "@ParameterType(" + regexp + ")" :
                                 "@ParameterType(value = " + regexp + ", " + String.join(", ", attributes) + ")";
-                        return glueMethod(annotation, IO_CUCUMBER_JAVA_PARAMETER_TYPE, returnType,
-                                returnType.printTrimmed(getCursor()), methodName, arguments.get(3));
+                        return glueMethod(annotation, IO_CUCUMBER_JAVA_PARAMETER_TYPE, returnType, methodName,
+                                arguments.get(3));
                     }
 
                     private @Nullable GlueMethod dataTableType(List<Expression> arguments, Set<String> methodNames) {
@@ -371,10 +376,10 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                         if (returnType == null) {
                             return null;
                         }
-                        String printedReturnType = returnType.printTrimmed(getCursor());
-                        String methodName = uniqueMethodName(sanitize(decapitalize(printedReturnType)), methodNames);
-                        return glueMethod("@DataTableType", IO_CUCUMBER_JAVA_DATA_TABLE_TYPE, returnType,
-                                printedReturnType, methodName, arguments.get(1));
+                        String methodName = uniqueMethodName(
+                                sanitize(decapitalize(returnType.printTrimmed(getCursor()))), methodNames);
+                        return glueMethod("@DataTableType", IO_CUCUMBER_JAVA_DATA_TABLE_TYPE, returnType, methodName,
+                                arguments.get(1));
                     }
 
                     private @Nullable GlueMethod docStringType(List<Expression> arguments, Set<String> methodNames) {
@@ -387,36 +392,38 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                         if (returnType == null || contentType == null) {
                             return null;
                         }
-                        String printedReturnType = returnType.printTrimmed(getCursor());
-                        String methodName = uniqueMethodName(sanitize(decapitalize(printedReturnType)), methodNames);
+                        String methodName = uniqueMethodName(
+                                sanitize(decapitalize(returnType.printTrimmed(getCursor()))), methodNames);
                         return glueMethod("@DocStringType(contentType = " + contentType + ")",
-                                IO_CUCUMBER_JAVA_DOC_STRING_TYPE, returnType, printedReturnType, methodName, arguments.get(2));
+                                IO_CUCUMBER_JAVA_DOC_STRING_TYPE, returnType, methodName, arguments.get(2));
                     }
 
-                    private @Nullable GlueMethod defaultTransformer(String annotation, String attributes,
-                                                                    Expression transformer, Set<String> methodNames) {
+                    private @Nullable GlueMethod defaultTransformer(String annotation, Expression transformer,
+                                                                    Set<String> methodNames, String... attributes) {
                         String methodName = uniqueMethodName(decapitalize(annotation), methodNames);
-                        return glueMethod("@" + annotation + attributes, IO_CUCUMBER_JAVA + annotation, null, "Object",
-                                methodName, transformer);
+                        String suffix = attributes.length == 0 ? "" : "(" + String.join(", ", attributes) + ")";
+                        return glueMethod("@" + annotation + suffix, IO_CUCUMBER_JAVA + annotation, null, methodName,
+                                transformer);
                     }
 
                     private @Nullable GlueMethod glueMethod(String annotation, String annotationImport,
-                                                            @Nullable TypeTree returnTypeTree, String returnType,
-                                                            String methodName, Expression transformer) {
-                        JavaType functionalInterface = null;
+                                                            @Nullable TypeTree returnTypeTree, String methodName,
+                                                            Expression transformer) {
+                        JavaType castInterface = null;
                         if (transformer instanceof J.TypeCast) {
-                            functionalInterface = ((J.TypeCast) transformer).getClazz().getTree().getType();
+                            castInterface = ((J.TypeCast) transformer).getClazz().getTree().getType();
                             transformer = ((J.TypeCast) transformer).getExpression();
                         }
 
-                        List<J> declaredParameters = null;
+                        List<? extends J> declaredParameters = null;
                         J body = null;
                         J.MemberReference reference = null;
+                        JavaType functionalInterface;
                         if (transformer instanceof J.Lambda) {
                             J.Lambda lambda = (J.Lambda) transformer;
                             declaredParameters = lambda.getParameters().getParameters();
                             body = lambda.getBody();
-                            functionalInterface = functionalInterface != null ? functionalInterface : lambda.getType();
+                            functionalInterface = lambda.getType();
                         } else if (transformer instanceof J.NewClass && ((J.NewClass) transformer).getBody() != null) {
                             J.NewClass anonymousClass = (J.NewClass) transformer;
                             List<Statement> members = anonymousClass.getBody().getStatements();
@@ -427,35 +434,48 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                             if (transform.getBody() == null) {
                                 return null;
                             }
-                            declaredParameters = new ArrayList<>(transform.getParameters());
+                            declaredParameters = transform.getParameters();
                             body = transform.getBody();
-                            functionalInterface = functionalInterface != null ? functionalInterface :
-                                    anonymousClass.getClazz() == null ? null : anonymousClass.getClazz().getType();
+                            functionalInterface = anonymousClass.getClazz() == null ? null : anonymousClass.getClazz().getType();
                         } else if (transformer instanceof J.MemberReference) {
                             reference = (J.MemberReference) transformer;
-                            functionalInterface = functionalInterface != null ? functionalInterface : reference.getType();
+                            functionalInterface = reference.getType();
                         } else {
                             return null;
                         }
+                        if (castInterface != null) {
+                            functionalInterface = castInterface;
+                        }
 
                         List<String> transformerParameters = TRANSFORMER_PARAMETERS.get(fullyQualifiedName(functionalInterface));
-                        Set<String> parameterTypeImports = new LinkedHashSet<>();
-                        String parameters;
+                        ReferenceKind referenceKind = null;
+                        List<String> parameters;
                         if (declaredParameters == null) {
-                            if (transformerParameters == null ||
-                                    referenceKind(reference, transformerParameters.size()) == null) {
+                            if (transformerParameters == null) {
                                 return null;
                             }
-                            parameters = String.join(", ", transformerParameters);
-                            transformerParameters.forEach(p -> addParameterTypeImport(typeOf(p), parameterTypeImports));
+                            referenceKind = referenceKind(reference, transformerParameters.size());
+                            if (referenceKind == null) {
+                                return null;
+                            }
+                            parameters = transformerParameters;
                         } else {
-                            parameters = parameters(declaredParameters, transformerParameters, body, parameterTypeImports);
+                            parameters = parameters(declaredParameters, transformerParameters, body);
                         }
                         if (parameters == null) {
                             return null;
                         }
-                        return new GlueMethod(annotation, annotationImport, new ArrayList<>(parameterTypeImports),
-                                returnTypeTree, returnType, methodName, parameters, body, reference);
+
+                        Set<String> parameterTypeImports = new LinkedHashSet<>();
+                        for (String parameter : parameters) {
+                            String parameterTypeImport = PARAMETER_TYPE_IMPORTS.get(typeOf(parameter));
+                            if (parameterTypeImport != null) {
+                                parameterTypeImports.add(parameterTypeImport);
+                            }
+                        }
+                        String returnType = returnTypeTree == null ? "Object" : returnTypeTree.printTrimmed(getCursor());
+                        return new GlueMethod(annotation, annotationImport, parameterTypeImports, returnTypeTree,
+                                returnType, methodName, String.join(", ", parameters), body, reference, referenceKind);
                     }
 
                     /**
@@ -463,10 +483,9 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                      *                              lambda or anonymous class declares, and cut off any it declares
                      *                              beyond them
                      */
-                    private @Nullable String parameters(List<J> declaredParameters,
-                                                        @Nullable List<String> transformerParameters,
-                                                        @Nullable J body,
-                                                        Set<String> parameterTypeImports) {
+                    private @Nullable List<String> parameters(List<? extends J> declaredParameters,
+                                                              @Nullable List<String> transformerParameters,
+                                                              @Nullable J body) {
                         List<String> parameters = new ArrayList<>();
                         for (int i = 0; i < declaredParameters.size(); i++) {
                             J parameter = declaredParameters.get(i);
@@ -480,7 +499,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                             if (declaration.getVariables().size() != 1) {
                                 return null;
                             }
-                            String name = declaration.getVariables().get(0).getSimpleName();
+                            J.Identifier name = declaration.getVariables().get(0).getName();
                             if (transformerParameters != null && transformerParameters.size() <= i) {
                                 if (body == null || isReferenced(body, name)) {
                                     return null;
@@ -493,10 +512,9 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                             if (type == null) {
                                 return null;
                             }
-                            addParameterTypeImport(type, parameterTypeImports);
-                            parameters.add(type + " " + name);
+                            parameters.add(type + " " + name.getSimpleName());
                         }
-                        return String.join(", ", parameters);
+                        return parameters;
                     }
 
                     /**
@@ -512,7 +530,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                 });
     }
 
-    private enum ReferenceKind {
+    enum ReferenceKind {
         CONSTRUCTOR, STATIC, BOUND, UNBOUND
     }
 
@@ -582,23 +600,9 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
         return containing instanceof J.FieldAccess && ((J.FieldAccess) containing).getName().getFieldType() == null;
     }
 
-    private static boolean isReferenced(J body, String name) {
-        return new JavaIsoVisitor<AtomicBoolean>() {
-            @Override
-            public J.Identifier visitIdentifier(J.Identifier identifier, AtomicBoolean referenced) {
-                if (name.equals(identifier.getSimpleName())) {
-                    referenced.set(true);
-                }
-                return identifier;
-            }
-        }.reduce(body, new AtomicBoolean()).get();
-    }
-
-    private static void addParameterTypeImport(String parameterType, Set<String> parameterTypeImports) {
-        String parameterTypeImport = PARAMETER_TYPE_IMPORTS.get(parameterType);
-        if (parameterTypeImport != null) {
-            parameterTypeImports.add(parameterTypeImport);
-        }
+    private static boolean isReferenced(J body, J.Identifier name) {
+        return !VariableReferences.findRhsReferences(body, name).isEmpty() ||
+                !VariableReferences.findLhsReferences(body, name).isEmpty();
     }
 
     private static String typeOf(String parameter) {
@@ -664,9 +668,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
  */
 class Locals {
 
-    private final Map<String, Expression> initializers = new HashMap<>();
-    private final Map<String, Statement> declarations = new LinkedHashMap<>();
-    private final Map<String, Integer> reads = new HashMap<>();
+    private final Map<String, Local> locals = new LinkedHashMap<>();
 
     /**
      * @return whether the statement was recorded here rather than left to be registered
@@ -680,8 +682,7 @@ class Locals {
             return false;
         }
         for (J.VariableDeclarations.NamedVariable variable : variables) {
-            initializers.put(variable.getSimpleName(), variable.getInitializer());
-            declarations.put(variable.getSimpleName(), statement);
+            locals.put(variable.getSimpleName(), new Local(statement, variable.getInitializer()));
         }
         return true;
     }
@@ -690,23 +691,29 @@ class Locals {
         if (!(expression instanceof J.Identifier)) {
             return expression;
         }
-        String name = ((J.Identifier) expression).getSimpleName();
-        Expression initializer = initializers.get(name);
-        if (initializer == null) {
+        Local local = locals.get(((J.Identifier) expression).getSimpleName());
+        if (local == null) {
             return expression;
         }
-        reads.merge(name, 1, Integer::sum);
-        return read(initializer);
+        local.reads++;
+        return read(local.initializer);
     }
 
     @Nullable
     Statement notReadExactlyOnce() {
-        for (Map.Entry<String, Statement> declaration : declarations.entrySet()) {
-            if (reads.getOrDefault(declaration.getKey(), 0) != 1) {
-                return declaration.getValue();
+        for (Local local : locals.values()) {
+            if (local.reads != 1) {
+                return local.declaration;
             }
         }
         return null;
+    }
+
+    @RequiredArgsConstructor
+    private static class Local {
+        private final Statement declaration;
+        private final Expression initializer;
+        private int reads;
     }
 
 }
@@ -716,7 +723,7 @@ class GlueMethod {
 
     String annotation;
     String annotationImport;
-    List<String> parameterTypeImports;
+    Collection<String> parameterTypeImports;
     @Nullable
     TypeTree returnTypeTree;
     String returnType;
@@ -725,6 +732,7 @@ class GlueMethod {
     @Nullable
     J body;
     J.@Nullable MemberReference reference;
+    TypeRegistryConfigurerToAnnotations.@Nullable ReferenceKind referenceKind;
 
     String template() {
         // The body is passed as a template parameter to retain its type attribution
