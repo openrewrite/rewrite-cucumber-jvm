@@ -572,6 +572,132 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
         @SuppressWarnings("CodeBlock2Expr")
         @Test
+        void flagCapturedLocalVariablesDeclaredInANestedScope() {
+            // A field assigned where the declaration stood would only be assigned when that scope is entered
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+
+                    public class CalculatorStepDefinitions implements En {
+
+                        public CalculatorStepDefinitions(boolean flag) {
+                            if (flag) {
+                                RpnCalculator calc = new RpnCalculator();
+                                Given("a calculator I just turned on", () -> {
+                                    calc.push(0);
+                                });
+                            }
+                        }
+
+                        static class RpnCalculator {
+                            void push(Object o) {
+                            }
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java.en.Given;
+
+                    public class CalculatorStepDefinitions {
+
+                        private final boolean flag;
+
+                        /*~~(TODO Migrate manually)~~>*/public CalculatorStepDefinitions(boolean flag) {
+                            if (flag) {
+                                RpnCalculator calc = new RpnCalculator();
+                            }
+                            this.flag = flag;
+                        }
+
+                        @Given("a calculator I just turned on")
+                        public void a_calculator_i_just_turned_on() {
+                            calc.push(0);
+                        }
+
+                        static class RpnCalculator {
+                            void push(Object o) {
+                            }
+                        }
+                    }
+                    """),
+                17));
+        }
+
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+        @SuppressWarnings("CodeBlock2Expr")
+        @Test
+        void leaveLocalVariablesSharingANameWithAnInvokedMethodAlone() {
+            // The migrated body calls `service.list()`; the local `list` is not what it closed over
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+
+                    import java.util.ArrayList;
+                    import java.util.List;
+
+                    public class CalculatorStepDefinitions implements En {
+
+                        public CalculatorStepDefinitions(Service service) {
+                            List<String> list = new ArrayList<>();
+                            list.add("not what the lambda closed over");
+                            Given("a calculator I just turned on", () -> {
+                                service.list();
+                            });
+                        }
+
+                        static class Service {
+                            void list() {
+                            }
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java.en.Given;
+
+                    import java.util.ArrayList;
+                    import java.util.List;
+
+                    public class CalculatorStepDefinitions {
+
+                        private final Service service;
+
+                        public CalculatorStepDefinitions(Service service) {
+                            List<String> list = new ArrayList<>();
+                            list.add("not what the lambda closed over");
+                            this.service = service;
+                        }
+
+                        @Given("a calculator I just turned on")
+                        public void a_calculator_i_just_turned_on() {
+                            service.list();
+                        }
+
+                        static class Service {
+                            void list() {
+                            }
+                        }
+                    }
+                    """),
+                17));
+        }
+
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+        @SuppressWarnings("CodeBlock2Expr")
+        @Test
         void retainArrayLocalVariablesCapturedByLambdas() {
             // The dimensions declared after the variable name belong to the type the field is declared with
             rewriteRun(
@@ -661,6 +787,56 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                         @Given("a calculator I just turned on")
                         public void a_calculator_i_just_turned_on() {
                             System.out.println(total);
+                        }
+                    }
+                    """),
+                17));
+        }
+
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+        @SuppressWarnings("CodeBlock2Expr")
+        @Test
+        void leaveLocalVariablesShadowedByTheFieldTheLambdaUsedAlone() {
+            // The migrated body reads the field as `this.total`, so the local of that name is not what it closed over
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+
+                    public class CalculatorStepDefinitions implements En {
+
+                        private int total;
+
+                        public CalculatorStepDefinitions() {
+                            int total = 3;
+                            System.out.println(total);
+                            Given("a calculator I just turned on", () -> {
+                                System.out.println(this.total);
+                            });
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java.en.Given;
+
+                    public class CalculatorStepDefinitions {
+
+                        private int total;
+
+                        public CalculatorStepDefinitions() {
+                            int total = 3;
+                            System.out.println(total);
+                        }
+
+                        @Given("a calculator I just turned on")
+                        public void a_calculator_i_just_turned_on() {
+                            System.out.println(this.total);
                         }
                     }
                     """),

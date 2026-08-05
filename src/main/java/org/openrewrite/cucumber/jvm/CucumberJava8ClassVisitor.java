@@ -37,6 +37,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 
 @RequiredArgsConstructor
 class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
@@ -120,7 +121,8 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
             return classDeclaration;
         }
 
-        Set<String> namesTaken = declaredFieldNames(classDeclaration);
+        Set<String> fieldNames = declaredFieldNames(classDeclaration);
+        Set<String> namesTaken = new HashSet<>(fieldNames);
         StringBuilder fields = new StringBuilder();
         StringBuilder assignments = new StringBuilder();
         if (constructor != null) {
@@ -144,9 +146,12 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
             }
         }
 
+        Set<String> capturedNames = glueDeclaration == null ? emptySet() :
+                namesUsedByMigratedMethods(classDeclaration, glueDeclaration);
         List<String> promoted = new ArrayList<>();
-        boolean anyDeclined = false;
-        for (J.VariableDeclarations local : capturedLocalVariables(classDeclaration, glueDeclaration)) {
+        boolean anyDeclined = glueDeclaration != null &&
+                capturedFromNestedScope(glueDeclaration, capturedNames, fieldNames);
+        for (J.VariableDeclarations local : capturedLocalVariables(glueDeclaration, capturedNames)) {
             String name = local.getVariables().get(0).getSimpleName();
             if (canBecomeField(local) && namesTaken.add(name)) {
                 fields.append(String.format("private %s %s;%n", fieldType(local), name));
@@ -276,16 +281,11 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
 
     /**
      * @return the variables declared directly in the glue declaration body that the migrated methods still refer to,
-     * whether or not they can be turned into a field; anything declared deeper is in a scope of its own, such as the
-     * body of a lambda yet to be migrated, and so is not what the migrated lambdas closed over
+     * whether or not they can be turned into a field
      */
-    private static List<J.VariableDeclarations> capturedLocalVariables(J.ClassDeclaration classDeclaration,
-            J.@Nullable MethodDeclaration glueDeclaration) {
-        if (glueDeclaration == null || glueDeclaration.getBody() == null) {
-            return emptyList();
-        }
-        Set<String> capturedNames = namesUsedByMigratedMethods(classDeclaration, glueDeclaration);
-        if (capturedNames.isEmpty()) {
+    private static List<J.VariableDeclarations> capturedLocalVariables(J.@Nullable MethodDeclaration glueDeclaration,
+            Set<String> capturedNames) {
+        if (glueDeclaration == null || glueDeclaration.getBody() == null || capturedNames.isEmpty()) {
             return emptyList();
         }
         List<J.VariableDeclarations> captured = new ArrayList<>();
@@ -297,6 +297,51 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
             }
         }
         return captured;
+    }
+
+    /**
+     * A variable declared in a scope nested inside the glue declaration, such as the body of an {@code if}, cannot
+     * become a field assigned where it was declared, as that assignment only runs when that scope is entered.
+     *
+     * @return whether a name the migrated methods use is declared in such a scope, leaving nothing for the name to
+     * resolve against once the lambda body has moved out
+     */
+    private static boolean capturedFromNestedScope(J.MethodDeclaration glueDeclaration, Set<String> capturedNames,
+            Set<String> fieldNames) {
+        if (glueDeclaration.getBody() == null || capturedNames.isEmpty()) {
+            return false;
+        }
+        Set<String> declaredInBody = new HashSet<>();
+        for (Statement statement : glueDeclaration.getBody().getStatements()) {
+            if (statement instanceof J.VariableDeclarations) {
+                for (J.VariableDeclarations.NamedVariable variable : ((J.VariableDeclarations) statement).getVariables()) {
+                    declaredInBody.add(variable.getSimpleName());
+                }
+            }
+        }
+        return new JavaIsoVisitor<AtomicBoolean>() {
+
+            @Override
+            public J.Lambda visitLambda(J.Lambda lambda, AtomicBoolean found) {
+                // A lambda yet to migrate is a scope of its own, as is an anonymous class body
+                return lambda;
+            }
+
+            @Override
+            public J.NewClass visitNewClass(J.NewClass newClass, AtomicBoolean found) {
+                return newClass;
+            }
+
+            @Override
+            public J.VariableDeclarations.NamedVariable visitVariable(J.VariableDeclarations.NamedVariable variable,
+                    AtomicBoolean found) {
+                String name = variable.getSimpleName();
+                if (capturedNames.contains(name) && !fieldNames.contains(name) && !declaredInBody.contains(name)) {
+                    found.set(true);
+                }
+                return super.visitVariable(variable, found);
+            }
+        }.reduce(glueDeclaration.getBody(), new AtomicBoolean()).get();
     }
 
     /**
@@ -322,6 +367,21 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
 
     private static Set<String> referencedNames(J.MethodDeclaration method) {
         return new JavaIsoVisitor<Set<String>>() {
+
+            @Override
+            public J.MethodInvocation visitMethodInvocation(J.MethodInvocation mi, Set<String> names) {
+                // The method name resolves against whatever it is invoked on, so it is no name of its own
+                visit(mi.getSelect(), names);
+                visit(mi.getArguments(), names);
+                return mi;
+            }
+
+            @Override
+            public J.FieldAccess visitFieldAccess(J.FieldAccess fieldAccess, Set<String> names) {
+                // Likewise the name after the dot is a member of what precedes it
+                visit(fieldAccess.getTarget(), names);
+                return fieldAccess;
+            }
 
             @Override
             public J.Identifier visitIdentifier(J.Identifier identifier, Set<String> names) {
