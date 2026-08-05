@@ -61,7 +61,8 @@ public class RemoveCucumberJava8Dependency extends ScanningRecipe<AtomicBoolean>
             public J.MethodInvocation visitMethodInvocation(J.MethodInvocation mi, ExecutionContext ctx) {
                 if (isLambdaGlue(mi) &&
                         !CucumberJava8StepDefinitionToCucumberJava.converts(mi) &&
-                        !CucumberJava8HookDefinitionToCucumberJava.converts(mi)) {
+                        !CucumberJava8HookDefinitionToCucumberJava.converts(mi) &&
+                        !CucumberJava8TypeDefinitionToCucumberJava.converts(mi)) {
                     lambdaGlueRemains.set(true);
                 }
                 return super.visitMethodInvocation(mi, ctx);

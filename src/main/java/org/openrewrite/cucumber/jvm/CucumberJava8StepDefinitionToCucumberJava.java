@@ -63,13 +63,7 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
                     @Override
                     public @Nullable J visitMethodInvocation(J.MethodInvocation methodInvocation, ExecutionContext ctx) {
                         J.MethodInvocation m = (J.MethodInvocation) super.visitMethodInvocation(methodInvocation, ctx);
-                        if (!STEP_DEFINITION_METHOD_MATCHER.matches(m) || m.getMethodType() == null) {
-                            return m;
-                        }
-
-                        // Skip any methods not containing a second argument, such as
-                        // Scenario.log(String)
-                        if (m.getArguments().size() < 2) {
+                        if (!isStepDefinition(m) || m.getMethodType() == null) {
                             return m;
                         }
 
@@ -98,7 +92,8 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
                                 replacementImports,
                                 stepArguments.getParameterTypes(),
                                 stepArguments.template(),
-                                stepArguments.parameters()));
+                                stepArguments.parameters(),
+                                null));
 
                         // Remove original method invocation; it's replaced in the above
                         // visitor
@@ -109,13 +104,26 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
     }
 
     /**
+     * The matcher also catches {@code Scenario.log(String)} and registrations such as
+     * {@code DataTableType(String, DataTableEntryDefinitionBody)}; the body taken is what tells a step from those.
+     */
+    private static boolean isStepDefinition(J.MethodInvocation methodInvocation) {
+        if (!STEP_DEFINITION_METHOD_MATCHER.matches(methodInvocation) || methodInvocation.getMethodType() == null) {
+            return false;
+        }
+        List<JavaType> parameterTypes = methodInvocation.getMethodType().getParameterTypes();
+        return !parameterTypes.isEmpty() && TypeUtils.isAssignableTo(
+                IO_CUCUMBER_JAVA8_STEP_DEFINITION_BODY, parameterTypes.get(parameterTypes.size() - 1));
+    }
+
+    /**
      * @return whether this invocation is a step definition this recipe replaces with an annotated method, rather
      * than one it leaves where it is for a manual migration
      */
     static boolean converts(J.MethodInvocation methodInvocation) {
         // Only whether the step definition converts is asked here, not what it converts to, so the package the
         // parameter types are named relative to makes no difference
-        return STEP_DEFINITION_METHOD_MATCHER.matches(methodInvocation) &&
+        return isStepDefinition(methodInvocation) &&
                 stepDefinitionArguments(methodInvocation, "", new ArrayList<>()) != null;
     }
 
@@ -133,9 +141,6 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
             return null;
         }
         Expression definitionBody = arguments.get(1);
-        if (!TypeUtils.isAssignableTo(IO_CUCUMBER_JAVA8_STEP_DEFINITION_BODY, definitionBody.getType())) {
-            return null;
-        }
         String annotationName = methodInvocation.getSimpleName();
         J.Literal cucumberExpression = (J.Literal) arguments.get(0);
         if (definitionBody instanceof J.Lambda) {

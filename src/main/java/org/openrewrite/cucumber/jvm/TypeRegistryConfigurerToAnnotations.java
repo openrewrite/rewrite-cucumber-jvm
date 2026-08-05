@@ -38,6 +38,15 @@ import java.util.*;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static org.openrewrite.cucumber.jvm.GlueMethods.PARAMETER_TYPE_IMPORTS;
+import static org.openrewrite.cucumber.jvm.GlueMethods.decapitalize;
+import static org.openrewrite.cucumber.jvm.GlueMethods.declaredMethodNames;
+import static org.openrewrite.cucumber.jvm.GlueMethods.fullyQualifiedName;
+import static org.openrewrite.cucumber.jvm.GlueMethods.literalSource;
+import static org.openrewrite.cucumber.jvm.GlueMethods.sanitize;
+import static org.openrewrite.cucumber.jvm.GlueMethods.stringLiteral;
+import static org.openrewrite.cucumber.jvm.GlueMethods.typeOf;
+import static org.openrewrite.cucumber.jvm.GlueMethods.uniqueMethodName;
 
 
 @EqualsAndHashCode(callSuper = false)
@@ -84,8 +93,6 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
      */
     private static final Map<String, List<String>> TRANSFORMER_PARAMETERS = new HashMap<>();
 
-    private static final Map<String, String> PARAMETER_TYPE_IMPORTS = new HashMap<>();
-
     /**
      * The trailing `ParameterType` constructor arguments, in order, as the annotation attributes they become.
      */
@@ -103,11 +110,6 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
         TRANSFORMER_PARAMETERS.put("io.cucumber.datatable.TableRowTransformer", singletonList("List<String> row"));
         TRANSFORMER_PARAMETERS.put("io.cucumber.datatable.TableTransformer", singletonList("DataTable table"));
         TRANSFORMER_PARAMETERS.put("io.cucumber.docstring.DocStringType$Transformer", singletonList("String docString"));
-
-        PARAMETER_TYPE_IMPORTS.put("DataTable", "io.cucumber.datatable.DataTable");
-        PARAMETER_TYPE_IMPORTS.put("List<String>", "java.util.List");
-        PARAMETER_TYPE_IMPORTS.put("Map<String, String>", "java.util.Map");
-        PARAMETER_TYPE_IMPORTS.put("Type", "java.lang.reflect.Type");
     }
 
     String displayName = "Replace `TypeRegistryConfigurer` with cucumber-java annotations";
@@ -146,12 +148,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                                     .comment(" " + MANUAL_MIGRATION, Comments.Placement.BEFORE, "\n");
                         }
 
-                        Set<String> methodNames = new LinkedHashSet<>();
-                        for (Statement statement : c.getBody().getStatements()) {
-                            if (statement instanceof J.MethodDeclaration) {
-                                methodNames.add(((J.MethodDeclaration) statement).getSimpleName());
-                            }
-                        }
+                        Set<String> methodNames = declaredMethodNames(c);
 
                         Locals locals = new Locals();
                         List<GlueMethod> glueMethods = new ArrayList<>();
@@ -342,7 +339,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                         if (name == null || regexp == null || returnType == null) {
                             return null;
                         }
-                        String methodName = uniqueMethodName(sanitize(name), methodNames);
+                        String methodName = uniqueMethodName(sanitize(name, "parameterType"), methodNames);
                         List<String> attributes = new ArrayList<>();
                         if (!methodName.equals(name)) {
                             attributes.add("name = " + literalSource(arguments.get(0)));
@@ -375,7 +372,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                             return null;
                         }
                         String methodName = uniqueMethodName(
-                                sanitize(decapitalize(returnType.printTrimmed(getCursor()))), methodNames);
+                                sanitize(decapitalize(returnType.printTrimmed(getCursor())), "parameterType"), methodNames);
                         return glueMethod("@DataTableType", IO_CUCUMBER_JAVA_DATA_TABLE_TYPE, returnType, methodName,
                                 arguments.get(1));
                     }
@@ -391,7 +388,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                             return null;
                         }
                         String methodName = uniqueMethodName(
-                                sanitize(decapitalize(returnType.printTrimmed(getCursor()))), methodNames);
+                                sanitize(decapitalize(returnType.printTrimmed(getCursor())), "parameterType"), methodNames);
                         return glueMethod("@DocStringType(contentType = " + contentType + ")",
                                 IO_CUCUMBER_JAVA_DOC_STRING_TYPE, returnType, methodName, arguments.get(2));
                     }
@@ -533,15 +530,6 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                 !VariableReferences.findLhsReferences(body, name).isEmpty();
     }
 
-    private static String typeOf(String parameter) {
-        return parameter.substring(0, parameter.lastIndexOf(' '));
-    }
-
-    private static @Nullable String fullyQualifiedName(@Nullable JavaType type) {
-        JavaType.FullyQualified fullyQualified = TypeUtils.asFullyQualified(type);
-        return fullyQualified == null ? null : fullyQualified.getFullyQualifiedName();
-    }
-
     private static boolean isLocaleMethod(Statement statement) {
         if (!(statement instanceof J.MethodDeclaration)) {
             return false;
@@ -551,41 +539,9 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                 .noneMatch(J.VariableDeclarations.class::isInstance);
     }
 
-    private static @Nullable String stringLiteral(Expression expression) {
-        return expression instanceof J.Literal && ((J.Literal) expression).getValue() instanceof String ?
-                (String) ((J.Literal) expression).getValue() : null;
-    }
-
-    private static @Nullable String literalSource(Expression expression) {
-        return stringLiteral(expression) == null ? null : ((J.Literal) expression).getValueSource();
-    }
-
     private static @Nullable Boolean booleanLiteral(Expression expression) {
         return expression instanceof J.Literal && ((J.Literal) expression).getValue() instanceof Boolean ?
                 (Boolean) ((J.Literal) expression).getValue() : null;
-    }
-
-    private static String sanitize(String parameterTypeName) {
-        StringBuilder methodName = new StringBuilder();
-        for (char c : parameterTypeName.toCharArray()) {
-            if (methodName.length() == 0 ? Character.isJavaIdentifierStart(c) : Character.isJavaIdentifierPart(c)) {
-                methodName.append(c);
-            }
-        }
-        return methodName.length() == 0 ? "parameterType" : methodName.toString();
-    }
-
-    private static String decapitalize(String typeName) {
-        String simpleName = typeName.substring(typeName.lastIndexOf('.') + 1);
-        return Character.toLowerCase(simpleName.charAt(0)) + simpleName.substring(1);
-    }
-
-    private static String uniqueMethodName(String candidate, Set<String> methodNames) {
-        String methodName = candidate;
-        for (int i = 2; !methodNames.add(methodName); i++) {
-            methodName = candidate + i;
-        }
-        return methodName;
     }
 
 }

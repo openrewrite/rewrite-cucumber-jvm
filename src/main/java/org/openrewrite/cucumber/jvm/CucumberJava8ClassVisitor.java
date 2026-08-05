@@ -59,13 +59,19 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
     private final List<String> replacementImports;
 
     /**
-     * The types of the parameters the new method declares, in order, for as far as they are known; the template is
-     * parsed without the project on its classpath, so any type from it comes back unattributed.
+     * The types of the parameters the new method declares, in order, for as far as they are known; like
+     * {@link #returnType}, a type the project itself declares comes back from the template unattributed.
      */
     private final List<JavaType> parameterTypes;
 
     private final String template;
     private final Object[] templateParameters;
+
+    /**
+     * The template is parsed with only Cucumber on its classpath, so a return type declared by the project itself
+     * comes back unattributed.
+     */
+    private final @Nullable JavaType returnType;
 
     @Override
     public J.@Nullable ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, ExecutionContext ctx) {
@@ -108,53 +114,60 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         J.ClassDeclaration applied = JavaTemplate.builder(template)
                 .contextSensitive()
                 .javaParser(
-                        JavaParser.fromJavaVersion().classpathFromResources(ctx, "cucumber-java-7", "cucumber-java8-7"))
+                        JavaParser.fromJavaVersion()
+                                .classpathFromResources(ctx, "cucumber-java-7", "cucumber-java8-7", "datatable"))
                 .imports(replacementImports.toArray(new String[0]))
                 .build().apply(getCursor(), coordinatesForNewMethod(classDeclaration.getBody()), templateParameters);
-        J.ClassDeclaration retyped = retypeParameters(classDeclaration, applied);
-        return retainGlueDeclarationState(retyped.withImplements(retained), ctx);
+        return retainGlueDeclarationState(retypeNewMethod(classDeclaration, applied).withImplements(retained), ctx);
     }
 
     /**
-     * Copy the types the parameters of the new method were declared from back over the ones the template came back
-     * with, as the template is parsed without the project the types can come from on its classpath.
+     * Found by id rather than by position, as {@code coordinatesForNewMethod} does not always append.
      */
-    private J.ClassDeclaration retypeParameters(J.ClassDeclaration before, J.ClassDeclaration after) {
-        if (parameterTypes.isEmpty()) {
+    private J.ClassDeclaration retypeNewMethod(J.ClassDeclaration before, J.ClassDeclaration after) {
+        if (returnType == null && parameterTypes.isEmpty()) {
             return after;
         }
-        Set<UUID> alreadyDeclared = new HashSet<>();
+        Set<UUID> existing = new HashSet<>();
         for (Statement statement : before.getBody().getStatements()) {
-            alreadyDeclared.add(statement.getId());
+            existing.add(statement.getId());
         }
         return after.withBody(after.getBody().withStatements(ListUtils.map(after.getBody().getStatements(),
-                statement -> statement instanceof J.MethodDeclaration && !alreadyDeclared.contains(statement.getId()) ?
-                        retypeParameters((J.MethodDeclaration) statement) : statement)));
+                statement -> existing.contains(statement.getId()) || !(statement instanceof J.MethodDeclaration) ?
+                        statement : retypeNewMethod((J.MethodDeclaration) statement))));
     }
 
-    private J.MethodDeclaration retypeParameters(J.MethodDeclaration method) {
-        J.MethodDeclaration retyped = method.withParameters(ListUtils.map(method.getParameters(), (i, parameter) -> {
-            if (!(parameter instanceof J.VariableDeclarations)) {
-                return parameter;
-            }
-            J.VariableDeclarations declaration = (J.VariableDeclarations) parameter;
-            if (declaration.getTypeExpression() == null || parameterTypes.size() <= i) {
-                return parameter;
-            }
-            JavaType type = parameterTypes.get(i);
-            J.VariableDeclarations.NamedVariable variable = declaration.getVariables().get(0);
-            JavaType.Variable variableType = variable.getVariableType() == null ? null :
-                    variable.getVariableType().withType(type);
-            return declaration
-                    .withTypeExpression(declaration.getTypeExpression().withType(type))
-                    .withVariables(singletonList(variable
-                            .withVariableType(variableType)
-                            .withName(variable.getName().withType(type).withFieldType(variableType))));
-        }));
+    private J.MethodDeclaration retypeNewMethod(J.MethodDeclaration method) {
+        J.MethodDeclaration retyped = parameterTypes.isEmpty() ? method :
+                method.withParameters(ListUtils.map(method.getParameters(), (i, parameter) -> {
+                    if (!(parameter instanceof J.VariableDeclarations)) {
+                        return parameter;
+                    }
+                    J.VariableDeclarations declaration = (J.VariableDeclarations) parameter;
+                    if (declaration.getTypeExpression() == null || parameterTypes.size() <= i) {
+                        return parameter;
+                    }
+                    JavaType type = parameterTypes.get(i);
+                    J.VariableDeclarations.NamedVariable variable = declaration.getVariables().get(0);
+                    JavaType.Variable variableType = variable.getVariableType() == null ? null :
+                            variable.getVariableType().withType(type);
+                    return declaration
+                            .withTypeExpression(declaration.getTypeExpression().withType(type))
+                            .withVariables(singletonList(variable
+                                    .withVariableType(variableType)
+                                    .withName(variable.getName().withType(type).withFieldType(variableType))));
+                }));
         if (retyped.getMethodType() == null) {
             return retyped;
         }
-        JavaType.Method methodType = retyped.getMethodType().withParameterTypes(parameterTypes);
+        JavaType.Method methodType = retyped.getMethodType();
+        if (!parameterTypes.isEmpty()) {
+            methodType = methodType.withParameterTypes(parameterTypes);
+        }
+        if (returnType != null && retyped.getReturnTypeExpression() != null) {
+            methodType = methodType.withReturnType(returnType);
+            retyped = retyped.withReturnTypeExpression(retyped.getReturnTypeExpression().withType(returnType));
+        }
         return retyped.withMethodType(methodType).withName(retyped.getName().withType(methodType));
     }
 

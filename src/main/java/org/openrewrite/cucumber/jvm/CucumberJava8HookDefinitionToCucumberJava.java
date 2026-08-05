@@ -96,7 +96,8 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
                                 hookArguments.replacementImports(),
                                 emptyList(),
                                 hookArguments.template(),
-                                hookArguments.parameters()));
+                                hookArguments.parameters(),
+                                null));
 
                         // Remove original method invocation; it's replaced in the above
                         // visitor
