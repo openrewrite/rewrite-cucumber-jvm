@@ -439,14 +439,43 @@ tags:
 recipeList:
   - org.openrewrite.cucumber.jvm.CucumberJava8HookDefinitionToCucumberJava
   - org.openrewrite.cucumber.jvm.CucumberJava8StepDefinitionToCucumberJava
-  - org.openrewrite.java.dependencies.ChangeDependency:
-      oldGroupId: io.cucumber
-      oldArtifactId: cucumber-java8
-      newGroupId: io.cucumber
-      newArtifactId: cucumber-java
-  - org.openrewrite.java.ChangePackage:
-      oldPackageName: io.cucumber.java8
-      newPackageName: io.cucumber.java
+  - org.openrewrite.cucumber.jvm.MigrateCucumberJava8ScenarioAndStatus
+  # Keyed off the `cucumber-java8` types that are there to begin with, rather than the `cucumber-java` types the
+  # migration introduces: a scanning recipe only sees the sources as they were when the cycle it runs in started,
+  # and a build tool run ends before the cycle in which the migrated types would come into view
+  - org.openrewrite.java.dependencies.AddDependency:
+      groupId: io.cucumber
+      artifactId: cucumber-java
+      version: 7.x
+      familyPattern: io.cucumber*
+      onlyIfUsing: io.cucumber.java8..*
+      acceptTransitive: true
+  # Only once no lambda glue is left, as a class that retained a `cucumber-java8` interface still needs it
+  - org.openrewrite.cucumber.jvm.RemoveCucumberJava8Dependency
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.MigrateCucumberJava8ScenarioAndStatus
+displayName: Migrate `io.cucumber.java8.Scenario` and `io.cucumber.java8.Status`
+description: >-
+  `Scenario` and `Status` are the only `io.cucumber.java8` types with an `io.cucumber.java` counterpart;
+  the language interfaces such as `En` and the `LambdaGlue` body types have none, so renaming the package
+  wholesale would point whatever the migration could not convert at a type that does not exist. Where such
+  a body type does survive it also still expects the `cucumber-java8` `Scenario`, as in an anonymous
+  `HookBody`, so leave both types be until the last of the lambda glue is gone.
+tags:
+  - testing
+  - cucumber
+preconditions:
+  - org.openrewrite.java.search.DoesNotUseType:
+      fullyQualifiedTypeName: io.cucumber.java8.*Body
+      includeImplicit: true
+recipeList:
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: io.cucumber.java8.Scenario
+      newFullyQualifiedTypeName: io.cucumber.java.Scenario
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: io.cucumber.java8.Status
+      newFullyQualifiedTypeName: io.cucumber.java.Status
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite

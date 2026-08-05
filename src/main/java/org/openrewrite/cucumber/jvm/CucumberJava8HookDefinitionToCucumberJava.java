@@ -73,14 +73,12 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
                     @Override
                     public @Nullable J visitMethodInvocation(J.MethodInvocation mi, ExecutionContext ctx) {
                         J.MethodInvocation methodInvocation = (J.MethodInvocation) super.visitMethodInvocation(mi, ctx);
-                        if (!HOOK_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation) &&
-                                !HOOK_NO_ARGS_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation)) {
+                        if (!isHookDefinition(methodInvocation)) {
                             return methodInvocation;
                         }
 
                         // Replacement annotations can only handle literals or constants
-                        if (methodInvocation.getArguments().stream()
-                                .anyMatch(arg -> !(arg instanceof J.Literal) && !(arg instanceof J.Lambda))) {
+                        if (!converts(methodInvocation)) {
                             return SearchResult.found(methodInvocation, "TODO Migrate manually");
                         }
 
@@ -92,8 +90,10 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
                         J.ClassDeclaration parentClass = getCursor()
                                 .dropParentUntil(J.ClassDeclaration.class::isInstance)
                                 .getValue();
+                        J.MethodDeclaration glueDeclaration = getCursor().firstEnclosing(J.MethodDeclaration.class);
                         doAfterVisit(new CucumberJava8ClassVisitor(
                                 parentClass.getType(),
+                                glueDeclaration == null ? null : glueDeclaration.getId(),
                                 hookArguments.replacementImports(),
                                 hookArguments.template(),
                                 hookArguments.parameters()));
@@ -104,6 +104,20 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
                         return null;
                     }
                 });
+    }
+
+    private static boolean isHookDefinition(J.MethodInvocation methodInvocation) {
+        return HOOK_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation) ||
+                HOOK_NO_ARGS_BODY_DEFINITION_METHOD_MATCHER.matches(methodInvocation);
+    }
+
+    /**
+     * @return whether this invocation is a hook definition this recipe replaces with an annotated method, rather
+     * than one it leaves where it is for a manual migration
+     */
+    static boolean converts(J.MethodInvocation methodInvocation) {
+        return isHookDefinition(methodInvocation) && methodInvocation.getArguments().stream()
+                .allMatch(argument -> argument instanceof J.Literal || argument instanceof J.Lambda);
     }
 
     /**
