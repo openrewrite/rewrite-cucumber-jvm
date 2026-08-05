@@ -451,10 +451,7 @@ recipeList:
       onlyIfUsing: io.cucumber.java8..*
       acceptTransitive: true
   # Only once no lambda glue is left, as a class that retained a `cucumber-java8` interface still needs it
-  - org.openrewrite.java.dependencies.RemoveDependency:
-      groupId: io.cucumber
-      artifactId: cucumber-java8
-      unlessUsing: io.cucumber.java8..*
+  - org.openrewrite.cucumber.jvm.RemoveCucumberJava8Dependency
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.MigrateCucumberJava8ScenarioAndStatus

@@ -1180,8 +1180,6 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
         @Test
         void dropCucumberJava8OnceAllGlueIsMigrated() {
             rewriteRun(
-              // The dependencies only follow in the cycle after the one that migrated the glue
-              spec -> spec.expectedCyclesThatMakeChanges(2),
               mavenProject("app",
                 srcTestJava(
                   // language=java

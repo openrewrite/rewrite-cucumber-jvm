@@ -71,29 +71,15 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
                             return m;
                         }
 
-                        // Annotations require a String literal
-                        Expression stringExpression = arguments.get(0);
-                        if (!(stringExpression instanceof J.Literal)) {
+                        // Annotations require a String literal, and the body has to be a lambda to move
+                        if (!converts(m)) {
                             return SearchResult.found(m, "TODO Migrate manually");
                         }
-                        J.Literal literal = (J.Literal) stringExpression;
-
-                        // Extract step definition body, when applicable
-                        Expression possibleStepDefinitionBody = arguments.get(1); // Always
-                        // available
-                        // after a
-                        // first
-                        // String
-                        // argument
-                        if (!(possibleStepDefinitionBody instanceof J.Lambda) ||
-                                !TypeUtils.isAssignableTo(IO_CUCUMBER_JAVA8_STEP_DEFINITION_BODY,
-                                        possibleStepDefinitionBody.getType())) {
-                            return SearchResult.found(m, "TODO Migrate manually");
-                        }
-                        J.Lambda lambda = (J.Lambda) possibleStepDefinitionBody;
 
                         StepDefinitionArguments stepArguments = new StepDefinitionArguments(
-                                m.getSimpleName(), literal, lambda);
+                                m.getSimpleName(),
+                                (J.Literal) arguments.get(0),
+                                (J.Lambda) arguments.get(1));
 
                         // Determine step definitions class name
                         J.ClassDeclaration parentClass = getCursor()
@@ -120,6 +106,22 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
                         return null;
                     }
                 });
+    }
+
+    /**
+     * @return whether this invocation is a step definition this recipe replaces with an annotated method, rather
+     * than one it leaves where it is for a manual migration
+     */
+    static boolean converts(J.MethodInvocation methodInvocation) {
+        if (!STEP_DEFINITION_METHOD_MATCHER.matches(methodInvocation)) {
+            return false;
+        }
+        List<Expression> arguments = methodInvocation.getArguments();
+        // Skip any methods not containing a second argument, such as Scenario.log(String)
+        return arguments.size() >= 2 &&
+                arguments.get(0) instanceof J.Literal &&
+                arguments.get(1) instanceof J.Lambda &&
+                TypeUtils.isAssignableTo(IO_CUCUMBER_JAVA8_STEP_DEFINITION_BODY, arguments.get(1).getType());
     }
 
 }
