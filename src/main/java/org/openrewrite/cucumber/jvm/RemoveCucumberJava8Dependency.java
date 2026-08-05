@@ -27,7 +27,6 @@ import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.java.tree.TypeUtils;
 
-import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @EqualsAndHashCode(callSuper = false)
@@ -48,8 +47,6 @@ public class RemoveCucumberJava8Dependency extends ScanningRecipe<AtomicBoolean>
             "the migration, as what the migration leaves behind only becomes visible to a scanning recipe in the " +
             "cycle after, which a build tool run never reaches. Glue left anywhere retains the dependency " +
             "everywhere, an unused dependency being the one outcome here that still compiles.";
-
-    Duration estimatedEffortPerOccurrence = Duration.ofMinutes(5);
 
     @Override
     public AtomicBoolean getInitialValue(ExecutionContext ctx) {
