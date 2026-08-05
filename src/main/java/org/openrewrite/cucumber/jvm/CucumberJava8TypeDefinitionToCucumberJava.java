@@ -44,6 +44,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.nCopies;
 import static java.util.Collections.singletonList;
@@ -151,6 +152,7 @@ public class CucumberJava8TypeDefinitionToCucumberJava extends Recipe {
                                 parentClass.getType(),
                                 glueDeclaration == null ? null : glueDeclaration.getId(),
                                 arguments.getReplacementImports(),
+                                emptyList(),
                                 arguments.template(),
                                 arguments.parameters(),
                                 arguments.getReturnJavaType()));

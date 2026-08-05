@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
+import static java.util.Collections.singletonList;
 
 @RequiredArgsConstructor
 class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
@@ -56,6 +57,13 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
     private final @Nullable UUID glueDeclarationId;
 
     private final List<String> replacementImports;
+
+    /**
+     * The types of the parameters the new method declares, in order, for as far as they are known; like
+     * {@link #returnType}, a type the project itself declares comes back from the template unattributed.
+     */
+    private final List<JavaType> parameterTypes;
+
     private final String template;
     private final Object[] templateParameters;
 
@@ -117,27 +125,50 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
      * Found by id rather than by position, as {@code coordinatesForNewMethod} does not always append.
      */
     private J.ClassDeclaration retypeNewMethod(J.ClassDeclaration before, J.ClassDeclaration after) {
-        if (returnType == null) {
+        if (returnType == null && parameterTypes.isEmpty()) {
             return after;
         }
         Set<UUID> existing = new HashSet<>();
         for (Statement statement : before.getBody().getStatements()) {
             existing.add(statement.getId());
         }
-        return after.withBody(after.getBody().withStatements(ListUtils.map(after.getBody().getStatements(), statement -> {
-            if (existing.contains(statement.getId()) || !(statement instanceof J.MethodDeclaration)) {
-                return statement;
-            }
-            J.MethodDeclaration method = (J.MethodDeclaration) statement;
-            if (method.getMethodType() == null || method.getReturnTypeExpression() == null) {
-                return statement;
-            }
-            JavaType.Method methodType = method.getMethodType().withReturnType(returnType);
-            return method
-                    .withReturnTypeExpression(method.getReturnTypeExpression().withType(returnType))
-                    .withMethodType(methodType)
-                    .withName(method.getName().withType(methodType));
-        })));
+        return after.withBody(after.getBody().withStatements(ListUtils.map(after.getBody().getStatements(),
+                statement -> existing.contains(statement.getId()) || !(statement instanceof J.MethodDeclaration) ?
+                        statement : retypeNewMethod((J.MethodDeclaration) statement))));
+    }
+
+    private J.MethodDeclaration retypeNewMethod(J.MethodDeclaration method) {
+        J.MethodDeclaration retyped = parameterTypes.isEmpty() ? method :
+                method.withParameters(ListUtils.map(method.getParameters(), (i, parameter) -> {
+                    if (!(parameter instanceof J.VariableDeclarations)) {
+                        return parameter;
+                    }
+                    J.VariableDeclarations declaration = (J.VariableDeclarations) parameter;
+                    if (declaration.getTypeExpression() == null || parameterTypes.size() <= i) {
+                        return parameter;
+                    }
+                    JavaType type = parameterTypes.get(i);
+                    J.VariableDeclarations.NamedVariable variable = declaration.getVariables().get(0);
+                    JavaType.Variable variableType = variable.getVariableType() == null ? null :
+                            variable.getVariableType().withType(type);
+                    return declaration
+                            .withTypeExpression(declaration.getTypeExpression().withType(type))
+                            .withVariables(singletonList(variable
+                                    .withVariableType(variableType)
+                                    .withName(variable.getName().withType(type).withFieldType(variableType))));
+                }));
+        if (retyped.getMethodType() == null) {
+            return retyped;
+        }
+        JavaType.Method methodType = retyped.getMethodType();
+        if (!parameterTypes.isEmpty()) {
+            methodType = methodType.withParameterTypes(parameterTypes);
+        }
+        if (returnType != null && retyped.getReturnTypeExpression() != null) {
+            methodType = methodType.withReturnType(returnType);
+            retyped = retyped.withReturnTypeExpression(retyped.getReturnTypeExpression().withType(returnType));
+        }
+        return retyped.withMethodType(methodType).withName(retyped.getName().withType(methodType));
     }
 
     /**

@@ -28,7 +28,6 @@ import org.openrewrite.internal.ListUtils;
 import org.openrewrite.java.*;
 import org.openrewrite.java.search.UsesType;
 import org.openrewrite.java.tree.*;
-import org.openrewrite.marker.Markers;
 import org.openrewrite.staticanalysis.RemoveUnneededBlock;
 import org.openrewrite.staticanalysis.UnnecessaryThrows;
 import org.openrewrite.staticanalysis.VariableReferences;
@@ -38,9 +37,7 @@ import java.time.Duration;
 import java.util.*;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
-import static org.openrewrite.Tree.randomId;
 import static org.openrewrite.cucumber.jvm.GlueMethods.PARAMETER_TYPE_IMPORTS;
 import static org.openrewrite.cucumber.jvm.GlueMethods.decapitalize;
 import static org.openrewrite.cucumber.jvm.GlueMethods.declaredMethodNames;
@@ -269,7 +266,7 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                      * template is parsed without the type it refers to on the classpath.
                      */
                     private J.MethodDeclaration expandMemberReference(J.MethodDeclaration method,
-                                                                     J.MemberReference reference, ReferenceKind kind) {
+                                                                     J.MemberReference reference, MemberReferences.Kind kind) {
                         List<Expression> arguments = new ArrayList<>();
                         for (Statement parameter : method.getParameters()) {
                             if (parameter instanceof J.VariableDeclarations) {
@@ -283,7 +280,8 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                             return method;
                         }
                         J.Return placeholder = (J.Return) body.getStatements().get(0);
-                        Expression invocation = invocation(reference, kind, arguments).withPrefix(Space.SINGLE_SPACE);
+                        Expression invocation = MemberReferences.invocation(reference, kind, arguments)
+                                .withPrefix(Space.SINGLE_SPACE);
                         return method.withBody(body.withStatements(singletonList(
                                 placeholder.withExpression(invocation))));
                     }
@@ -445,13 +443,13 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                         }
 
                         List<String> transformerParameters = TRANSFORMER_PARAMETERS.get(fullyQualifiedName(functionalInterface));
-                        ReferenceKind referenceKind = null;
+                        MemberReferences.Kind referenceKind = null;
                         List<String> parameters;
                         if (declaredParameters == null) {
                             if (transformerParameters == null) {
                                 return null;
                             }
-                            referenceKind = referenceKind(reference, transformerParameters.size());
+                            referenceKind = MemberReferences.kind(reference, transformerParameters.size());
                             if (referenceKind == null) {
                                 return null;
                             }
@@ -525,76 +523,6 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                         return target instanceof TypeTree ? (TypeTree) target : null;
                     }
                 });
-    }
-
-    enum ReferenceKind {
-        CONSTRUCTOR, STATIC, BOUND, UNBOUND
-    }
-
-    /**
-     * @return how to call the method reference to stand in for a method taking {@code parameterCount} parameters,
-     * or {@code null} where that cannot be told with certainty
-     */
-    private static @Nullable ReferenceKind referenceKind(J.@Nullable MemberReference reference, int parameterCount) {
-        if (reference == null || reference.getMethodType() == null) {
-            return null;
-        }
-        JavaType.Method methodType = reference.getMethodType();
-        int arity = methodType.getParameterTypes().size();
-        Expression containing = reference.getContaining();
-        if (methodType.isConstructor()) {
-            boolean namesAClass = containing instanceof J.Identifier || containing instanceof J.FieldAccess ||
-                    containing instanceof J.ParameterizedType;
-            return namesAClass && arity == parameterCount ? ReferenceKind.CONSTRUCTOR : null;
-        }
-        if (methodType.hasFlags(Flag.Static)) {
-            return arity == parameterCount ? ReferenceKind.STATIC : null;
-        }
-        if (isTypeReference(containing)) {
-            // An unbound reference such as `String::trim` takes its receiver from the first parameter
-            return 0 < parameterCount && arity == parameterCount - 1 ? ReferenceKind.UNBOUND : null;
-        }
-        return arity == parameterCount ? ReferenceKind.BOUND : null;
-    }
-
-    private static Expression invocation(J.MemberReference reference, ReferenceKind kind, List<Expression> arguments) {
-        JavaType.Method methodType = Objects.requireNonNull(reference.getMethodType());
-        Expression containing = reference.getContaining();
-        if (kind == ReferenceKind.CONSTRUCTOR) {
-            return new J.NewClass(randomId(), Space.EMPTY, Markers.EMPTY, null, Space.EMPTY,
-                    ((TypeTree) containing).withPrefix(Space.SINGLE_SPACE),
-                    arguments(arguments), null, methodType);
-        }
-        Expression select = kind == ReferenceKind.UNBOUND ? arguments.get(0) : containing.withPrefix(Space.EMPTY);
-        List<Expression> invocationArguments = kind == ReferenceKind.UNBOUND ?
-                arguments.subList(1, arguments.size()) : arguments;
-        J.Identifier name = new J.Identifier(randomId(), Space.EMPTY, Markers.EMPTY, emptyList(),
-                reference.getReference().getSimpleName(), methodType, null);
-        return new J.MethodInvocation(randomId(), Space.EMPTY, Markers.EMPTY,
-                JRightPadded.build(select), null, name, arguments(invocationArguments), methodType);
-    }
-
-    private static JContainer<Expression> arguments(List<Expression> arguments) {
-        if (arguments.isEmpty()) {
-            return JContainer.build(singletonList(JRightPadded.build(
-                    new J.Empty(randomId(), Space.EMPTY, Markers.EMPTY))));
-        }
-        List<JRightPadded<Expression>> padded = new ArrayList<>();
-        for (int i = 0; i < arguments.size(); i++) {
-            padded.add(JRightPadded.build(arguments.get(i)
-                    .withPrefix(i == 0 ? Space.EMPTY : Space.SINGLE_SPACE)));
-        }
-        return JContainer.build(padded);
-    }
-
-    private static boolean isTypeReference(Expression containing) {
-        if (containing instanceof J.Identifier) {
-            J.Identifier identifier = (J.Identifier) containing;
-            return identifier.getFieldType() == null &&
-                    !"this".equals(identifier.getSimpleName()) && !"super".equals(identifier.getSimpleName()) &&
-                    identifier.getType() instanceof JavaType.FullyQualified;
-        }
-        return containing instanceof J.FieldAccess && ((J.FieldAccess) containing).getName().getFieldType() == null;
     }
 
     private static boolean isReferenced(J body, J.Identifier name) {
@@ -688,7 +616,7 @@ class GlueMethod {
     @Nullable
     J body;
     J.@Nullable MemberReference reference;
-    TypeRegistryConfigurerToAnnotations.@Nullable ReferenceKind referenceKind;
+    MemberReferences.@Nullable Kind referenceKind;
 
     String template() {
         // The body is passed as a template parameter to retain its type attribution

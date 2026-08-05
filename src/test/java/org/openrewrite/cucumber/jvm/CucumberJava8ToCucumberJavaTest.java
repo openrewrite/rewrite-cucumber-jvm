@@ -1008,9 +1008,9 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   """));
         }
 
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
         @Test
-        void replaceMethodReference() {
-            // For simplicity, we only replace when using lambda for now
+        void replaceStaticMethodReference() {
             rewriteRun(
               // language=java
               java(
@@ -1026,11 +1026,259 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   }""", """
                   package com.example.app;
 
+                  import io.cucumber.java.en.Given;
+
+                  public class CalculatorStepDefinitions {
+
+                      @Given("{int} plus {int}")
+                      public void int_plus_int(Integer a, Integer b) {
+                          Integer.sum(a, b);
+                      }
+                  }
+                  """));
+        }
+
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
+        @Test
+        void replaceBoundMethodReference() {
+            rewriteRun(
+              // language=java
+              java(
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java8.En;
+
+                  public class CalculatorStepDefinitions implements En {
+
+                      private final Calculator calculator = new Calculator();
+
+                      public CalculatorStepDefinitions() {
+                          Given("push {int}", calculator::push);
+                          Given("a calculator I just turned on", this::reset);
+                      }
+
+                      private void reset() {
+                      }
+
+                      static class Calculator {
+                          void push(int value) {
+                          }
+                      }
+                  }
+                  """,
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java.en.Given;
+
+                  public class CalculatorStepDefinitions {
+
+                      private final Calculator calculator = new Calculator();
+
+                      @Given("push {int}")
+                      public void push_int(Integer value) {
+                          calculator.push(value);
+                      }
+
+                      @Given("a calculator I just turned on")
+                      public void a_calculator_i_just_turned_on() {
+                          this.reset();
+                      }
+
+                      private void reset() {
+                      }
+
+                      static class Calculator {
+                          void push(int value) {
+                          }
+                      }
+                  }
+                  """));
+        }
+
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
+        @Test
+        void replaceUnboundAndConstructorMethodReferences() {
+            rewriteRun(
+              // language=java
+              java(
+                """
+                  package com.example.app;
+
                   import io.cucumber.java8.En;
 
                   public class CalculatorStepDefinitions implements En {
                       public CalculatorStepDefinitions() {
-                          /*~~(TODO Migrate manually)~~>*/Given("{int} plus {int}", Integer::sum);
+                          Given("{word} trimmed", String::trim);
+                          Given("money {word}", Money::new);
+                      }
+
+                      static class Money {
+                          Money(String amount) {
+                          }
+                      }
+                  }
+                  """,
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java.en.Given;
+
+                  public class CalculatorStepDefinitions {
+
+                      @Given("{word} trimmed")
+                      public void word_trimmed(String string) {
+                          string.trim();
+                      }
+
+                      @Given("money {word}")
+                      public void money_word(String amount) {
+                          new Money(amount);
+                      }
+
+                      static class Money {
+                          Money(String amount) {
+                          }
+                      }
+                  }
+                  """));
+        }
+
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
+        @Test
+        void numberParameterShadowingTheNameTheReferenceIsWrittenOn() {
+            rewriteRun(
+              // language=java
+              java(
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java8.En;
+
+                  public class CalculatorStepDefinitions implements En {
+
+                      private final Calculator calculator = new Calculator();
+
+                      public CalculatorStepDefinitions() {
+                          Given("push {int}", calculator::push);
+                      }
+
+                      static class Calculator {
+                          void push(int calculator) {
+                          }
+                      }
+                  }
+                  """,
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java.en.Given;
+
+                  public class CalculatorStepDefinitions {
+
+                      private final Calculator calculator = new Calculator();
+
+                      @Given("push {int}")
+                      public void push_int(Integer arg1) {
+                          calculator.push(arg1);
+                      }
+
+                      static class Calculator {
+                          void push(int calculator) {
+                          }
+                      }
+                  }
+                  """));
+        }
+
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
+        @Test
+        void retainMethodReferenceWithoutParameterTypesToDeclare() {
+            // A parameterized type has no simple name to declare the replacing method's parameter with
+            rewriteRun(
+              // language=java
+              java(
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java8.En;
+
+                  import java.util.List;
+
+                  public class CalculatorStepDefinitions implements En {
+                      public CalculatorStepDefinitions() {
+                          Given("push {stringlist}", this::push);
+                      }
+
+                      private void push(List<String> values) {
+                      }
+                  }
+                  """,
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java8.En;
+
+                  import java.util.List;
+
+                  public class CalculatorStepDefinitions implements En {
+                      public CalculatorStepDefinitions() {
+                          /*~~(TODO Migrate manually)~~>*/Given("push {stringlist}", this::push);
+                      }
+
+                      private void push(List<String> values) {
+                      }
+                  }
+                  """));
+        }
+
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
+        @Test
+        void importParameterTypesOfMethodReferences() {
+            rewriteRun(
+              // language=java
+              java(
+                """
+                  package com.example.money;
+
+                  public class Money {
+                      public Money(String amount) {
+                      }
+                  }
+                  """
+              ),
+              // language=java
+              java(
+                """
+                  package com.example.app;
+
+                  import com.example.money.Money;
+                  import io.cucumber.java8.En;
+
+                  public class CalculatorStepDefinitions implements En {
+                      public CalculatorStepDefinitions() {
+                          Given("pay {money}", this::pay);
+                      }
+
+                      private void pay(Money money) {
+                      }
+                  }
+                  """,
+                """
+                  package com.example.app;
+
+                  import com.example.money.Money;
+                  import io.cucumber.java.en.Given;
+
+                  public class CalculatorStepDefinitions {
+
+                      @Given("pay {money}")
+                      public void pay_money(Money money) {
+                          this.pay(money);
+                      }
+
+                      private void pay(Money money) {
                       }
                   }
                   """));
@@ -1260,10 +1508,9 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   """));
         }
 
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
         @Test
         void convertMethodReference() {
-            // Not converted yet; the referred method can potentially be
-            // annotated and be made public
             rewriteRun(
               // language=java
               java(
@@ -1288,17 +1535,61 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                 """
                   package com.example.app;
 
-                  import io.cucumber.java8.En;
+                  import io.cucumber.java.Before;
 
-                  public class HookStepDefinitions implements En {
+                  public class HookStepDefinitions {
 
                       private int a;
 
-                      public HookStepDefinitions() {
-                          /*~~(TODO Migrate manually)~~>*/Before(this::connect);
+                      @Before
+                      public void before() {
+                          this.connect();
                       }
 
                       private void connect() {
+                      }
+
+                  }
+                  """));
+        }
+
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
+        @Test
+        void convertMethodReferenceTakingScenario() {
+            rewriteRun(
+              // language=java
+              java(
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java8.En;
+                  import io.cucumber.java8.Scenario;
+
+                  public class HookStepDefinitions implements En {
+
+                      public HookStepDefinitions() {
+                          After("@tag", 42, this::report);
+                      }
+
+                      private void report(Scenario scenario) {
+                      }
+
+                  }
+                  """,
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java.After;
+                  import io.cucumber.java.Scenario;
+
+                  public class HookStepDefinitions {
+
+                      @After(order = 42, value = "@tag")
+                      public void after_tag__tag_order_42(Scenario scenario) {
+                          this.report(scenario);
+                      }
+
+                      private void report(Scenario scenario) {
                       }
 
                   }
