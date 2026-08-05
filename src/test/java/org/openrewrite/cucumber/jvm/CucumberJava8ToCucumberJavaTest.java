@@ -466,6 +466,7 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
         @SuppressWarnings("CodeBlock2Expr")
         @Test
         void retainConstructorInjectedDependenciesWithMoreThanOneConstructor() {
+            // The field is not final, as only the one constructor assigns it
             rewriteRun(
               version(
                 // language=java
@@ -500,7 +501,7 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
 
                     public class CalculatorStepDefinitions {
 
-                        private final RpnCalculator calc;
+                        private RpnCalculator calc;
 
                         public CalculatorStepDefinitions() {
                             this(new RpnCalculator());
@@ -562,6 +563,104 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                         @Given("a calculator I just turned on")
                         public void a_calculator_i_just_turned_on() {
                             System.out.println(a + b);
+                        }
+                    }
+                    """),
+                17));
+        }
+
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+        @SuppressWarnings("CodeBlock2Expr")
+        @Test
+        void retainArrayLocalVariablesCapturedByLambdas() {
+            // The dimensions declared after the variable name belong to the type the field is declared with
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+
+                    public class CalculatorStepDefinitions implements En {
+
+                        public CalculatorStepDefinitions() {
+                            int values[] = new int[2];
+                            Given("a calculator I just turned on", () -> {
+                                System.out.println(values[0]);
+                            });
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java.en.Given;
+
+                    public class CalculatorStepDefinitions {
+
+                        private int[] values;
+
+                        public CalculatorStepDefinitions() {
+                            values = new int[2];
+                        }
+
+                        @Given("a calculator I just turned on")
+                        public void a_calculator_i_just_turned_on() {
+                            System.out.println(values[0]);
+                        }
+                    }
+                    """),
+                17));
+        }
+
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+        @SuppressWarnings("CodeBlock2Expr")
+        @Test
+        void leaveLocalVariablesFromAnotherScopeAlone() {
+            // The local shares a name with the field the migrated method uses, but is not what the lambda closed over
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+
+                    public class CalculatorStepDefinitions implements En {
+
+                        private int total;
+
+                        public CalculatorStepDefinitions() {
+                            {
+                                int total = 3;
+                                System.out.println(total);
+                            }
+                            Given("a calculator I just turned on", () -> {
+                                System.out.println(total);
+                            });
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java.en.Given;
+
+                    public class CalculatorStepDefinitions {
+
+                        private int total;
+
+                        public CalculatorStepDefinitions() {
+                            int total = 3;
+                            System.out.println(total);
+                        }
+
+                        @Given("a calculator I just turned on")
+                        public void a_calculator_i_just_turned_on() {
+                            System.out.println(total);
                         }
                     }
                     """),

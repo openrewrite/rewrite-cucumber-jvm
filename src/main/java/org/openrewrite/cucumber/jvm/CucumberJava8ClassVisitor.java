@@ -124,6 +124,8 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         StringBuilder fields = new StringBuilder();
         StringBuilder assignments = new StringBuilder();
         if (constructor != null) {
+            // Only a field the one constructor assigns is definitely assigned whichever constructor is called
+            String modifiers = constructorCount(classDeclaration) == 1 ? "private final" : "private";
             for (Statement parameter : constructor.getParameters()) {
                 if (!(parameter instanceof J.VariableDeclarations)) {
                     continue;
@@ -137,8 +139,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
                     // Already retained on an earlier pass over this same class, or taken by a field declared here
                     continue;
                 }
-                fields.append(String.format("private final %s %s;%n",
-                        argument.getTypeExpression().printTrimmed(getCursor()), name));
+                fields.append(String.format("%s %s %s;%n", modifiers, fieldType(argument), name));
                 assignments.append(String.format("this.%s = %s;%n", name, name));
             }
         }
@@ -147,10 +148,8 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         boolean anyDeclined = false;
         for (J.VariableDeclarations local : capturedLocalVariables(classDeclaration, glueDeclaration)) {
             String name = local.getVariables().get(0).getSimpleName();
-            if (canBecomeField(local, glueDeclaration) && namesTaken.add(name)) {
-                //noinspection DataFlowIssue
-                fields.append(String.format("private %s %s;%n",
-                        local.getTypeExpression().printTrimmed(getCursor()), name));
+            if (canBecomeField(local) && namesTaken.add(name)) {
+                fields.append(String.format("private %s %s;%n", fieldType(local), name));
                 promoted.add(name);
             } else {
                 anyDeclined = true;
@@ -185,6 +184,19 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
             }
         }
         return c;
+    }
+
+    /**
+     * @return the type to declare a field with, folding any dimensions declared after the variable name, as in
+     * {@code int values[]}, back into the type
+     */
+    private String fieldType(J.VariableDeclarations declaration) {
+        //noinspection DataFlowIssue
+        StringBuilder type = new StringBuilder(declaration.getTypeExpression().printTrimmed(getCursor()));
+        for (int dimension = declaration.getVariables().get(0).getDimensionsAfterName().size(); dimension > 0; dimension--) {
+            type.append("[]");
+        }
+        return type.toString();
     }
 
     /**
@@ -263,8 +275,9 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
     }
 
     /**
-     * @return the local variables of the glue declaration that the migrated methods still refer to, whether or not
-     * they can be turned into a field
+     * @return the variables declared directly in the glue declaration body that the migrated methods still refer to,
+     * whether or not they can be turned into a field; anything declared deeper is in a scope of its own, such as the
+     * body of a lambda yet to be migrated, and so is not what the migrated lambdas closed over
      */
     private static List<J.VariableDeclarations> capturedLocalVariables(J.ClassDeclaration classDeclaration,
             J.@Nullable MethodDeclaration glueDeclaration) {
@@ -275,24 +288,15 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         if (capturedNames.isEmpty()) {
             return emptyList();
         }
-        return new JavaIsoVisitor<List<J.VariableDeclarations>>() {
-
-            @Override
-            public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, List<J.VariableDeclarations> captured) {
-                // Members of a class declared inside the glue declaration are not what the lambdas closed over
-                return cd;
+        List<J.VariableDeclarations> captured = new ArrayList<>();
+        for (Statement statement : glueDeclaration.getBody().getStatements()) {
+            if (statement instanceof J.VariableDeclarations &&
+                    ((J.VariableDeclarations) statement).getVariables().stream()
+                            .anyMatch(variable -> capturedNames.contains(variable.getSimpleName()))) {
+                captured.add((J.VariableDeclarations) statement);
             }
-
-            @Override
-            public J.VariableDeclarations visitVariableDeclarations(J.VariableDeclarations vd,
-                    List<J.VariableDeclarations> captured) {
-                if (vd.getVariables().stream()
-                        .anyMatch(variable -> capturedNames.contains(variable.getSimpleName()))) {
-                    captured.add(vd);
-                }
-                return super.visitVariableDeclarations(vd, captured);
-            }
-        }.reduce(glueDeclaration.getBody(), new ArrayList<>());
+        }
+        return captured;
     }
 
     /**
@@ -340,21 +344,22 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
     }
 
     /**
-     * Only a single variable declared with an explicit type directly in the glue declaration body can be swapped for
-     * a field assigned in place, as anything else either has no one type to declare, or no one place to assign from.
+     * Only a single variable declared with an explicit type can be swapped for a field assigned in place, as anything
+     * else either has no one type to declare, or no one value to assign.
      */
-    private static boolean canBecomeField(J.VariableDeclarations local, J.@Nullable MethodDeclaration glueDeclaration) {
-        if (glueDeclaration == null || glueDeclaration.getBody() == null ||
-                local.getVariables().size() != 1 || local.getVariables().get(0).getInitializer() == null) {
+    private static boolean canBecomeField(J.VariableDeclarations local) {
+        if (local.getVariables().size() != 1) {
+            return false;
+        }
+        Expression initializer = local.getVariables().get(0).getInitializer();
+        if (initializer == null ||
+                // An array initializer shorthand such as `{1, 2}` is only valid as part of a declaration
+                initializer instanceof J.NewArray && ((J.NewArray) initializer).getTypeExpression() == null) {
             return false;
         }
         TypeTree typeExpression = local.getTypeExpression();
-        if (typeExpression == null ||
-                typeExpression instanceof J.Identifier && "var".equals(((J.Identifier) typeExpression).getSimpleName())) {
-            return false;
-        }
-        return glueDeclaration.getBody().getStatements().stream()
-                .anyMatch(statement -> statement.getId().equals(local.getId()));
+        return typeExpression != null &&
+                !(typeExpression instanceof J.Identifier && "var".equals(((J.Identifier) typeExpression).getSimpleName()));
     }
 
     private static J.ClassDeclaration markForManualMigration(J.ClassDeclaration classDeclaration, UUID declarationId) {
@@ -390,6 +395,13 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         }
         return constructor == null || constructor.getParameters().stream()
                 .noneMatch(J.VariableDeclarations.class::isInstance) ? null : constructor;
+    }
+
+    private static long constructorCount(J.ClassDeclaration classDeclaration) {
+        return classDeclaration.getBody().getStatements().stream()
+                .filter(J.MethodDeclaration.class::isInstance)
+                .filter(statement -> ((J.MethodDeclaration) statement).isConstructor())
+                .count();
     }
 
     private static Set<String> declaredFieldNames(J.ClassDeclaration classDeclaration) {
