@@ -91,18 +91,21 @@ class MemberReferences {
      * refers to, and numbered where those names are not all there to take
      */
     static List<String> parameterNames(J.MemberReference reference, Kind kind, int parameterCount) {
+        // A bound or static reference calls through the name it is written on, which a parameter of that same name
+        // would shadow in the body the call becomes; an unbound one calls through a parameter instead
+        String shadowed = kind == Kind.UNBOUND ? null : leadingName(reference.getContaining());
         List<String> names = new ArrayList<>();
         if (kind == Kind.UNBOUND) {
             names.add(receiverName(reference.getContaining().getType()));
         }
         names.addAll(Objects.requireNonNull(reference.getMethodType()).getParameterNames());
         if (names.size() != parameterCount) {
-            return numberedNames(parameterCount);
+            return numberedNames(parameterCount, shadowed);
         }
         Set<String> distinct = new LinkedHashSet<>();
         for (String name : names) {
-            if (!isIdentifier(name) || !distinct.add(name)) {
-                return numberedNames(parameterCount);
+            if (!isIdentifier(name) || name.equals(shadowed) || !distinct.add(name)) {
+                return numberedNames(parameterCount, shadowed);
             }
         }
         return names;
@@ -179,10 +182,32 @@ class MemberReferences {
         return Character.toLowerCase(simpleName.charAt(0)) + simpleName.substring(1);
     }
 
-    private static List<String> numberedNames(int parameterCount) {
+    /**
+     * @return the name the reference is written on, which is what a parameter of the same name shadows; {@code null}
+     * where the reference is written on something other than a name
+     */
+    private static @Nullable String leadingName(Expression containing) {
+        if (containing instanceof J.Identifier) {
+            return ((J.Identifier) containing).getSimpleName();
+        }
+        if (containing instanceof J.FieldAccess) {
+            return leadingName(((J.FieldAccess) containing).getTarget());
+        }
+        if (containing instanceof J.ParameterizedType) {
+            NameTree clazz = ((J.ParameterizedType) containing).getClazz();
+            return clazz instanceof Expression ? leadingName((Expression) clazz) : null;
+        }
+        return null;
+    }
+
+    private static List<String> numberedNames(int parameterCount, @Nullable String shadowed) {
         List<String> names = new ArrayList<>();
         for (int i = 1; i <= parameterCount; i++) {
-            names.add("arg" + i);
+            StringBuilder name = new StringBuilder("arg").append(i);
+            while (name.toString().equals(shadowed)) {
+                name.append('_');
+            }
+            names.add(name.toString());
         }
         return names;
     }

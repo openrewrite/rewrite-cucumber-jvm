@@ -1186,6 +1186,55 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
         @Test
+        void numberParameterShadowingTheNameTheReferenceIsWrittenOn() {
+            rewriteRun(
+              version(
+                // language=java
+                java(
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java8.En;
+
+                    public class CalculatorStepDefinitions implements En {
+
+                        private final Calculator calculator = new Calculator();
+
+                        public CalculatorStepDefinitions() {
+                            Given("push {int}", calculator::push);
+                        }
+
+                        static class Calculator {
+                            void push(int calculator) {
+                            }
+                        }
+                    }
+                    """,
+                  """
+                    package com.example.app;
+
+                    import io.cucumber.java.en.Given;
+
+                    public class CalculatorStepDefinitions {
+
+                        private final Calculator calculator = new Calculator();
+
+                        @Given("push {int}")
+                        public void push_int(Integer arg1) {
+                            calculator.push(arg1);
+                        }
+
+                        static class Calculator {
+                            void push(int calculator) {
+                            }
+                        }
+                    }
+                    """),
+                17));
+        }
+
+        @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
+        @Test
         void retainMethodReferenceWithoutParameterTypesToDeclare() {
             // A parameterized type has no simple name to declare the replacing method's parameter with
             rewriteRun(
