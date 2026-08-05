@@ -294,11 +294,13 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                         Expression argument = locals.read(definition.getArguments().get(0));
                         switch (definition.getSimpleName()) {
                             case "setDefaultParameterTransformer":
-                                return defaultTransformer("DefaultParameterTransformer", argument, methodNames);
+                                return defaultTransformer("DefaultParameterTransformer", "", argument, methodNames);
                             case "setDefaultDataTableCellTransformer":
-                                return defaultTransformer("DefaultDataTableCellTransformer", argument, methodNames);
+                                return defaultTransformer("DefaultDataTableCellTransformer", "", argument, methodNames);
                             case "setDefaultDataTableEntryTransformer":
-                                return defaultTransformer("DefaultDataTableEntryTransformer", argument, methodNames);
+                                // The annotation camel cases the entry headers first, where the registry passed them through
+                                return defaultTransformer("DefaultDataTableEntryTransformer",
+                                        "(headersToProperties = false)", argument, methodNames);
                             default:
                                 break;
                         }
@@ -343,9 +345,10 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                             if (value == null) {
                                 return null;
                             }
-                            // Only spell out the attributes that differ from the annotation defaults
-                            if (i == 4 && !value) {
-                                attributes.add("useForSnippets = false");
+                            // Only spell out the attributes that differ from the annotation defaults,
+                            // which for `useForSnippets` is `false`, where the constructor defaults to `true`
+                            if (i == 4 && value) {
+                                attributes.add("useForSnippets = true");
                             } else if (i == 5 && value) {
                                 attributes.add("preferForRegexMatch = true");
                             } else if (i == 6 && value) {
@@ -390,9 +393,11 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                                 IO_CUCUMBER_JAVA_DOC_STRING_TYPE, returnType, printedReturnType, methodName, arguments.get(2));
                     }
 
-                    private @Nullable GlueMethod defaultTransformer(String annotation, Expression transformer, Set<String> methodNames) {
+                    private @Nullable GlueMethod defaultTransformer(String annotation, String attributes,
+                                                                    Expression transformer, Set<String> methodNames) {
                         String methodName = uniqueMethodName(decapitalize(annotation), methodNames);
-                        return glueMethod("@" + annotation, IO_CUCUMBER_JAVA + annotation, null, "Object", methodName, transformer);
+                        return glueMethod("@" + annotation + attributes, IO_CUCUMBER_JAVA + annotation, null, "Object",
+                                methodName, transformer);
                     }
 
                     private @Nullable GlueMethod glueMethod(String annotation, String annotationImport,

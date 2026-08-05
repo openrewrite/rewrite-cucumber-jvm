@@ -774,7 +774,7 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return fromValue;
                   }
 
-                  @DefaultDataTableEntryTransformer
+                  @DefaultDataTableEntryTransformer(headersToProperties = false)
                   public Object defaultDataTableEntryTransformer(Map<String, String> fromValue, Type toValueType) {
                       return fromValue;
                   }
@@ -869,12 +869,12 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
               import io.cucumber.java.ParameterType;
 
               public class ParameterTypeConfigurer {
-                  @ParameterType(value = "[A-Z][a-z]+", useForSnippets = false, preferForRegexMatch = true)
+                  @ParameterType(value = "[A-Z][a-z]+", preferForRegexMatch = true)
                   public Author author(String name) {
                       return new Author(name);
                   }
 
-                  @ParameterType(value = "[A-Z][a-z]+", useRegexpMatchAsStrongTypeHint = true)
+                  @ParameterType(value = "[A-Z][a-z]+", useForSnippets = true, useRegexpMatchAsStrongTypeHint = true)
                   public Author writer(String name) {
                       return new Author(name);
                   }
