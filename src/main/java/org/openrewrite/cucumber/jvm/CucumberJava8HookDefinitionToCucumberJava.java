@@ -92,8 +92,10 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
                         J.ClassDeclaration parentClass = getCursor()
                                 .dropParentUntil(J.ClassDeclaration.class::isInstance)
                                 .getValue();
+                        J.MethodDeclaration glueDeclaration = getCursor().firstEnclosing(J.MethodDeclaration.class);
                         doAfterVisit(new CucumberJava8ClassVisitor(
                                 parentClass.getType(),
+                                glueDeclaration == null ? null : glueDeclaration.getId(),
                                 hookArguments.replacementImports(),
                                 hookArguments.template(),
                                 hookArguments.parameters()));

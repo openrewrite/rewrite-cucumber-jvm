@@ -106,8 +106,10 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
                                 m.getMethodType().getDeclaringType().getFullyQualifiedName()
                                         .replace("java8", "java").toLowerCase(),
                                 m.getSimpleName());
+                        J.MethodDeclaration glueDeclaration = getCursor().firstEnclosing(J.MethodDeclaration.class);
                         doAfterVisit(new CucumberJava8ClassVisitor(
                                 parentClass.getType(),
+                                glueDeclaration == null ? null : glueDeclaration.getId(),
                                 singletonList(replacementImport),
                                 stepArguments.template(),
                                 stepArguments.parameters()));

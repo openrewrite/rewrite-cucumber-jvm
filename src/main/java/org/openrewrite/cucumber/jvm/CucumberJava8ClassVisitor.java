@@ -18,10 +18,13 @@ package org.openrewrite.cucumber.jvm;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.openrewrite.ExecutionContext;
+import org.openrewrite.internal.ListUtils;
 import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.JavaTemplate;
+import org.openrewrite.java.JavaVisitor;
 import org.openrewrite.java.tree.*;
+import org.openrewrite.marker.SearchResult;
 import org.openrewrite.staticanalysis.RemoveUnneededBlock;
 import org.openrewrite.staticanalysis.UnnecessaryThrows;
 
@@ -30,6 +33,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.util.Collections.emptyList;
 
@@ -38,8 +43,17 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
 
     private static final String IO_CUCUMBER_JAVA = "io.cucumber.java";
     private static final String IO_CUCUMBER_JAVA8 = "io.cucumber.java8";
+    private static final String IO_CUCUMBER_JAVA8_LAMBDA_GLUE = "io.cucumber.java8.LambdaGlue";
+    private static final String MIGRATE_MANUALLY = "TODO Migrate manually";
 
     private final JavaType.FullyQualified stepDefinitionsClass;
+
+    /**
+     * Identifies the constructor, or occasionally method, the lambda was declared in, as that is where any state
+     * the lambda closed over is declared, and what is left empty once the lambda has been hoisted out of it.
+     */
+    private final @Nullable UUID glueDeclarationId;
+
     private final List<String> replacementImports;
     private final String template;
     private final Object[] templateParameters;
@@ -59,29 +73,19 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         // Import Given/When/Then or Before/After, and Scenario, as applicable
         replacementImports.forEach(this::maybeAddImport);
 
-        // Remove empty constructor which might be left over after removing
-        // method invocations with typical usage
+        // Remove the glue constructor if the migrated lambdas were all it held
         doAfterVisit(new JavaIsoVisitor<ExecutionContext>() {
 
             @Override
             public J.@Nullable MethodDeclaration visitMethodDeclaration(J.MethodDeclaration md, ExecutionContext ctx) {
                 J.MethodDeclaration methodDeclaration = super.visitMethodDeclaration(md, ctx);
-                if (methodDeclaration.isConstructor() && isStepDefinitionsClassMember() &&
+                if (methodDeclaration.isConstructor() && methodDeclaration.getId().equals(glueDeclarationId) &&
                         (methodDeclaration.getBody() == null ||
                                 methodDeclaration.getBody().getStatements().isEmpty())) {
                     // noinspection DataFlowIssue
                     return null;
                 }
                 return methodDeclaration;
-            }
-
-            /**
-             * This visitor runs over the whole source file, which can hold classes other than the one being
-             * migrated; only the step definitions class has a constructor left empty by this recipe.
-             */
-            private boolean isStepDefinitionsClassMember() {
-                J.ClassDeclaration enclosing = getCursor().firstEnclosing(J.ClassDeclaration.class);
-                return enclosing != null && TypeUtils.isOfType(enclosing.getType(), stepDefinitionsClass);
             }
         });
 
@@ -98,57 +102,270 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
                         JavaParser.fromJavaVersion().classpathFromResources(ctx, "cucumber-java-7", "cucumber-java8-7"))
                 .imports(replacementImports.toArray(new String[0]))
                 .build().apply(getCursor(), coordinatesForNewMethod(classDeclaration.getBody()), templateParameters);
-        return retainConstructorArguments(applied.withImplements(retained));
+        return retainGlueDeclarationState(applied.withImplements(retained), ctx);
     }
 
     /**
-     * The lambdas moved out of the constructor commonly close over its arguments, which is how `cucumber-java8`
-     * glue receives its dependency injected collaborators. Those arguments are out of scope in the methods the
-     * lambda bodies now live in, so hold each one in a field that the constructor assigns.
+     * The lambdas moved out of the glue declaration commonly close over its arguments and local variables, which is
+     * how `cucumber-java8` glue shares state. Those are out of scope in the methods the lambda bodies now live in,
+     * so hold each one in a field instead.
      */
-    private J.ClassDeclaration retainConstructorArguments(J.ClassDeclaration classDeclaration) {
-        J.MethodDeclaration constructor = soleConstructor(classDeclaration);
-        if (constructor == null) {
-            return classDeclaration;
-        }
-        Set<String> namesTaken = declaredFieldNames(classDeclaration);
-        StringBuilder fields = new StringBuilder();
-        StringBuilder assignments = new StringBuilder();
-        for (Statement parameter : constructor.getParameters()) {
-            if (!(parameter instanceof J.VariableDeclarations)) {
-                continue;
-            }
-            J.VariableDeclarations argument = (J.VariableDeclarations) parameter;
-            if (argument.getTypeExpression() == null || argument.getVariables().size() != 1) {
-                continue;
-            }
-            String name = argument.getVariables().get(0).getSimpleName();
-            if (!namesTaken.add(name)) {
-                // Already retained on an earlier pass over this same class, or taken by a field declared here
-                continue;
-            }
-            fields.append(String.format("private final %s %s;%n",
-                    argument.getTypeExpression().printTrimmed(getCursor()), name));
-            assignments.append(String.format("this.%s = %s;%n", name, name));
-        }
-        if (fields.length() == 0) {
+    private J.ClassDeclaration retainGlueDeclarationState(J.ClassDeclaration classDeclaration, ExecutionContext ctx) {
+        J.MethodDeclaration glueDeclaration = methodById(classDeclaration, glueDeclarationId);
+        // Fall back to the only constructor where the lambdas were declared in a method called from it, as that is
+        // still where any injected collaborators they use are declared
+        J.MethodDeclaration constructor = glueDeclaration != null && glueDeclaration.isConstructor() ?
+                glueDeclaration : soleConstructor(classDeclaration);
+        if (constructor == null && glueDeclaration == null) {
             return classDeclaration;
         }
 
-        J.ClassDeclaration c = JavaTemplate.builder(fields.toString())
-                .contextSensitive()
-                .build()
-                .apply(updateCursor(classDeclaration), classDeclaration.getBody().getCoordinates().firstStatement());
-        J.MethodDeclaration reboundConstructor = soleConstructor(c);
-        if (reboundConstructor == null || reboundConstructor.getBody() == null) {
-            return c;
+        Set<String> namesTaken = declaredFieldNames(classDeclaration);
+        StringBuilder fields = new StringBuilder();
+        StringBuilder assignments = new StringBuilder();
+        if (constructor != null) {
+            for (Statement parameter : constructor.getParameters()) {
+                if (!(parameter instanceof J.VariableDeclarations)) {
+                    continue;
+                }
+                J.VariableDeclarations argument = (J.VariableDeclarations) parameter;
+                if (argument.getTypeExpression() == null || argument.getVariables().size() != 1) {
+                    continue;
+                }
+                String name = argument.getVariables().get(0).getSimpleName();
+                if (!namesTaken.add(name)) {
+                    // Already retained on an earlier pass over this same class, or taken by a field declared here
+                    continue;
+                }
+                fields.append(String.format("private final %s %s;%n",
+                        argument.getTypeExpression().printTrimmed(getCursor()), name));
+                assignments.append(String.format("this.%s = %s;%n", name, name));
+            }
         }
-        // Appended rather than prepended, as `firstStatement` anchors on a statement that may since have been
-        // replaced, and has nothing to anchor to at all once the lambdas have left the constructor empty
-        return JavaTemplate.builder(assignments.toString())
-                .contextSensitive()
-                .build()
-                .apply(updateCursor(c), reboundConstructor.getBody().getCoordinates().lastStatement());
+
+        List<String> promoted = new ArrayList<>();
+        boolean anyDeclined = false;
+        for (J.VariableDeclarations local : capturedLocalVariables(classDeclaration, glueDeclaration)) {
+            String name = local.getVariables().get(0).getSimpleName();
+            if (canBecomeField(local, glueDeclaration) && namesTaken.add(name)) {
+                //noinspection DataFlowIssue
+                fields.append(String.format("private %s %s;%n",
+                        local.getTypeExpression().printTrimmed(getCursor()), name));
+                promoted.add(name);
+            } else {
+                anyDeclined = true;
+            }
+        }
+
+        J.ClassDeclaration c = classDeclaration;
+        if (fields.length() > 0) {
+            c = JavaTemplate.builder(fields.toString())
+                    .contextSensitive()
+                    .build()
+                    .apply(updateCursor(c), c.getBody().getCoordinates().firstStatement());
+        }
+        if (assignments.length() > 0) {
+            J.MethodDeclaration reboundConstructor = sameDeclaration(c, constructor);
+            if (reboundConstructor != null && reboundConstructor.getBody() != null) {
+                // Appended rather than prepended, as `firstStatement` anchors on a statement that may since have been
+                // replaced, and has nothing to anchor to at all once the lambdas have left the constructor empty
+                c = JavaTemplate.builder(assignments.toString())
+                        .contextSensitive()
+                        .build()
+                        .apply(updateCursor(c), reboundConstructor.getBody().getCoordinates().lastStatement());
+            }
+        }
+        if (!promoted.isEmpty()) {
+            c = assignInsteadOfDeclare(c, sameDeclaration(c, glueDeclaration), promoted, ctx);
+        }
+        if (anyDeclined) {
+            J.MethodDeclaration declined = sameDeclaration(c, glueDeclaration);
+            if (declined != null) {
+                c = markForManualMigration(c, declined.getId());
+            }
+        }
+        return c;
+    }
+
+    /**
+     * Applying a template rebuilds the statements around the one it replaces, so anything looked up before an earlier
+     * template was applied has to be found again by what it declares rather than by identity.
+     */
+    private static J.@Nullable MethodDeclaration sameDeclaration(J.ClassDeclaration classDeclaration,
+            J.@Nullable MethodDeclaration declaration) {
+        if (declaration == null) {
+            return null;
+        }
+        J.MethodDeclaration byId = methodById(classDeclaration, declaration.getId());
+        if (byId != null) {
+            return byId;
+        }
+        for (Statement statement : classDeclaration.getBody().getStatements()) {
+            if (statement instanceof J.MethodDeclaration) {
+                J.MethodDeclaration method = (J.MethodDeclaration) statement;
+                if (method.getSimpleName().equals(declaration.getSimpleName()) &&
+                        parameterNames(method).equals(parameterNames(declaration))) {
+                    return method;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static List<String> parameterNames(J.MethodDeclaration method) {
+        List<String> names = new ArrayList<>();
+        for (Statement parameter : method.getParameters()) {
+            if (parameter instanceof J.VariableDeclarations) {
+                for (J.VariableDeclarations.NamedVariable variable : ((J.VariableDeclarations) parameter).getVariables()) {
+                    names.add(variable.getSimpleName());
+                }
+            }
+        }
+        return names;
+    }
+
+    /**
+     * Now that the variables are declared as fields, what is left of their declaration is the assignment of their
+     * initial value, in the place the declaration held.
+     */
+    private J.ClassDeclaration assignInsteadOfDeclare(J.ClassDeclaration classDeclaration,
+            J.@Nullable MethodDeclaration declaration, List<String> promoted, ExecutionContext ctx) {
+        if (declaration == null || declaration.getBody() == null) {
+            return classDeclaration;
+        }
+        Set<UUID> declarations = new HashSet<>();
+        for (Statement statement : declaration.getBody().getStatements()) {
+            if (statement instanceof J.VariableDeclarations) {
+                J.VariableDeclarations local = (J.VariableDeclarations) statement;
+                if (local.getVariables().size() == 1 &&
+                        promoted.contains(local.getVariables().get(0).getSimpleName())) {
+                    declarations.add(local.getId());
+                }
+            }
+        }
+        if (declarations.isEmpty()) {
+            return classDeclaration;
+        }
+        return (J.ClassDeclaration) new JavaVisitor<ExecutionContext>() {
+
+            @Override
+            public J visitVariableDeclarations(J.VariableDeclarations vd, ExecutionContext ctx) {
+                if (!declarations.contains(vd.getId())) {
+                    return super.visitVariableDeclarations(vd, ctx);
+                }
+                J.VariableDeclarations.NamedVariable variable = vd.getVariables().get(0);
+                return JavaTemplate.builder(String.format("%s = #{any()};", variable.getSimpleName()))
+                        .contextSensitive()
+                        .build()
+                        .apply(getCursor(), vd.getCoordinates().replace(), variable.getInitializer());
+            }
+        }.visitNonNull(classDeclaration, ctx, getCursor().getParentOrThrow());
+    }
+
+    /**
+     * @return the local variables of the glue declaration that the migrated methods still refer to, whether or not
+     * they can be turned into a field
+     */
+    private static List<J.VariableDeclarations> capturedLocalVariables(J.ClassDeclaration classDeclaration,
+            J.@Nullable MethodDeclaration glueDeclaration) {
+        if (glueDeclaration == null || glueDeclaration.getBody() == null) {
+            return emptyList();
+        }
+        Set<String> capturedNames = namesUsedByMigratedMethods(classDeclaration, glueDeclaration);
+        if (capturedNames.isEmpty()) {
+            return emptyList();
+        }
+        List<J.VariableDeclarations> captured = new ArrayList<>();
+        new JavaIsoVisitor<Integer>() {
+
+            @Override
+            public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, Integer p) {
+                // Members of a class declared inside the glue declaration are not what the lambdas closed over
+                return cd;
+            }
+
+            @Override
+            public J.VariableDeclarations visitVariableDeclarations(J.VariableDeclarations vd, Integer p) {
+                if (vd.getVariables().stream()
+                        .anyMatch(variable -> capturedNames.contains(variable.getSimpleName()))) {
+                    captured.add(vd);
+                }
+                return super.visitVariableDeclarations(vd, p);
+            }
+        }.visit(glueDeclaration.getBody(), 0);
+        return captured;
+    }
+
+    /**
+     * @return the names the migrated methods use without declaring, which is what a hoisted lambda body closed over
+     */
+    private static Set<String> namesUsedByMigratedMethods(J.ClassDeclaration classDeclaration,
+            J.MethodDeclaration glueDeclaration) {
+        Set<String> used = new HashSet<>();
+        for (Statement statement : classDeclaration.getBody().getStatements()) {
+            if (!(statement instanceof J.MethodDeclaration)) {
+                continue;
+            }
+            J.MethodDeclaration method = (J.MethodDeclaration) statement;
+            if (method.getId().equals(glueDeclaration.getId()) || !isCucumberAnnotated(method)) {
+                continue;
+            }
+            Set<String> declared = new HashSet<>();
+            Set<String> referenced = new HashSet<>();
+            new JavaIsoVisitor<Integer>() {
+
+                @Override
+                public J.VariableDeclarations.NamedVariable visitVariable(J.VariableDeclarations.NamedVariable v,
+                        Integer p) {
+                    declared.add(v.getSimpleName());
+                    return super.visitVariable(v, p);
+                }
+
+                @Override
+                public J.Identifier visitIdentifier(J.Identifier identifier, Integer p) {
+                    referenced.add(identifier.getSimpleName());
+                    return identifier;
+                }
+            }.visit(method, 0);
+            referenced.removeAll(declared);
+            used.addAll(referenced);
+        }
+        return used;
+    }
+
+    /**
+     * Only a single variable declared with an explicit type directly in the glue declaration body can be swapped for
+     * a field assigned in place, as anything else either has no one type to declare, or no one place to assign from.
+     */
+    private static boolean canBecomeField(J.VariableDeclarations local, J.@Nullable MethodDeclaration glueDeclaration) {
+        if (glueDeclaration == null || glueDeclaration.getBody() == null ||
+                local.getVariables().size() != 1 || local.getVariables().get(0).getInitializer() == null) {
+            return false;
+        }
+        TypeTree typeExpression = local.getTypeExpression();
+        if (typeExpression == null ||
+                typeExpression instanceof J.Identifier && "var".equals(((J.Identifier) typeExpression).getSimpleName())) {
+            return false;
+        }
+        return glueDeclaration.getBody().getStatements().stream()
+                .anyMatch(statement -> statement.getId().equals(local.getId()));
+    }
+
+    private static J.ClassDeclaration markForManualMigration(J.ClassDeclaration classDeclaration, UUID declarationId) {
+        return classDeclaration.withBody(classDeclaration.getBody().withStatements(
+                ListUtils.map(classDeclaration.getBody().getStatements(), statement ->
+                        statement.getId().equals(declarationId) &&
+                                !statement.getMarkers().findFirst(SearchResult.class).isPresent() ?
+                                SearchResult.found(statement, MIGRATE_MANUALLY) : statement)));
+    }
+
+    private static J.@Nullable MethodDeclaration methodById(J.ClassDeclaration classDeclaration, @Nullable UUID id) {
+        for (Statement statement : classDeclaration.getBody().getStatements()) {
+            if (statement instanceof J.MethodDeclaration && statement.getId().equals(id)) {
+                return (J.MethodDeclaration) statement;
+            }
+        }
+        return null;
     }
 
     /**
@@ -182,14 +399,18 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
     }
 
     /**
-     * Remove imports & usage of Cucumber-Java8 interfaces.
+     * Remove imports & usage of Cucumber-Java8 interfaces, unless any of the methods they contribute survived the
+     * migration, as those are only in scope for as long as the class implements the interface declaring them.
      *
      * @return retained implementing interfaces
      */
     private List<TypeTree> filterImplementingInterfaces(J.ClassDeclaration classDeclaration) {
+        List<TypeTree> implementings = Optional.ofNullable(classDeclaration.getImplements()).orElse(emptyList());
+        if (lambdaGlueRemains(classDeclaration)) {
+            return implementings;
+        }
         List<TypeTree> retained = new ArrayList<>();
-        for (TypeTree typeTree : Optional.ofNullable(classDeclaration.getImplements())
-                .orElse(emptyList())) {
+        for (TypeTree typeTree : implementings) {
             if (typeTree.getType() instanceof JavaType.Class) {
                 JavaType.Class clazz = (JavaType.Class) typeTree.getType();
                 if (IO_CUCUMBER_JAVA8.equals(clazz.getPackageName())) {
@@ -202,6 +423,32 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         return retained;
     }
 
+    private static boolean lambdaGlueRemains(J.ClassDeclaration classDeclaration) {
+        AtomicBoolean remains = new AtomicBoolean();
+        new JavaIsoVisitor<AtomicBoolean>() {
+
+            @Override
+            public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration cd, AtomicBoolean found) {
+                return cd.getId().equals(classDeclaration.getId()) ? super.visitClassDeclaration(cd, found) : cd;
+            }
+
+            @Override
+            public J.MethodInvocation visitMethodInvocation(J.MethodInvocation mi, AtomicBoolean found) {
+                if (mi.getMethodType() != null) {
+                    // The declaring type is the interface contributing the method, not the class implementing it,
+                    // which itself is assignable to `LambdaGlue` for as long as it implements one of those interfaces
+                    JavaType.FullyQualified declaringType = mi.getMethodType().getDeclaringType();
+                    if (IO_CUCUMBER_JAVA8.equals(declaringType.getPackageName()) &&
+                            TypeUtils.isAssignableTo(IO_CUCUMBER_JAVA8_LAMBDA_GLUE, declaringType)) {
+                        found.set(true);
+                    }
+                }
+                return super.visitMethodInvocation(mi, found);
+            }
+        }.visit(classDeclaration, remains);
+        return remains.get();
+    }
+
     /**
      * Place new methods after the last cucumber annotated method, or after the
      * constructor, or at end of class.
@@ -211,10 +458,7 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         return body.getStatements().stream()
                 .filter(J.MethodDeclaration.class::isInstance)
                 .map(org.openrewrite.java.tree.J.MethodDeclaration.class::cast)
-                .filter(method -> method.getAllAnnotations().stream()
-                        .anyMatch(ann -> ann.getAnnotationType().getType() != null &&
-                                ((JavaType.Class) ann.getAnnotationType().getType()).getPackageName()
-                                        .startsWith(IO_CUCUMBER_JAVA)))
+                .filter(CucumberJava8ClassVisitor::isCucumberAnnotated)
                 .map(method -> method.getCoordinates().after())
                 .reduce((a, b) -> b)
                 // After last constructor
@@ -226,5 +470,11 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
                         .reduce((a, b) -> b)
                         // At end of class
                         .orElseGet(() -> body.getCoordinates().lastStatement()));
+    }
+
+    private static boolean isCucumberAnnotated(J.MethodDeclaration method) {
+        return method.getAllAnnotations().stream()
+                .map(annotation -> TypeUtils.asFullyQualified(annotation.getAnnotationType().getType()))
+                .anyMatch(type -> type != null && type.getPackageName().startsWith(IO_CUCUMBER_JAVA));
     }
 }
