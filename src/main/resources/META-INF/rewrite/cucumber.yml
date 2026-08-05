@@ -440,12 +440,15 @@ recipeList:
   - org.openrewrite.cucumber.jvm.CucumberJava8HookDefinitionToCucumberJava
   - org.openrewrite.cucumber.jvm.CucumberJava8StepDefinitionToCucumberJava
   - org.openrewrite.cucumber.jvm.MigrateCucumberJava8ScenarioAndStatus
+  # Keyed off the `cucumber-java8` types that are there to begin with, rather than the `cucumber-java` types the
+  # migration introduces: a scanning recipe only sees the sources as they were when the cycle it runs in started,
+  # and a build tool run ends before the cycle in which the migrated types would come into view
   - org.openrewrite.java.dependencies.AddDependency:
       groupId: io.cucumber
       artifactId: cucumber-java
       version: 7.x
       familyPattern: io.cucumber*
-      onlyIfUsing: io.cucumber.java..*
+      onlyIfUsing: io.cucumber.java8..*
       acceptTransitive: true
   # Only once no lambda glue is left, as a class that retained a `cucumber-java8` interface still needs it
   - org.openrewrite.java.dependencies.RemoveDependency:

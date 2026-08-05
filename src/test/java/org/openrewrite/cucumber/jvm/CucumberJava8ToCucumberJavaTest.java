@@ -1250,7 +1250,9 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
         @Test
         void retainCucumberJava8WhereLambdaGlueRemains() {
             rewriteRun(
-              spec -> spec.expectedCyclesThatMakeChanges(2),
+              // Adding `cucumber-java` keys off the `cucumber-java8` glue that is there to begin with, so it lands
+              // in the same cycle that migrates the glue; only dropping `cucumber-java8` waits on the cycle after
+              spec -> spec.expectedCyclesThatMakeChanges(1),
               mavenProject("app",
                 srcTestJava(
                   // language=java
