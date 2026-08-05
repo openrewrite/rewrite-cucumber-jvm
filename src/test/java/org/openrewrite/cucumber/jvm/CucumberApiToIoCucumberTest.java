@@ -152,7 +152,7 @@ class CucumberApiToIoCucumberTest implements RewriteTest {
               import io.cucumber.junit.CucumberOptions;
               import io.cucumber.junit.CucumberOptions.SnippetType;
 
-              @CucumberOptions(snippets = SnippetType.CAMELCASE)
+              @CucumberOptions(snippets = CucumberOptions.SnippetType.CAMELCASE)
               public class RunCucumberTest {
                   Class<?> runner = Cucumber.class;
               }
