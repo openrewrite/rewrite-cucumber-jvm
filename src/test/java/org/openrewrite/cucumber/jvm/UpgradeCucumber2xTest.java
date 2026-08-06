@@ -77,7 +77,8 @@ class UpgradeCucumber2xTest implements RewriteTest {
                       </dependency>
                   </dependencies>
               </project>
-              """));
+              """
+          ));
     }
 
     @Test
@@ -104,6 +105,7 @@ class UpgradeCucumber2xTest implements RewriteTest {
                       </dependency>
                   </dependencies>
               </project>
-              """));
+              """
+          ));
     }
 }

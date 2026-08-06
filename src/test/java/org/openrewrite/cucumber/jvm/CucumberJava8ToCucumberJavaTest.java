@@ -41,7 +41,10 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
         spec.parser(JavaParser.fromJavaVersion()
           .logCompilationWarningsAndErrors(true)
           .classpathFromResources(new InMemoryExecutionContext(),
-            "junit-jupiter-api", "cucumber-java-7", "cucumber-java8-7", "datatable"));
+            "junit-jupiter-api",
+            "cucumber-java-7",
+            "cucumber-java8-7",
+            "datatable"));
     }
 
     @DocumentExample
@@ -81,46 +84,48 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
 
                   }
 
-              }""", """
-              package com.example.app;
-
-              import io.cucumber.java.After;
-              import io.cucumber.java.Before;
-              import io.cucumber.java.Scenario;
-              import io.cucumber.java.Status;
-              import io.cucumber.java.en.Then;
-              import io.cucumber.java.en.When;
-
-              import static org.junit.jupiter.api.Assertions.assertEquals;
-
-              public class CucumberJava8Definitions {
-
-                  private int a;
-
-                  @Before
-                  public void before() {
-                      a = 0;
-                  }
-
-                  @After
-                  public void after(Scenario scn) {
-                      if (scn.getStatus() == Status.FAILED) {
-                          scn.log("failed");
-                      }
-                  }
-
-                  @When("I add {int}")
-                  public void i_add_int(Integer b) {
-                      a += b;
-                  }
-
-                  @Then("I expect {int}")
-                  public void i_expect_int(Integer c) {
-                      assertEquals(c, a);
-                  }
-
-              }
-              """));
+              }""",
+                  """
+                          package com.example.app;
+                          
+                          import io.cucumber.java.After;
+                          import io.cucumber.java.Before;
+                          import io.cucumber.java.Scenario;
+                          import io.cucumber.java.Status;
+                          import io.cucumber.java.en.Then;
+                          import io.cucumber.java.en.When;
+                          
+                          import static org.junit.jupiter.api.Assertions.assertEquals;
+                          
+                          public class CucumberJava8Definitions {
+                          
+                              private int a;
+                          
+                              @Before
+                              public void before() {
+                                  a = 0;
+                              }
+                          
+                              @After
+                              public void after(Scenario scn) {
+                                  if (scn.getStatus() == Status.FAILED) {
+                                      scn.log("failed");
+                                  }
+                              }
+                          
+                              @When("I add {int}")
+                              public void i_add_int(Integer b) {
+                                  a += b;
+                              }
+                          
+                              @Then("I expect {int}")
+                              public void i_expect_int(Integer c) {
+                                  assertEquals(c, a);
+                              }
+                          
+                          }
+                          """
+          ));
     }
 
     @Nested
@@ -203,7 +208,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -268,7 +274,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                       Helper() {
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -342,7 +349,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -397,7 +405,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -450,7 +459,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -511,7 +521,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -553,7 +564,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           System.out.println(a + b);
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -612,7 +624,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -675,7 +688,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -719,7 +733,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           System.out.println(values[0]);
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -769,7 +784,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           System.out.println(total);
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -817,7 +833,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           System.out.println(this.total);
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @SuppressWarnings("CodeBlock2Expr")
@@ -900,7 +917,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           System.out.println(a + b);
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Test
@@ -933,7 +951,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           throw new Exception();
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Test
@@ -968,7 +987,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           });
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Test
@@ -1005,7 +1025,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           });
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
@@ -1023,19 +1044,21 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                       public CalculatorStepDefinitions() {
                           Given("{int} plus {int}", Integer::sum);
                       }
-                  }""", """
-                  package com.example.app;
-
-                  import io.cucumber.java.en.Given;
-
-                  public class CalculatorStepDefinitions {
-
-                      @Given("{int} plus {int}")
-                      public void int_plus_int(Integer a, Integer b) {
-                          Integer.sum(a, b);
-                      }
-                  }
-                  """));
+                  }""",
+                      """
+                              package com.example.app;
+                              
+                              import io.cucumber.java.en.Given;
+                              
+                              public class CalculatorStepDefinitions {
+                              
+                                  @Given("{int} plus {int}")
+                                  public void int_plus_int(Integer a, Integer b) {
+                                      Integer.sum(a, b);
+                                  }
+                              }
+                              """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
@@ -1094,7 +1117,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
@@ -1142,7 +1166,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
@@ -1189,7 +1214,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
@@ -1230,7 +1256,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                       private void push(List<String> values) {
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
@@ -1281,7 +1308,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                       private void pay(Money money) {
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
     }
@@ -1393,7 +1421,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                       }
 
                   }
-                  """));
+                  """
+              ));
         }
 
         @SuppressWarnings("CodeBlock2Expr")
@@ -1435,7 +1464,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                       }
 
                   }
-                  """));
+                  """
+              ));
         }
 
         @Test
@@ -1505,7 +1535,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                       }
 
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
@@ -1550,7 +1581,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                       }
 
                   }
-                  """));
+                  """
+              ));
         }
 
         @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/3")
@@ -1593,12 +1625,13 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                       }
 
                   }
-                  """));
+                  """
+              ));
         }
     }
 
-    @Nested
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/2")
+    @Nested
     class TypeDefinitionMigration {
 
         @Test
@@ -1691,7 +1724,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Test
@@ -1748,7 +1782,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Test
@@ -1818,7 +1853,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Test
@@ -1870,7 +1906,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Test
@@ -1925,7 +1962,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           return Authors.of(entry);
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @Test
@@ -1974,7 +2012,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
 
         @SuppressWarnings("CodeBlock2Expr")
@@ -2047,12 +2086,13 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                           }
                       }
                   }
-                  """));
+                  """
+              ));
         }
     }
 
-    @Nested
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
+    @Nested
     class DependencyMigration {
 
         @Test

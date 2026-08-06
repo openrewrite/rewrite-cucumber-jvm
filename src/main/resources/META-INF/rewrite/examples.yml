@@ -13,6 +13,29 @@
 # limitations under the License.
 ---
 type: specs.openrewrite.org/v1beta/example
+recipeName: org.openrewrite.cucumber.jvm.CollapseCucumberOptionsTags
+examples:
+- description: '`CollapseCucumberOptionsTagsTest#combineTagsWithAnd`'
+  sources:
+  - before: |
+      package com.example.app;
+
+      import io.cucumber.junit.CucumberOptions;
+
+      @CucumberOptions(features = "src/test/resources/features", tags = {"@smoke", "not @wip"})
+      public class RunCucumberTest {
+      }
+    after: |
+      package com.example.app;
+
+      import io.cucumber.junit.CucumberOptions;
+
+      @CucumberOptions(features = "src/test/resources/features", tags = "(@smoke) and (not @wip)")
+      public class RunCucumberTest {
+      }
+    language: java
+---
+type: specs.openrewrite.org/v1beta/example
 recipeName: org.openrewrite.cucumber.jvm.CucumberAnnotationToSuite
 examples:
 - description: '`CucumberAnnotationToSuiteTest#shouldReplaceCucumberAnnotationWithSuiteWithSelectedClasspathResource`'
@@ -34,6 +57,49 @@ examples:
       @Suite
       @SelectClasspathResource("com/example/app")
       public class CucumberJava8Definitions {
+      }
+    language: java
+---
+type: specs.openrewrite.org/v1beta/example
+recipeName: org.openrewrite.cucumber.jvm.CucumberApiToIoCucumber
+examples:
+- description: '`CucumberApiToIoCucumberTest#typeRegistryConfigurerMovesToCoreApi`'
+  sources:
+  - before: |
+      package com.example.app;
+
+      import cucumber.api.TypeRegistry;
+      import cucumber.api.TypeRegistryConfigurer;
+
+      import java.util.Locale;
+
+      public class DataTableConfigurer implements TypeRegistryConfigurer {
+          @Override
+          public Locale locale() {
+              return Locale.ENGLISH;
+          }
+
+          @Override
+          public void configureTypeRegistry(TypeRegistry typeRegistry) {
+          }
+      }
+    after: |
+      package com.example.app;
+
+      import io.cucumber.core.api.TypeRegistry;
+      import io.cucumber.core.api.TypeRegistryConfigurer;
+
+      import java.util.Locale;
+
+      public class DataTableConfigurer implements TypeRegistryConfigurer {
+          @Override
+          public Locale locale() {
+              return Locale.ENGLISH;
+          }
+
+          @Override
+          public void configureTypeRegistry(TypeRegistry typeRegistry) {
+          }
       }
     language: java
 ---
@@ -78,10 +144,10 @@ examples:
 
       import io.cucumber.java.After;
       import io.cucumber.java.Before;
-      import io.cucumber.java.en.Then;
-      import io.cucumber.java.en.When;
       import io.cucumber.java.Scenario;
       import io.cucumber.java.Status;
+      import io.cucumber.java.en.Then;
+      import io.cucumber.java.en.When;
 
       import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -95,7 +161,7 @@ examples:
           }
 
           @After
-          public void after(io.cucumber.java.Scenario scn) {
+          public void after(Scenario scn) {
               if (scn.getStatus() == Status.FAILED) {
                   scn.log("failed");
               }
@@ -111,6 +177,43 @@ examples:
               assertEquals(c, a);
           }
 
+      }
+    language: java
+---
+type: specs.openrewrite.org/v1beta/example
+recipeName: org.openrewrite.cucumber.jvm.CucumberOptionsPropertyToIndividualProperties
+examples:
+- description: '`CucumberOptionsPropertyToIndividualPropertiesTest#cucumberProperties`'
+  sources:
+  - before: |
+      cucumber.options=--glue com.example.app --plugin pretty --tags "@integration and not @wip"
+    after: |
+      cucumber.filter.tags=@integration and not @wip
+      cucumber.glue=com.example.app
+      cucumber.plugin=pretty
+    path: src/test/resources/cucumber.properties
+    language: properties
+---
+type: specs.openrewrite.org/v1beta/example
+recipeName: org.openrewrite.cucumber.jvm.DropStrictOption
+examples:
+- description: '`DropStrictOptionTest#dropStrictFromJUnitCucumberOptions`'
+  sources:
+  - before: |
+      package com.example.app;
+
+      import io.cucumber.junit.CucumberOptions;
+
+      @CucumberOptions(strict = true, features = "src/test/resources/features")
+      public class RunCucumberTest {
+      }
+    after: |
+      package com.example.app;
+
+      import io.cucumber.junit.CucumberOptions;
+
+      @CucumberOptions(features = "src/test/resources/features")
+      public class RunCucumberTest {
       }
     language: java
 ---
@@ -132,6 +235,110 @@ examples:
       import io.cucumber.plugin.Plugin;
 
       public class CucumberJava8Definitions implements Plugin {
+      }
+    language: java
+---
+type: specs.openrewrite.org/v1beta/example
+recipeName: org.openrewrite.cucumber.jvm.DropTimeoutAttribute
+examples:
+- description: '`DropTimeoutAttributeTest#dropTimeoutFromStepDefinition`'
+  sources:
+  - before: |
+      package com.example.app;
+
+      import io.cucumber.java.en.Given;
+
+      class StepDefinitions {
+          @Given(value = "a step", timeout = 1000)
+          void aStep() {
+          }
+      }
+    after: |
+      package com.example.app;
+
+      import io.cucumber.java.en.Given;
+
+      class StepDefinitions {
+          @Given("a step")
+          void aStep() {
+          }
+      }
+    language: java
+---
+type: specs.openrewrite.org/v1beta/example
+recipeName: org.openrewrite.cucumber.jvm.MigrateRuntimeOptionsBuilder
+examples:
+- description: '`MigrateRuntimeOptionsBuilderTest#migrateDefaultsInBuilderChain`'
+  sources:
+  - before: |
+      package com.example.app;
+
+      import io.cucumber.core.options.CommandlineOptionsParser;
+      import io.cucumber.core.options.RuntimeOptions;
+
+      class CucumberRunner {
+          RuntimeOptions parse(String[] argv) {
+              return new CommandlineOptionsParser(System.out)
+                      .parse(argv)
+                      .addDefaultGlueIfAbsent()
+                      .addDefaultFeaturePathIfAbsent()
+                      .addDefaultFormatterIfAbsent()
+                      .addDefaultSummaryPrinterIfAbsent()
+                      .enablePublishPlugin()
+                      .build();
+          }
+      }
+    after: |
+      package com.example.app;
+
+      import io.cucumber.core.options.CommandlineOptionsParser;
+      import io.cucumber.core.options.RuntimeOptions;
+
+      class CucumberRunner {
+          RuntimeOptions parse(String[] argv) {
+              return new CommandlineOptionsParser(System.out)
+                      .parse(argv)
+                      .addDefaultGlueIfAbsent()
+                      .addDefaultFeaturePathIfAbsent()
+                      .addDefaultSummaryPrinterIfNotDisabled()
+                      .enablePublishPlugin()
+                      .build();
+          }
+      }
+    language: java
+---
+type: specs.openrewrite.org/v1beta/example
+recipeName: org.openrewrite.cucumber.jvm.MigrateScenarioWriteAndEmbed
+examples:
+- description: '`MigrateScenarioWriteAndEmbedTest#writeToLogAndEmbedToAttach`'
+  sources:
+  - before: |
+      package com.example.app;
+
+      import io.cucumber.java.Scenario;
+      import io.cucumber.java.en.Given;
+
+      class StepDefinitions {
+          @Given("a step")
+          void aStep(Scenario scenario) {
+              scenario.write("a message");
+              scenario.embed(new byte[0], "image/png");
+              scenario.embed(new byte[0], "image/png", "a name");
+          }
+      }
+    after: |
+      package com.example.app;
+
+      import io.cucumber.java.Scenario;
+      import io.cucumber.java.en.Given;
+
+      class StepDefinitions {
+          @Given("a step")
+          void aStep(Scenario scenario) {
+              scenario.log("a message");
+              scenario.attach(new byte[0], "image/png", null);
+              scenario.attach(new byte[0], "image/png", "a name");
+          }
       }
     language: java
 ---
@@ -197,5 +404,131 @@ examples:
               assertEquals(c, a);
           }
 
+      }
+    language: java
+---
+type: specs.openrewrite.org/v1beta/example
+recipeName: org.openrewrite.cucumber.jvm.TypeRegistryConfigurerToAnnotations
+examples:
+- description: '`TypeRegistryConfigurerToAnnotationsTest#parameterTypeAndDataTableTypeBecomeAnnotatedGlueMethods`'
+  sources:
+  - before: |
+      package com.example.app;
+
+      import io.cucumber.core.api.TypeRegistry;
+      import io.cucumber.core.api.TypeRegistryConfigurer;
+      import io.cucumber.cucumberexpressions.ParameterType;
+      import io.cucumber.datatable.DataTableType;
+
+      import java.util.Locale;
+      import java.util.Map;
+
+      public class DataTableConfigurer implements TypeRegistryConfigurer {
+          @Override
+          public Locale locale() {
+              return Locale.ENGLISH;
+          }
+
+          @Override
+          public void configureTypeRegistry(TypeRegistry typeRegistry) {
+              typeRegistry.defineParameterType(new ParameterType<>(
+                      "author", "[A-Z][a-z]+", Author.class, (String name) -> new Author(name)));
+              typeRegistry.defineDataTableType(new DataTableType(
+                      Author.class, (Map<String, String> entry) -> new Author(entry.get("name"))));
+          }
+      }
+    after: |
+      package com.example.app;
+
+      import io.cucumber.java.DataTableType;
+      import io.cucumber.java.ParameterType;
+
+      import java.util.Map;
+
+      public class DataTableConfigurer {
+          @ParameterType("[A-Z][a-z]+")
+          public Author author(String name) {
+              return new Author(name);
+          }
+
+          @DataTableType
+          public Author author2(Map<String, String> entry) {
+              return new Author(entry.get("name"));
+          }
+      }
+    language: java
+---
+type: specs.openrewrite.org/v1beta/example
+recipeName: org.openrewrite.cucumber.jvm.UpgradeCucumber2x
+examples:
+- description: '`UpgradeCucumber2xTest#changeRunnerAndGlueArtifacts`'
+  sources:
+  - before: |
+      <project>
+          <groupId>com.example</groupId>
+          <artifactId>app</artifactId>
+          <version>1.0.0</version>
+          <dependencies>
+              <dependency>
+                  <groupId>info.cukes</groupId>
+                  <artifactId>cucumber-junit</artifactId>
+                  <version>1.2.5</version>
+                  <scope>test</scope>
+              </dependency>
+              <dependency>
+                  <groupId>info.cukes</groupId>
+                  <artifactId>cucumber-spring</artifactId>
+                  <version>1.2.5</version>
+                  <scope>test</scope>
+              </dependency>
+          </dependencies>
+      </project>
+    after: |
+      <project>
+          <groupId>com.example</groupId>
+          <artifactId>app</artifactId>
+          <version>1.0.0</version>
+          <dependencies>
+              <dependency>
+                  <groupId>io.cucumber</groupId>
+                  <artifactId>cucumber-junit</artifactId>
+                  <version>2.4.0</version>
+                  <scope>test</scope>
+              </dependency>
+              <dependency>
+                  <groupId>io.cucumber</groupId>
+                  <artifactId>cucumber-spring</artifactId>
+                  <version>2.4.0</version>
+                  <scope>test</scope>
+              </dependency>
+          </dependencies>
+      </project>
+    path: pom.xml
+    language: xml
+---
+type: specs.openrewrite.org/v1beta/example
+recipeName: org.openrewrite.cucumber.jvm.UpgradeCucumber6x
+examples:
+- description: '`UpgradeCucumber6xTest#dropTimeoutAlongsideThePackageRename`'
+  sources:
+  - before: |
+      package com.example.app;
+
+      import cucumber.api.java.en.Given;
+
+      class StepDefinitions {
+          @Given(value = "a step", timeout = 1000)
+          void aStep() {
+          }
+      }
+    after: |
+      package com.example.app;
+
+      import io.cucumber.java.en.Given;
+
+      class StepDefinitions {
+          @Given("a step")
+          void aStep() {
+          }
       }
     language: java

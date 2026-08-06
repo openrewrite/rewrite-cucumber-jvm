@@ -46,14 +46,16 @@ class DropSummaryPrinterTest implements RewriteTest {
               import io.cucumber.plugin.SummaryPrinter;
 
               public class CucumberJava8Definitions implements SummaryPrinter {
-              }""", """
-              package com.example.app;
-
-              import io.cucumber.plugin.Plugin;
-
-              public class CucumberJava8Definitions implements Plugin {
-              }
-              """));
+              }""",
+                  """
+                          package com.example.app;
+                          
+                          import io.cucumber.plugin.Plugin;
+                          
+                          public class CucumberJava8Definitions implements Plugin {
+                          }
+                          """
+          ));
     }
 
     @Test
@@ -77,6 +79,7 @@ class DropSummaryPrinterTest implements RewriteTest {
 
               public class CucumberJava8Definitions implements Plugin {
               }
-              """));
+              """
+          ));
     }
 }

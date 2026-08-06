@@ -63,7 +63,8 @@ class UpgradeCucumber6xTest implements RewriteTest {
                   void aStep() {
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Test
@@ -102,7 +103,8 @@ class UpgradeCucumber6xTest implements RewriteTest {
                       scenario.log("a message");
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Test

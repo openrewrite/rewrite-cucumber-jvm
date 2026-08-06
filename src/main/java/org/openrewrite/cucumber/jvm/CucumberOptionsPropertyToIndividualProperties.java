@@ -30,8 +30,10 @@ import org.openrewrite.xml.tree.Xml;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.openrewrite.Tree.randomId;
 
 public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
@@ -114,7 +116,7 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
                 Set<String> present = f.getContent().stream()
                         .filter(Properties.Entry.class::isInstance)
                         .map(entry -> ((Properties.Entry) entry).getKey())
-                        .collect(Collectors.toSet());
+                        .collect(toSet());
                 if (present.stream().anyMatch(replacements::containsKey)) {
                     return flagForManualMigration(getCursor(), f, options);
                 }
@@ -175,7 +177,7 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
                 if (replacements == null) {
                     return flagForManualMigration(getCursor(), t, options);
                 }
-                Set<String> present = t.getChildren().stream().map(Xml.Tag::getName).collect(Collectors.toSet());
+                Set<String> present = t.getChildren().stream().map(Xml.Tag::getName).collect(toSet());
                 if (present.stream().anyMatch(replacements::containsKey)) {
                     return flagForManualMigration(getCursor(), t, options);
                 }
@@ -188,7 +190,7 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
                                     .build(String.format("<%1$s>%2$s</%1$s>",
                                             replacement.getKey(), escape(replacement.getValue())))
                                     .withPrefix(options.getPrefix()))
-                            .collect(Collectors.toList());
+                            .collect(toList());
                 }));
             }
         };
@@ -226,7 +228,7 @@ public class CucumberOptionsPropertyToIndividualProperties extends Recipe {
                 .filter(Xml.CharData.class::isInstance)
                 .map(Xml.CharData.class::cast)
                 .map(charData -> charData.getPrefix() + charData.getText() + charData.getAfterText())
-                .collect(Collectors.joining());
+                .collect(joining());
         return escape(value).equals(source.trim()) ? value : null;
     }
 

@@ -80,7 +80,8 @@ class CucumberApiToIoCucumberTest implements RewriteTest {
                   public void configureTypeRegistry(TypeRegistry typeRegistry) {
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Test
@@ -125,7 +126,8 @@ class CucumberApiToIoCucumberTest implements RewriteTest {
                       throw new PendingException();
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Test
@@ -156,11 +158,12 @@ class CucumberApiToIoCucumberTest implements RewriteTest {
               public class RunCucumberTest {
                   Class<?> runner = Cucumber.class;
               }
-              """));
+              """
+          ));
     }
 
     @Test
-    void testNgRunnerMovesToIoCucumberTestNg() {
+    void ngRunnerMovesToIoCucumberTestNg() {
         rewriteRun(
           //language=java
           java(
@@ -183,7 +186,8 @@ class CucumberApiToIoCucumberTest implements RewriteTest {
               @CucumberOptions(features = "classpath:features")
               public class RunCucumberTest extends AbstractTestNGCucumberTests {
               }
-              """));
+              """
+          ));
     }
 
     @Test
@@ -234,7 +238,8 @@ class CucumberApiToIoCucumberTest implements RewriteTest {
                   public void finished(TestRunFinished event) {
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Test
@@ -257,7 +262,8 @@ class CucumberApiToIoCucumberTest implements RewriteTest {
 
               public abstract class MyObjectFactory implements ObjectFactory {
               }
-              """));
+              """
+          ));
     }
 
     @Test
@@ -287,7 +293,8 @@ class CucumberApiToIoCucumberTest implements RewriteTest {
                   public void aStep(DataTable table) {
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Test
@@ -316,6 +323,7 @@ class CucumberApiToIoCucumberTest implements RewriteTest {
                       Main.main(args);
                   }
               }
-              """));
+              """
+          ));
     }
 }
