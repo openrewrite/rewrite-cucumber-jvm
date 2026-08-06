@@ -324,7 +324,8 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
                       </plugins>
                   </build>
               </project>
-              """));
+              """
+          ));
     }
 
     @Test
@@ -372,7 +373,8 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
                       </plugins>
                   </build>
               </project>
-              """));
+              """
+          ));
     }
 
     @Test
@@ -421,7 +423,8 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
                       </plugins>
                   </build>
               </project>
-              """));
+              """
+          ));
     }
 
     @Test
@@ -470,7 +473,8 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
                       </plugins>
                   </build>
               </project>
-              """));
+              """
+          ));
     }
 
     @Test
@@ -487,6 +491,7 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
                       <cucumber.options>--glue com.example.app</cucumber.options>
                   </properties>
               </project>
-              """));
+              """
+          ));
     }
 }

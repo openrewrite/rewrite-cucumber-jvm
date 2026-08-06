@@ -608,13 +608,17 @@ class GlueMethod {
     String annotation;
     String annotationImport;
     Collection<String> parameterTypeImports;
+
     @Nullable
     TypeTree returnTypeTree;
+
     String returnType;
     String methodName;
     String parameters;
+
     @Nullable
     J body;
+
     J.@Nullable MemberReference reference;
     MemberReferences.@Nullable Kind referenceKind;
 

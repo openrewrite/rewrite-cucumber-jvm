@@ -23,7 +23,6 @@ import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
-
 import static org.openrewrite.java.Assertions.java;
 
 class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
@@ -51,8 +50,12 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
         // which no release still ships, so that one comes from a type table
         spec.recipe(new TypeRegistryConfigurerToAnnotations())
           .parser(JavaParser.fromJavaVersion()
-            .classpathFromResources(new InMemoryExecutionContext(), "cucumber-java-7",
-              "cucumber-expressions", "datatable", "docstring", "cucumber-core-6.11.0")
+            .classpathFromResources(new InMemoryExecutionContext(),
+              "cucumber-java-7",
+              "cucumber-expressions",
+              "datatable",
+              "docstring",
+              "cucumber-core-6.11.0")
             .dependsOn(AUTHOR));
     }
 
@@ -107,7 +110,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return new Author(entry.get("name"));
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Test
@@ -151,7 +155,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return new Author(trimmed);
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Test
@@ -195,7 +200,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return new Author(entry.get("name"));
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Test
@@ -235,7 +241,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return new Author(docString);
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Test
@@ -244,8 +251,12 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
           // Cucumber-JVM 4.x carries both the `cucumber.api` and the `io.cucumber.core.api` variant, so swap
           // the whole release out rather than adding it alongside the one the other tests parse against
           spec -> spec.parser(JavaParser.fromJavaVersion()
-            .classpathFromResources(new InMemoryExecutionContext(), "cucumber-java-7",
-              "cucumber-expressions", "datatable", "docstring", "cucumber-core-4.8.1")
+            .classpathFromResources(new InMemoryExecutionContext(),
+              "cucumber-java-7",
+              "cucumber-expressions",
+              "datatable",
+              "docstring",
+              "cucumber-core-4.8.1")
             .dependsOn(AUTHOR)),
           //language=java
           java(
@@ -282,7 +293,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return new Author(name);
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Test
@@ -340,7 +352,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                               "author", "[A-Z][a-z]+", Author.class, TRANSFORMER));
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -407,7 +420,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return new ParameterType<>("author", "[A-Z][a-z]+", Author.class, Author::new);
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -457,7 +471,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return new Author(entry.get("name"));
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -509,7 +524,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return new Author(entry.get("name"));
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -574,7 +590,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return "registered";
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -615,7 +632,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return new Author(value);
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -681,7 +699,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return this.read(docString);
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -722,7 +741,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return value.trim();
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -779,7 +799,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return fromValue;
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -830,7 +851,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                               (fromValue, toValueType, cellTransformer) -> cellTransformer.transform(fromValue.toString(), toValueType));
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -879,7 +901,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return new Author(name);
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/47")
@@ -916,7 +939,8 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                       return Locale.ENGLISH;
                   }
               }
-              """));
+              """
+          ));
     }
 
     @Test
@@ -933,6 +957,7 @@ class TypeRegistryConfigurerToAnnotationsTest implements RewriteTest {
                   public void configureTypeRegistry(TypeRegistry typeRegistry) {
                   }
               }
-              """));
+              """
+          ));
     }
 }
