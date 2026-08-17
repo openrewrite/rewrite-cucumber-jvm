@@ -25,6 +25,7 @@ import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.openrewrite.java.Assertions.java;
 import static org.openrewrite.java.Assertions.mavenProject;
 import static org.openrewrite.java.Assertions.srcTestJava;
@@ -2095,6 +2096,10 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
     @Nested
     class DependencyMigration {
 
+        // `AddDependency` resolves `7.x` against Maven Central, so the version moves with each cucumber release
+        private static final String CUCUMBER_JAVA_VERSION =
+          "<artifactId>cucumber-java</artifactId>\\s+<version>7\\.\\d+\\.\\d+</version>";
+
         @Test
         void dropCucumberJava8OnceAllGlueIsMigrated() {
             rewriteRun(
@@ -2161,21 +2166,11 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                         </dependencies>
                     </project>
                     """,
-                  """
-                    <project>
-                        <groupId>com.example</groupId>
-                        <artifactId>app</artifactId>
-                        <version>1.0.0</version>
-                        <dependencies>
-                            <dependency>
-                                <groupId>io.cucumber</groupId>
-                                <artifactId>cucumber-java</artifactId>
-                                <version>7.34.6</version>
-                                <scope>test</scope>
-                            </dependency>
-                        </dependencies>
-                    </project>
-                    """)));
+                  spec -> spec.after(actual -> assertThat(actual)
+                    .containsPattern(CUCUMBER_JAVA_VERSION)
+                    .doesNotContain("cucumber-java8")
+                    .doesNotContain("<version>7.34.6</version>")
+                    .actual()))));
         }
 
         @SuppressWarnings("CodeBlock2Expr")
@@ -2251,27 +2246,10 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                         </dependencies>
                     </project>
                     """,
-                  """
-                    <project>
-                        <groupId>com.example</groupId>
-                        <artifactId>app</artifactId>
-                        <version>1.0.0</version>
-                        <dependencies>
-                            <dependency>
-                                <groupId>io.cucumber</groupId>
-                                <artifactId>cucumber-java</artifactId>
-                                <version>7.34.6</version>
-                                <scope>test</scope>
-                            </dependency>
-                            <dependency>
-                                <groupId>io.cucumber</groupId>
-                                <artifactId>cucumber-java8</artifactId>
-                                <version>7.34.6</version>
-                                <scope>test</scope>
-                            </dependency>
-                        </dependencies>
-                    </project>
-                    """)));
+                  spec -> spec.after(actual -> assertThat(actual)
+                    .containsPattern(CUCUMBER_JAVA_VERSION)
+                    .containsPattern("<artifactId>cucumber-java8</artifactId>\\s+<version>7\\.34\\.6</version>")
+                    .actual()))));
         }
     }
 }
