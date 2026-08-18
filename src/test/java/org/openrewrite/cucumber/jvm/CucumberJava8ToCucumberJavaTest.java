@@ -25,6 +25,9 @@ import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.openrewrite.java.Assertions.java;
 import static org.openrewrite.java.Assertions.mavenProject;
@@ -2096,9 +2099,16 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
     @Nested
     class DependencyMigration {
 
-        // `AddDependency` resolves `7.x` against Maven Central, so the version moves with each cucumber release
-        private static final String CUCUMBER_JAVA_VERSION =
-          "<artifactId>cucumber-java</artifactId>\\s+<version>7\\.\\d+\\.\\d+</version>";
+        // `AddDependency` resolves `7.x` against Maven Central, so the version moves with each cucumber release;
+        // read it back out of the migrated pom to keep asserting the whole document without pinning a release
+        private static final Pattern CUCUMBER_JAVA_VERSION =
+          Pattern.compile("<artifactId>cucumber-java</artifactId>\\s+<version>(7\\.\\d+[^<]*)</version>");
+
+        private static String addedCucumberJavaVersion(String actual) {
+            Matcher matcher = CUCUMBER_JAVA_VERSION.matcher(actual);
+            assertThat(matcher.find()).as("cucumber-java added to %s", actual).isTrue();
+            return matcher.group(1);
+        }
 
         @Test
         void dropCucumberJava8OnceAllGlueIsMigrated() {
@@ -2166,11 +2176,21 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                         </dependencies>
                     </project>
                     """,
-                  spec -> spec.after(actual -> assertThat(actual)
-                    .containsPattern(CUCUMBER_JAVA_VERSION)
-                    .doesNotContain("cucumber-java8")
-                    .doesNotContain("<version>7.34.6</version>")
-                    .actual()))));
+                  spec -> spec.after(actual -> """
+                    <project>
+                        <groupId>com.example</groupId>
+                        <artifactId>app</artifactId>
+                        <version>1.0.0</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.cucumber</groupId>
+                                <artifactId>cucumber-java</artifactId>
+                                <version>%s</version>
+                                <scope>test</scope>
+                            </dependency>
+                        </dependencies>
+                    </project>
+                    """.formatted(addedCucumberJavaVersion(actual))))));
         }
 
         @SuppressWarnings("CodeBlock2Expr")
@@ -2246,10 +2266,27 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                         </dependencies>
                     </project>
                     """,
-                  spec -> spec.after(actual -> assertThat(actual)
-                    .containsPattern(CUCUMBER_JAVA_VERSION)
-                    .containsPattern("<artifactId>cucumber-java8</artifactId>\\s+<version>7\\.34\\.6</version>")
-                    .actual()))));
+                  spec -> spec.after(actual -> """
+                    <project>
+                        <groupId>com.example</groupId>
+                        <artifactId>app</artifactId>
+                        <version>1.0.0</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.cucumber</groupId>
+                                <artifactId>cucumber-java</artifactId>
+                                <version>%s</version>
+                                <scope>test</scope>
+                            </dependency>
+                            <dependency>
+                                <groupId>io.cucumber</groupId>
+                                <artifactId>cucumber-java8</artifactId>
+                                <version>7.34.6</version>
+                                <scope>test</scope>
+                            </dependency>
+                        </dependencies>
+                    </project>
+                    """.formatted(addedCucumberJavaVersion(actual))))));
         }
     }
 }
