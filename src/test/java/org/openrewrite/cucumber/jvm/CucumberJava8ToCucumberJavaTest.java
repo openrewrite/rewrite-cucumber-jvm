@@ -324,7 +324,6 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   import io.cucumber.java.en.Then;
 
                   public class CalculatorStepDefinitions {
-
                       private final RpnCalculator calc;
                       private final Log log;
 
@@ -446,7 +445,6 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   import io.cucumber.java.en.Given;
 
                   public class CalculatorStepDefinitions {
-
                       private RpnCalculator calc;
 
                       public CalculatorStepDefinitions() {
@@ -504,7 +502,6 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   import io.cucumber.java.en.Given;
 
                   public class CalculatorStepDefinitions {
-
                       private RpnCalculator calc;
 
                       public CalculatorStepDefinitions() {
@@ -608,7 +605,6 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   import io.cucumber.java.en.Given;
 
                   public class CalculatorStepDefinitions {
-
                       private final boolean flag;
 
                       /*~~(TODO Migrate manually)~~>*/public CalculatorStepDefinitions(boolean flag) {
@@ -673,7 +669,6 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   import java.util.List;
 
                   public class CalculatorStepDefinitions {
-
                       private final Service service;
 
                       public CalculatorStepDefinitions(Service service) {
@@ -725,7 +720,6 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   import io.cucumber.java.en.Given;
 
                   public class CalculatorStepDefinitions {
-
                       private int[] values;
 
                       public CalculatorStepDefinitions() {
