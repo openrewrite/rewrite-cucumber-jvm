@@ -19,10 +19,10 @@ recipeDependencies {
     // The types the tests parse against
     testParserClasspath("io.cucumber:cucumber-expressions:latest.release")
     testParserClasspath("io.cucumber:cucumber-junit:7.+")
-    testParserClasspath("io.cucumber:cucumber-junit-platform-engine:latest.release")
-    testParserClasspath("io.cucumber:cucumber-plugin:latest.release")
+    testParserClasspath("io.cucumber:cucumber-junit-platform-engine:7.+")
+    testParserClasspath("io.cucumber:cucumber-plugin:7.+")
     testParserClasspath("io.cucumber:cucumber-testng:7.+")
-    testParserClasspath("io.cucumber:docstring:latest.release")
+    testParserClasspath("io.cucumber:docstring:7.+")
     testParserClasspath("org.junit.jupiter:junit-jupiter-api:latest.release")
 
     // The `cucumber.api` types the upgrade recipes migrate away from, gone from every supported release
