@@ -12,7 +12,7 @@ recipeDependencies {
     parserClasspath("io.cucumber:cucumber-java:7.+")
     parserClasspath("io.cucumber:cucumber-java8:7.+")
     // `DataTable` is named by the methods a whole table `DataTableType` registration is migrated to
-    parserClasspath("io.cucumber:datatable:latest.release")
+    parserClasspath("io.cucumber:datatable:7.+")
     // JUnit Platform 6.x requires Java 17; recipe modules still compile against Java 8
     parserClasspath("org.junit.platform:junit-platform-suite-api:1.+")
 
