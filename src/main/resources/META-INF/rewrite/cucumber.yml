@@ -29,6 +29,7 @@ recipeList:
   - org.openrewrite.cucumber.jvm.CucumberJava8ToJava
   - org.openrewrite.cucumber.jvm.DropStrictOption
   - org.openrewrite.cucumber.jvm.DropSummaryPrinter
+  - org.openrewrite.cucumber.jvm.DropStrictAware
   - org.openrewrite.cucumber.jvm.MigrateRuntimeOptionsBuilder
   - org.openrewrite.cucumber.jvm.RegexToCucumberExpression
   - org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite
@@ -342,12 +343,10 @@ name: org.openrewrite.cucumber.jvm.DropStrictOption
 displayName: Drop the `strict` option
 description: >-
   Cucumber-JVM 7.0.0 removed the `strict` option, as scenarios are now always executed in strict mode.
-  Cucumber-JVM 8.0.0 then removed the `StrictAware` plugin interface as well.
 tags:
   - testing
   - cucumber
 recipeList:
-  - org.openrewrite.cucumber.jvm.DropStrictAware
   - org.openrewrite.java.RemoveAnnotationAttribute:
       annotationType: io.cucumber.junit.CucumberOptions
       attributeName: strict
