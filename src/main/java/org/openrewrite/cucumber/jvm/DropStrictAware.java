@@ -30,8 +30,6 @@ import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.TypeTree;
 import org.openrewrite.java.tree.TypeUtils;
 
-import java.time.Duration;
-
 public class DropStrictAware extends Recipe {
 
     private static final String IO_CUCUMBER_PLUGIN_STRICT_AWARE = "io.cucumber.plugin.StrictAware";
@@ -45,9 +43,6 @@ public class DropStrictAware extends Recipe {
     final String description = "Cucumber-JVM 8.0.0 removed `StrictAware`, which Cucumber-JVM 7 only ever called with `setStrict(true)`. " +
             "Remove it from `implements` along with the `setStrict(boolean)` override, and implement `Plugin` instead " +
             "when the class implements no other plugin interface.";
-
-    @Getter
-    final Duration estimatedEffortPerOccurrence = Duration.ofMinutes(1);
 
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {
