@@ -55,9 +55,9 @@ public class DropStrictAware extends Recipe {
                         classDeclaration.getImplements().stream().noneMatch(DropStrictAware::isStrictAware)) {
                     return classDeclaration;
                 }
-                boolean implementsOtherPlugin = classDeclaration.getImplements().stream()
-                        .anyMatch(t -> !isStrictAware(t) && TypeUtils.isAssignableTo(IO_CUCUMBER_PLUGIN_PLUGIN, t.getType()));
-                if (!implementsOtherPlugin) {
+                boolean otherwiseAPlugin = isPlugin(classDeclaration.getExtends()) ||
+                        classDeclaration.getImplements().stream().anyMatch(t -> !isStrictAware(t) && isPlugin(t));
+                if (!otherwiseAPlugin) {
                     // `StrictAware` is what makes this class a plugin, so it has to remain one
                     doAfterVisit(new ChangeType(IO_CUCUMBER_PLUGIN_STRICT_AWARE, IO_CUCUMBER_PLUGIN_PLUGIN, true).getVisitor());
                     return classDeclaration;
@@ -69,12 +69,33 @@ public class DropStrictAware extends Recipe {
 
             @Override
             public J.@Nullable MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext ctx) {
-                if (SET_STRICT.matches(method.getMethodType())) {
+                if (SET_STRICT.matches(method.getMethodType()) && !isDeclaredInAnonymousStrictAware()) {
                     return null;
                 }
                 return super.visitMethodDeclaration(method, ctx);
             }
+
+            @Override
+            public J.@Nullable MethodInvocation visitMethodInvocation(J.MethodInvocation method, ExecutionContext ctx) {
+                if (SET_STRICT.matches(method) && getCursor().getParentTreeCursor().getValue() instanceof J.Block) {
+                    return null;
+                }
+                return super.visitMethodInvocation(method, ctx);
+            }
+
+            private boolean isDeclaredInAnonymousStrictAware() {
+                Object enclosing = getCursor()
+                        .dropParentUntil(p -> p instanceof J.ClassDeclaration || p instanceof J.NewClass)
+                        .getValue();
+                return enclosing instanceof J.NewClass &&
+                        ((J.NewClass) enclosing).getClazz() != null &&
+                        isStrictAware(((J.NewClass) enclosing).getClazz());
+            }
         });
+    }
+
+    private static boolean isPlugin(@Nullable TypeTree typeTree) {
+        return typeTree != null && TypeUtils.isAssignableTo(IO_CUCUMBER_PLUGIN_PLUGIN, typeTree.getType());
     }
 
     private static boolean isStrictAware(TypeTree typeTree) {

@@ -159,4 +159,131 @@ class DropStrictAwareTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void keepPluginSuperclassInsteadOfAddingPlugin() {
+        rewriteRun(
+          // language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.plugin.ConcurrentEventListener;
+              import io.cucumber.plugin.event.EventPublisher;
+
+              public abstract class BasePlugin implements ConcurrentEventListener {
+
+                  @Override
+                  public void setEventPublisher(EventPublisher publisher) {
+                  }
+              }
+              """
+          ),
+          // language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.plugin.StrictAware;
+
+              public class ReportPlugin extends BasePlugin implements StrictAware {
+
+                  @Override
+                  public void setStrict(boolean strict) {
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              public class ReportPlugin extends BasePlugin {
+              }
+              """
+          )
+        );
+    }
+
+    @Test
+    void dropSetStrictCalls() {
+        rewriteRun(
+          // language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.plugin.ConcurrentEventListener;
+              import io.cucumber.plugin.StrictAware;
+              import io.cucumber.plugin.event.EventPublisher;
+
+              public class ReportPlugin implements ConcurrentEventListener, StrictAware {
+
+                  @Override
+                  public void setEventPublisher(EventPublisher publisher) {
+                  }
+
+                  @Override
+                  public void setStrict(boolean strict) {
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              import io.cucumber.plugin.ConcurrentEventListener;
+              import io.cucumber.plugin.event.EventPublisher;
+
+              public class ReportPlugin implements ConcurrentEventListener {
+
+                  @Override
+                  public void setEventPublisher(EventPublisher publisher) {
+                  }
+              }
+              """
+          ),
+          // language=java
+          java(
+            """
+              package com.example.app;
+
+              class ReportPluginTest {
+                  void test() {
+                      ReportPlugin plugin = new ReportPlugin();
+                      plugin.setStrict(true);
+                  }
+              }
+              """,
+            """
+              package com.example.app;
+
+              class ReportPluginTest {
+                  void test() {
+                      ReportPlugin plugin = new ReportPlugin();
+                  }
+              }
+              """
+          )
+        );
+    }
+
+    @Test
+    void keepSetStrictOfAnonymousStrictAware() {
+        rewriteRun(
+          // language=java
+          java(
+            """
+              package com.example.app;
+
+              import io.cucumber.plugin.StrictAware;
+
+              class Plugins {
+                  StrictAware plugin = new StrictAware() {
+                      @Override
+                      public void setStrict(boolean strict) {
+                      }
+                  };
+              }
+              """
+          )
+        );
+    }
 }
