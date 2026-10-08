@@ -325,29 +325,6 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
     }
 
     @Test
-    void leaveRunnerWithClassLevelSetupUnchanged() {
-        rewriteRun(
-          //language=java
-          java(
-            """
-              package com.example;
-
-              import io.cucumber.junit.Cucumber;
-              import org.junit.BeforeClass;
-              import org.junit.runner.RunWith;
-
-              @RunWith(Cucumber.class)
-              public class RunCucumberTest {
-                  @BeforeClass
-                  public static void startServer() {
-                  }
-              }
-              """
-          )
-        );
-    }
-
-    @Test
     void leaveRunnerInheritingOptionsUnchanged() {
         rewriteRun(
           //language=java

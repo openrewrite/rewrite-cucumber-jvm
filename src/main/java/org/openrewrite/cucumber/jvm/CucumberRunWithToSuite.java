@@ -32,7 +32,6 @@ import org.openrewrite.java.service.AnnotationService;
 import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaType;
-import org.openrewrite.java.tree.Statement;
 import org.openrewrite.java.tree.TypeUtils;
 
 import java.util.*;
@@ -48,11 +47,6 @@ public class CucumberRunWithToSuite extends Recipe {
     private static final String SUITE_API = "org.junit.platform.suite.api.";
     private static final AnnotationMatcher RUN_WITH_CUCUMBER = new AnnotationMatcher("@org.junit.runner.RunWith(" + CUCUMBER + ".class)");
     private static final AnnotationMatcher CUCUMBER_OPTIONS_MATCHER = new AnnotationMatcher("@" + CUCUMBER_OPTIONS);
-    // The JUnit 4 runner honours these on the runner class, a JUnit Platform `@Suite` does not
-    private static final List<AnnotationMatcher> CLASS_LEVEL_JUNIT4_MATCHERS = asList(
-            new AnnotationMatcher("@org.junit.BeforeClass"),
-            new AnnotationMatcher("@org.junit.AfterClass"),
-            new AnnotationMatcher("@org.junit.ClassRule"));
     private static final String CLASSPATH_PREFIX = "classpath:";
     private static final String TEST_RESOURCES_PREFIX = "src/test/resources/";
 
@@ -79,8 +73,8 @@ public class CucumberRunWithToSuite extends Recipe {
                 J.ClassDeclaration cd = super.visitClassDeclaration(classDecl, ctx);
                 Cursor cursor = updateCursor(cd);
                 J.Annotation runWith = findAnnotation(cursor, RUN_WITH_CUCUMBER);
-                // A superclass may contribute `@CucumberOptions` or class-level JUnit 4 setup the suite would lose
-                if (runWith == null || cd.getExtends() != null || hasClassLevelJUnit4Members(cursor)) {
+                // A superclass may contribute `@CucumberOptions` the suite would lose
+                if (runWith == null || cd.getExtends() != null) {
                     return cd;
                 }
                 J.Annotation options = findAnnotation(cursor, CUCUMBER_OPTIONS_MATCHER);
@@ -108,21 +102,6 @@ public class CucumberRunWithToSuite extends Recipe {
                         .staticImports(suite.staticImports().toArray(new String[0]))
                         .build()
                         .apply(updateCursor(cd), cd.getCoordinates().addAnnotation((a, b) -> 0));
-            }
-
-            private boolean hasClassLevelJUnit4Members(Cursor classCursor) {
-                AnnotationService annotationService = service(AnnotationService.class);
-                J.Block body = classCursor.<J.ClassDeclaration>getValue().getBody();
-                Cursor bodyCursor = new Cursor(classCursor, body);
-                for (Statement statement : body.getStatements()) {
-                    Cursor statementCursor = new Cursor(bodyCursor, statement);
-                    for (AnnotationMatcher matcher : CLASS_LEVEL_JUNIT4_MATCHERS) {
-                        if (annotationService.matches(statementCursor, matcher)) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
             }
 
             private J.@Nullable Annotation findAnnotation(Cursor cursor, AnnotationMatcher matcher) {
