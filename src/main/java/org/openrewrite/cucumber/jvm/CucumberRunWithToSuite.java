@@ -91,7 +91,7 @@ public class CucumberRunWithToSuite extends Recipe {
                     suite = SuiteAnnotations.from(classDecl, findAnnotation(getCursor(), CUCUMBER_OPTIONS_MATCHER));
                 } catch (NotConvertible e) {
                     J.ClassDeclaration cd = super.visitClassDeclaration(classDecl, ctx);
-                    return Comments.of(updateCursor(cd)).comment(" Not migrated to a JUnit Platform `@Suite`, as " + e.getMessage(),
+                    return Comments.of(updateCursor(cd)).comment(" TODO Not migrated to a JUnit Platform `@Suite`, as " + e.getMessage(),
                             Comments.Placement.BEFORE, "\n" + cd.getPrefix().getIndent());
                 }
 

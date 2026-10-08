@@ -247,7 +247,7 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
               import io.cucumber.junit.CucumberOptions;
               import org.junit.runner.RunWith;
 
-              // Not migrated to a JUnit Platform `@Suite`, as `features` is not a string literal
+              // TODO Not migrated to a JUnit Platform `@Suite`, as `features` is not a string literal
               @RunWith(Cucumber.class)
               @CucumberOptions(features = RunCucumberTest.FEATURES)
               public class RunCucumberTest {
@@ -275,7 +275,7 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
               import io.cucumber.junit.Cucumber;
               import org.junit.runner.RunWith;
 
-              // Not migrated to a JUnit Platform `@Suite`, as it is in the default package and has no `features`
+              // TODO Not migrated to a JUnit Platform `@Suite`, as it is in the default package and has no `features`
               @RunWith(Cucumber.class)
               public class RunCucumberTest {
               }
@@ -497,7 +497,7 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
               import io.cucumber.junit.Cucumber;
               import org.junit.runner.RunWith;
 
-              // Not migrated to a JUnit Platform `@Suite`, as it extends another class, which may contribute `@CucumberOptions`
+              // TODO Not migrated to a JUnit Platform `@Suite`, as it extends another class, which may contribute `@CucumberOptions`
               @RunWith(Cucumber.class)
               public class RunCucumberTest extends BaseRunner {
               }
