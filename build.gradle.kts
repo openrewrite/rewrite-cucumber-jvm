@@ -11,6 +11,8 @@ recipeDependencies {
     // pinned, as the recipes resolve these type tables by their `<artifactId>-<major>` resource name
     parserClasspath("io.cucumber:cucumber-java:7.+")
     parserClasspath("io.cucumber:cucumber-java8:7.+")
+    // `Constants` names the `@ConfigurationParameter` keys the JUnit 4 runner options are migrated to
+    parserClasspath("io.cucumber:cucumber-junit-platform-engine:7.+")
     // `DataTable` is named by the methods a whole table `DataTableType` registration is migrated to
     parserClasspath("io.cucumber:datatable:7.+")
     // JUnit Platform 6.x requires Java 17; recipe modules still compile against Java 8
@@ -19,10 +21,10 @@ recipeDependencies {
     // The types the tests parse against
     testParserClasspath("io.cucumber:cucumber-expressions:latest.release")
     testParserClasspath("io.cucumber:cucumber-junit:7.+")
-    testParserClasspath("io.cucumber:cucumber-junit-platform-engine:7.+")
     testParserClasspath("io.cucumber:cucumber-plugin:7.+")
     testParserClasspath("io.cucumber:cucumber-testng:7.+")
     testParserClasspath("io.cucumber:docstring:7.+")
+    testParserClasspath("junit:junit:4.13.2")
     testParserClasspath("org.junit.jupiter:junit-jupiter-api:latest.release")
 
     // The `cucumber.api` types the upgrade recipes migrate away from, gone from every supported release

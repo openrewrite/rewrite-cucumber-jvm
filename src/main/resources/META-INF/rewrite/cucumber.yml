@@ -504,15 +504,35 @@ recipeList:
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite
 displayName: Cucumber to JUnit test `@Suite`
-description: Migrates Cucumber tests to JUnit test `@Suite`.
+description: >-
+  Migrates Cucumber tests run by the `@Cucumber` annotation or the JUnit 4 `@RunWith(Cucumber.class)` runner to a
+  JUnit Platform `@Suite`, and swaps `cucumber-junit` for `cucumber-junit-platform-engine`.
 tags:
   - testing
   - cucumber
 recipeList:
   - org.openrewrite.cucumber.jvm.CucumberAnnotationToSuite
+  - org.openrewrite.cucumber.jvm.CucumberRunWithToSuite
+  # Gated on the types the suite replaces, as those are what the dependency scan sees in a single cycle
   - org.openrewrite.java.dependencies.AddDependency:
       groupId: org.junit.platform
       artifactId: junit-platform-suite
-      version: 1.9.x
+      version: 1.x
+      onlyIfUsing: io.cucumber.junit.platform.engine.Cucumber
+      acceptTransitive: true
+  - org.openrewrite.java.dependencies.AddDependency:
+      groupId: org.junit.platform
+      artifactId: junit-platform-suite
+      version: 1.x
+      onlyIfUsing: io.cucumber.junit.Cucumber
+      acceptTransitive: true
+  - org.openrewrite.java.dependencies.AddDependency:
+      groupId: org.junit.platform
+      artifactId: junit-platform-suite
+      version: 1.x
       onlyIfUsing: org.junit.platform.suite.api.*
       acceptTransitive: true
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: io.cucumber
+      oldArtifactId: cucumber-junit
+      newArtifactId: cucumber-junit-platform-engine
