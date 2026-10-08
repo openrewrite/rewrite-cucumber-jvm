@@ -116,7 +116,7 @@ public class CucumberRunWithToSuite extends Recipe {
     }
 
     private static class SuiteAnnotations {
-        final List<String> classpathResources = new ArrayList<>();
+        final List<String> selectedResources = new ArrayList<>();
         final Map<String, String> configurationParameters = new LinkedHashMap<>();
 
         static @Nullable SuiteAnnotations from(J.@Nullable Annotation options, String packageName) {
@@ -230,11 +230,11 @@ public class CucumberRunWithToSuite extends Recipe {
                 if (packageName.isEmpty()) {
                     return null;
                 }
-                suite.classpathResources.add(packageName.replace('.', '/'));
+                suite.selectedResources.add(packageName.replace('.', '/'));
             } else {
                 List<String> resources = classpathResources(features);
                 if (resources != null) {
-                    suite.classpathResources.addAll(resources);
+                    suite.selectedResources.addAll(resources);
                 } else {
                     suite.add("FEATURES_PROPERTY_NAME", String.join(", ", features));
                 }
@@ -337,7 +337,7 @@ public class CucumberRunWithToSuite extends Recipe {
 
         List<String> imports() {
             List<String> imports = new ArrayList<>(asList(SUITE_API + "Suite", SUITE_API + "IncludeEngines"));
-            if (!classpathResources.isEmpty()) {
+            if (!selectedResources.isEmpty()) {
                 imports.add(SUITE_API + "SelectClasspathResource");
             }
             if (!configurationParameters.isEmpty()) {
@@ -358,7 +358,7 @@ public class CucumberRunWithToSuite extends Recipe {
             StringJoiner template = new StringJoiner("\n");
             template.add("@Suite");
             template.add("@IncludeEngines(\"cucumber\")");
-            for (String resource : classpathResources) {
+            for (String resource : selectedResources) {
                 template.add("@SelectClasspathResource(" + quote(resource) + ")");
             }
             for (Map.Entry<String, String> parameter : configurationParameters.entrySet()) {
