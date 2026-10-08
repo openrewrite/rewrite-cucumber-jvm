@@ -245,6 +245,140 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
     }
 
     @Test
+    void emptyFeaturesAndGlueFallBackToThePackage() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import io.cucumber.junit.CucumberOptions;
+              import org.junit.runner.RunWith;
+
+              @RunWith(Cucumber.class)
+              @CucumberOptions(features = {}, glue = {})
+              public class RunCucumberTest {
+              }
+              """,
+            """
+              package com.example;
+
+              import org.junit.platform.suite.api.ConfigurationParameter;
+              import org.junit.platform.suite.api.IncludeEngines;
+              import org.junit.platform.suite.api.SelectClasspathResource;
+              import org.junit.platform.suite.api.Suite;
+
+              import static io.cucumber.junit.platform.engine.Constants.GLUE_PROPERTY_NAME;
+
+              @Suite
+              @IncludeEngines("cucumber")
+              @SelectClasspathResource("com/example")
+              @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "com.example")
+              public class RunCucumberTest {
+              }
+              """
+          )
+        );
+    }
+
+    @Test
+    void tagsArrayIsCombinedWithAnd() {
+        rewriteRun(
+          spec -> spec.parser(JavaParser.fromJavaVersion()
+            .classpathFromResources(new InMemoryExecutionContext(), "junit-4", "cucumber-junit-5.7.0")),
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import io.cucumber.junit.CucumberOptions;
+              import org.junit.runner.RunWith;
+
+              @RunWith(Cucumber.class)
+              @CucumberOptions(tags = {"@a", "not @b"}, glue = "com.example.steps")
+              public class RunCucumberTest {
+              }
+              """,
+            """
+              package com.example;
+
+              import org.junit.platform.suite.api.ConfigurationParameter;
+              import org.junit.platform.suite.api.IncludeEngines;
+              import org.junit.platform.suite.api.SelectClasspathResource;
+              import org.junit.platform.suite.api.Suite;
+
+              import static io.cucumber.junit.platform.engine.Constants.FILTER_TAGS_PROPERTY_NAME;
+              import static io.cucumber.junit.platform.engine.Constants.GLUE_PROPERTY_NAME;
+
+              @Suite
+              @IncludeEngines("cucumber")
+              @SelectClasspathResource("com/example")
+              @ConfigurationParameter(key = FILTER_TAGS_PROPERTY_NAME, value = "(@a) and (not @b)")
+              @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "com.example.steps")
+              public class RunCucumberTest {
+              }
+              """
+          )
+        );
+    }
+
+    @Test
+    void leaveRunnerWithClassLevelSetupUnchanged() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import org.junit.BeforeClass;
+              import org.junit.runner.RunWith;
+
+              @RunWith(Cucumber.class)
+              public class RunCucumberTest {
+                  @BeforeClass
+                  public static void startServer() {
+                  }
+              }
+              """
+          )
+        );
+    }
+
+    @Test
+    void leaveRunnerInheritingOptionsUnchanged() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import io.cucumber.junit.CucumberOptions;
+
+              @CucumberOptions(features = "classpath:features", glue = "com.example.steps")
+              public abstract class BaseRunner {
+              }
+              """
+          ),
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import org.junit.runner.RunWith;
+
+              @RunWith(Cucumber.class)
+              public class RunCucumberTest extends BaseRunner {
+              }
+              """
+          )
+        );
+    }
+
+    @Test
     void swapsCucumberJUnitDependency() {
         rewriteRun(
           spec -> spec.recipeFromResources("org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite"),

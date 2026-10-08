@@ -17,6 +17,7 @@ package org.openrewrite.cucumber.jvm;
 
 import lombok.Getter;
 import org.jspecify.annotations.Nullable;
+import org.openrewrite.Cursor;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Preconditions;
 import org.openrewrite.Recipe;
@@ -27,9 +28,11 @@ import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.JavaTemplate;
 import org.openrewrite.java.search.UsesType;
+import org.openrewrite.java.service.AnnotationService;
 import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaType;
+import org.openrewrite.java.tree.Statement;
 import org.openrewrite.java.tree.TypeUtils;
 
 import java.util.*;
@@ -45,6 +48,11 @@ public class CucumberRunWithToSuite extends Recipe {
     private static final String SUITE_API = "org.junit.platform.suite.api.";
     private static final AnnotationMatcher RUN_WITH_CUCUMBER = new AnnotationMatcher("@org.junit.runner.RunWith(" + CUCUMBER + ".class)");
     private static final AnnotationMatcher CUCUMBER_OPTIONS_MATCHER = new AnnotationMatcher("@" + CUCUMBER_OPTIONS);
+    // The JUnit 4 runner honours these on the runner class, a JUnit Platform `@Suite` does not
+    private static final List<AnnotationMatcher> CLASS_LEVEL_JUNIT4_MATCHERS = asList(
+            new AnnotationMatcher("@org.junit.BeforeClass"),
+            new AnnotationMatcher("@org.junit.AfterClass"),
+            new AnnotationMatcher("@org.junit.ClassRule"));
     private static final String CLASSPATH_PREFIX = "classpath:";
     private static final String TEST_RESOURCES_PREFIX = "src/test/resources/";
 
@@ -69,24 +77,18 @@ public class CucumberRunWithToSuite extends Recipe {
             @Override
             public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext ctx) {
                 J.ClassDeclaration cd = super.visitClassDeclaration(classDecl, ctx);
-                J.Annotation runWith = findAnnotation(cd, RUN_WITH_CUCUMBER);
-                if (runWith == null) {
+                Cursor cursor = updateCursor(cd);
+                J.Annotation runWith = findAnnotation(cursor, RUN_WITH_CUCUMBER);
+                // A superclass may contribute `@CucumberOptions` or class-level JUnit 4 setup the suite would lose
+                if (runWith == null || cd.getExtends() != null || hasClassLevelJUnit4Members(cursor)) {
                     return cd;
                 }
-                J.Annotation options = findAnnotation(cd, CUCUMBER_OPTIONS_MATCHER);
+                J.Annotation options = findAnnotation(cursor, CUCUMBER_OPTIONS_MATCHER);
                 String packageName = cd.getType() == null ? "" : cd.getType().getPackageName();
                 SuiteAnnotations suite = SuiteAnnotations.from(options, packageName);
                 if (suite == null) {
                     return cd;
                 }
-
-                cd = cd.withLeadingAnnotations(ListUtils.map(cd.getLeadingAnnotations(), a -> a == runWith || a == options ? null : a));
-                cd = JavaTemplate.builder(suite.template())
-                        .javaParser(JavaParser.fromJavaVersion().classpathFromResources(ctx, "junit-platform-suite-api-1", "cucumber-junit-platform-engine-7"))
-                        .imports(suite.imports().toArray(new String[0]))
-                        .staticImports(suite.staticImports().toArray(new String[0]))
-                        .build()
-                        .apply(updateCursor(cd), cd.getCoordinates().addAnnotation((a, b) -> 0));
 
                 maybeRemoveImport("org.junit.runner.RunWith");
                 maybeRemoveImport(CUCUMBER);
@@ -95,14 +97,36 @@ public class CucumberRunWithToSuite extends Recipe {
                 for (String type : suite.imports()) {
                     maybeAddImport(type);
                 }
-                for (String constant : suite.constants) {
+                for (String constant : suite.configurationParameters.keySet()) {
                     maybeAddImport(CONSTANTS, constant, false);
                 }
-                return cd;
+
+                cd = cd.withLeadingAnnotations(ListUtils.map(cd.getLeadingAnnotations(), a -> a == runWith || a == options ? null : a));
+                return JavaTemplate.builder(suite.template())
+                        .javaParser(JavaParser.fromJavaVersion().classpathFromResources(ctx, "junit-platform-suite-api-1", "cucumber-junit-platform-engine-7"))
+                        .imports(suite.imports().toArray(new String[0]))
+                        .staticImports(suite.staticImports().toArray(new String[0]))
+                        .build()
+                        .apply(updateCursor(cd), cd.getCoordinates().addAnnotation((a, b) -> 0));
             }
 
-            private J.@Nullable Annotation findAnnotation(J.ClassDeclaration cd, AnnotationMatcher matcher) {
-                for (J.Annotation annotation : cd.getLeadingAnnotations()) {
+            private boolean hasClassLevelJUnit4Members(Cursor classCursor) {
+                AnnotationService annotationService = service(AnnotationService.class);
+                J.Block body = classCursor.<J.ClassDeclaration>getValue().getBody();
+                Cursor bodyCursor = new Cursor(classCursor, body);
+                for (Statement statement : body.getStatements()) {
+                    Cursor statementCursor = new Cursor(bodyCursor, statement);
+                    for (AnnotationMatcher matcher : CLASS_LEVEL_JUNIT4_MATCHERS) {
+                        if (annotationService.matches(statementCursor, matcher)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            private J.@Nullable Annotation findAnnotation(Cursor cursor, AnnotationMatcher matcher) {
+                for (J.Annotation annotation : service(AnnotationService.class).getAllAnnotations(cursor)) {
                     if (matcher.matches(annotation)) {
                         return annotation;
                     }
@@ -114,8 +138,7 @@ public class CucumberRunWithToSuite extends Recipe {
 
     private static class SuiteAnnotations {
         final List<String> classpathResources = new ArrayList<>();
-        final List<String> constants = new ArrayList<>();
-        final List<String> values = new ArrayList<>();
+        final Map<String, String> configurationParameters = new LinkedHashMap<>();
 
         static @Nullable SuiteAnnotations from(J.@Nullable Annotation options, String packageName) {
             SuiteAnnotations suite = new SuiteAnnotations();
@@ -161,8 +184,18 @@ public class CucumberRunWithToSuite extends Recipe {
                             }
                             break;
                         case "tags":
-                            if (!suite.addStrings("FILTER_TAGS_PROPERTY_NAME", value)) {
+                            List<String> tags = strings(value);
+                            if (tags == null) {
                                 return null;
+                            }
+                            if (tags.size() == 1) {
+                                suite.add("FILTER_TAGS_PROPERTY_NAME", tags.get(0));
+                            } else if (!tags.isEmpty()) {
+                                StringJoiner expression = new StringJoiner(" and ");
+                                for (String tag : tags) {
+                                    expression.add("(" + tag + ")");
+                                }
+                                suite.add("FILTER_TAGS_PROPERTY_NAME", expression.toString());
                             }
                             break;
                         case "name":
@@ -213,7 +246,8 @@ public class CucumberRunWithToSuite extends Recipe {
                 }
             }
 
-            if (features == null) {
+            // An empty `features` or `glue` is the annotation default, under which the runner falls back to the package
+            if (features == null || features.isEmpty()) {
                 if (packageName.isEmpty()) {
                     return null;
                 }
@@ -228,7 +262,7 @@ public class CucumberRunWithToSuite extends Recipe {
             }
 
             List<String> allGlue = new ArrayList<>();
-            if (glue != null) {
+            if (glue != null && !glue.isEmpty()) {
                 allGlue.addAll(glue);
             } else if (!packageName.isEmpty()) {
                 allGlue.add(packageName);
@@ -267,15 +301,17 @@ public class CucumberRunWithToSuite extends Recipe {
                         if (element instanceof J.Empty) {
                             continue;
                         }
-                        if (!(literal(element) instanceof String)) {
+                        Object string = literal(element);
+                        if (!(string instanceof String)) {
                             return null;
                         }
-                        strings.add((String) literal(element));
+                        strings.add((String) string);
                     }
                 }
                 return strings;
             }
-            return literal(value) instanceof String ? singletonList((String) literal(value)) : null;
+            Object string = literal(value);
+            return string instanceof String ? singletonList((String) string) : null;
         }
 
         private static @Nullable Object literal(Expression expression) {
@@ -317,8 +353,7 @@ public class CucumberRunWithToSuite extends Recipe {
         }
 
         private void add(String constant, String value) {
-            constants.add(constant);
-            values.add(value);
+            configurationParameters.put(constant, value);
         }
 
         List<String> imports() {
@@ -326,7 +361,7 @@ public class CucumberRunWithToSuite extends Recipe {
             if (!classpathResources.isEmpty()) {
                 imports.add(SUITE_API + "SelectClasspathResource");
             }
-            if (!constants.isEmpty()) {
+            if (!configurationParameters.isEmpty()) {
                 imports.add(SUITE_API + "ConfigurationParameter");
             }
             return imports;
@@ -334,7 +369,7 @@ public class CucumberRunWithToSuite extends Recipe {
 
         List<String> staticImports() {
             List<String> staticImports = new ArrayList<>();
-            for (String constant : new LinkedHashSet<>(constants)) {
+            for (String constant : configurationParameters.keySet()) {
                 staticImports.add(CONSTANTS + "." + constant);
             }
             return staticImports;
@@ -347,8 +382,8 @@ public class CucumberRunWithToSuite extends Recipe {
             for (String resource : classpathResources) {
                 template.add("@SelectClasspathResource(" + quote(resource) + ")");
             }
-            for (int i = 0; i < constants.size(); i++) {
-                template.add("@ConfigurationParameter(key = " + constants.get(i) + ", value = " + quote(values.get(i)) + ")");
+            for (Map.Entry<String, String> parameter : configurationParameters.entrySet()) {
+                template.add("@ConfigurationParameter(key = " + parameter.getKey() + ", value = " + quote(parameter.getValue()) + ")");
             }
             return template.toString();
         }
