@@ -223,7 +223,7 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
     }
 
     @Test
-    void leaveOptionsReferringToConstantsUnchanged() {
+    void commentOnOptionsReferringToConstants() {
         rewriteRun(
           //language=java
           java(
@@ -238,6 +238,46 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
               @CucumberOptions(features = RunCucumberTest.FEATURES)
               public class RunCucumberTest {
                   static final String FEATURES = "classpath:features";
+              }
+              """,
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import io.cucumber.junit.CucumberOptions;
+              import org.junit.runner.RunWith;
+
+              // Not migrated to a JUnit Platform `@Suite`, as `features` is not a string literal
+              @RunWith(Cucumber.class)
+              @CucumberOptions(features = RunCucumberTest.FEATURES)
+              public class RunCucumberTest {
+                  static final String FEATURES = "classpath:features";
+              }
+              """
+          )
+        );
+    }
+
+    @Test
+    void commentOnRunnerInTheDefaultPackage() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              import io.cucumber.junit.Cucumber;
+              import org.junit.runner.RunWith;
+
+              @RunWith(Cucumber.class)
+              public class RunCucumberTest {
+              }
+              """,
+            """
+              import io.cucumber.junit.Cucumber;
+              import org.junit.runner.RunWith;
+
+              // Not migrated to a JUnit Platform `@Suite`, as it is in the default package and has no `features`
+              @RunWith(Cucumber.class)
+              public class RunCucumberTest {
               }
               """
           )
@@ -425,7 +465,7 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
     }
 
     @Test
-    void leaveRunnerInheritingOptionsUnchanged() {
+    void commentOnRunnerInheritingOptions() {
         rewriteRun(
           //language=java
           java(
@@ -447,6 +487,17 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
               import io.cucumber.junit.Cucumber;
               import org.junit.runner.RunWith;
 
+              @RunWith(Cucumber.class)
+              public class RunCucumberTest extends BaseRunner {
+              }
+              """,
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import org.junit.runner.RunWith;
+
+              // Not migrated to a JUnit Platform `@Suite`, as it extends another class, which may contribute `@CucumberOptions`
               @RunWith(Cucumber.class)
               public class RunCucumberTest extends BaseRunner {
               }

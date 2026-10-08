@@ -33,6 +33,7 @@ import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.java.tree.TypeUtils;
+import org.openrewrite.trait.Comments;
 
 import java.util.*;
 
@@ -73,22 +74,25 @@ public class CucumberRunWithToSuite extends Recipe {
             "the package of the annotated class by default, and the Cucumber engine in the whole classpath, so that package " +
             "becomes the explicit glue when none is configured. Class-level setup and teardown methods become " +
             "`@BeforeSuite` and `@AfterSuite` methods, as a `@Suite` does not run `@BeforeClass` or `@BeforeAll`. " +
-            "A class with an option that cannot be carried over, such as one that refers to a constant, is left unchanged.";
+            "A class that extends another class, which may contribute `@CucumberOptions`, or that has an option that " +
+            "cannot be carried over, such as one that refers to a constant, keeps the JUnit 4 runner, with a comment " +
+            "explaining why.";
 
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {
         return Preconditions.check(new UsesType<>(CUCUMBER, false), new JavaIsoVisitor<ExecutionContext>() {
             @Override
             public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext ctx) {
-                // A superclass may contribute `@CucumberOptions` the suite would lose
-                if (!service(AnnotationService.class).matches(getCursor(), RUN_WITH_CUCUMBER) || classDecl.getExtends() != null) {
+                if (!service(AnnotationService.class).matches(getCursor(), RUN_WITH_CUCUMBER)) {
                     return super.visitClassDeclaration(classDecl, ctx);
                 }
-                J.Annotation options = findAnnotation(getCursor(), CUCUMBER_OPTIONS_MATCHER);
-                String packageName = classDecl.getType() == null ? "" : classDecl.getType().getPackageName();
-                SuiteAnnotations suite = SuiteAnnotations.from(options, packageName);
-                if (suite == null) {
-                    return super.visitClassDeclaration(classDecl, ctx);
+                SuiteAnnotations suite;
+                try {
+                    suite = SuiteAnnotations.from(classDecl, findAnnotation(getCursor(), CUCUMBER_OPTIONS_MATCHER));
+                } catch (NotConvertible e) {
+                    J.ClassDeclaration cd = super.visitClassDeclaration(classDecl, ctx);
+                    return Comments.of(updateCursor(cd)).comment(" Not migrated to a JUnit Platform `@Suite`, as " + e.getMessage(),
+                            Comments.Placement.BEFORE, "\n" + cd.getPrefix().getIndent());
                 }
 
                 getCursor().putMessage(RUNNER_CLASS, true);
@@ -153,7 +157,11 @@ public class CucumberRunWithToSuite extends Recipe {
         final List<String> selectedResources = new ArrayList<>();
         final Map<String, String> configurationParameters = new LinkedHashMap<>();
 
-        static @Nullable SuiteAnnotations from(J.@Nullable Annotation options, String packageName) {
+        static SuiteAnnotations from(J.ClassDeclaration classDecl, J.@Nullable Annotation options) {
+            if (classDecl.getExtends() != null) {
+                throw new NotConvertible("it extends another class, which may contribute `@CucumberOptions`");
+            }
+            String packageName = classDecl.getType() == null ? "" : classDecl.getType().getPackageName();
             SuiteAnnotations suite = new SuiteAnnotations();
             List<String> features = null;
             List<String> glue = null;
@@ -164,7 +172,7 @@ public class CucumberRunWithToSuite extends Recipe {
                         continue;
                     }
                     if (!(argument instanceof J.Assignment) || !(((J.Assignment) argument).getVariable() instanceof J.Identifier)) {
-                        return null;
+                        throw new NotConvertible("`@CucumberOptions` has an argument that is not a named option");
                     }
                     String option = ((J.Identifier) ((J.Assignment) argument).getVariable()).getSimpleName();
                     Expression value = ((J.Assignment) argument).getAssignment();
@@ -173,34 +181,22 @@ public class CucumberRunWithToSuite extends Recipe {
                     }
                     switch (option) {
                         case "features":
-                            features = strings(value);
-                            if (features == null) {
-                                return null;
-                            }
+                            features = strings(option, value);
                             break;
                         case "glue":
-                            glue = strings(value);
-                            if (glue == null) {
-                                return null;
-                            }
+                            glue = strings(option, value);
                             break;
                         case "extraGlue":
-                            List<String> extra = strings(value);
-                            if (extra == null) {
-                                return null;
-                            }
-                            extraGlue.addAll(extra);
+                            extraGlue.addAll(strings(option, value));
                             break;
                         case "plugin":
-                            if (!suite.addStrings("PLUGIN_PROPERTY_NAME", value)) {
-                                return null;
+                            List<String> plugins = strings(option, value);
+                            if (!plugins.isEmpty()) {
+                                suite.add("PLUGIN_PROPERTY_NAME", String.join(", ", plugins));
                             }
                             break;
                         case "tags":
-                            List<String> tags = strings(value);
-                            if (tags == null) {
-                                return null;
-                            }
+                            List<String> tags = strings(option, value);
                             if (tags.size() == 1) {
                                 suite.add("FILTER_TAGS_PROPERTY_NAME", tags.get(0));
                             } else if (!tags.isEmpty()) {
@@ -212,49 +208,39 @@ public class CucumberRunWithToSuite extends Recipe {
                             }
                             break;
                         case "name":
-                            List<String> names = strings(value);
-                            if (names == null || names.size() > 1) {
-                                return null;
+                            List<String> names = strings(option, value);
+                            if (names.size() > 1) {
+                                throw new NotConvertible("`name` has more than one pattern");
                             }
                             if (!names.isEmpty()) {
                                 suite.add("FILTER_NAME_PROPERTY_NAME", names.get(0));
                             }
                             break;
                         case "monochrome":
-                            if (!suite.addFlag("ANSI_COLORS_DISABLED_PROPERTY_NAME", value)) {
-                                return null;
-                            }
+                            suite.addFlag("ANSI_COLORS_DISABLED_PROPERTY_NAME", option, value);
                             break;
                         case "dryRun":
-                            if (!suite.addFlag("EXECUTION_DRY_RUN_PROPERTY_NAME", value)) {
-                                return null;
-                            }
+                            suite.addFlag("EXECUTION_DRY_RUN_PROPERTY_NAME", option, value);
                             break;
                         case "publish":
-                            if (!suite.addFlag("PLUGIN_PUBLISH_ENABLED_PROPERTY_NAME", value)) {
-                                return null;
-                            }
+                            suite.addFlag("PLUGIN_PUBLISH_ENABLED_PROPERTY_NAME", option, value);
                             break;
                         case "snippets":
                             String snippetType = value instanceof J.FieldAccess ? ((J.FieldAccess) value).getSimpleName() :
                                     value instanceof J.Identifier ? ((J.Identifier) value).getSimpleName() : null;
                             if (!"UNDERSCORE".equals(snippetType) && !"CAMELCASE".equals(snippetType)) {
-                                return null;
+                                throw new NotConvertible("`snippets` is not `UNDERSCORE` or `CAMELCASE`");
                             }
                             suite.add("SNIPPET_TYPE_PROPERTY_NAME", snippetType.toLowerCase(Locale.ROOT));
                             break;
                         case "objectFactory":
-                            if (!suite.addClass("OBJECT_FACTORY_PROPERTY_NAME", value)) {
-                                return null;
-                            }
+                            suite.addClass("OBJECT_FACTORY_PROPERTY_NAME", option, value);
                             break;
                         case "uuidGenerator":
-                            if (!suite.addClass("UUID_GENERATOR_PROPERTY_NAME", value)) {
-                                return null;
-                            }
+                            suite.addClass("UUID_GENERATOR_PROPERTY_NAME", option, value);
                             break;
                         default:
-                            return null;
+                            throw new NotConvertible("`" + option + "` has no JUnit Platform counterpart");
                     }
                 }
             }
@@ -262,7 +248,7 @@ public class CucumberRunWithToSuite extends Recipe {
             // An empty `features` or `glue` is the annotation default, under which the runner falls back to the package
             if (features == null || features.isEmpty()) {
                 if (packageName.isEmpty()) {
-                    return null;
+                    throw new NotConvertible("it is in the default package and has no `features`");
                 }
                 suite.selectedResources.add(packageName.replace('.', '/'));
             } else {
@@ -305,64 +291,51 @@ public class CucumberRunWithToSuite extends Recipe {
             return resources;
         }
 
-        private static @Nullable List<String> strings(Expression value) {
+        private static List<String> strings(String option, Expression value) {
             if (value instanceof J.NewArray) {
                 List<String> strings = new ArrayList<>();
                 List<Expression> initializer = ((J.NewArray) value).getInitializer();
                 if (initializer != null) {
                     for (Expression element : initializer) {
-                        if (element instanceof J.Empty) {
-                            continue;
+                        if (!(element instanceof J.Empty)) {
+                            strings.add(string(option, element));
                         }
-                        Object string = literal(element);
-                        if (!(string instanceof String)) {
-                            return null;
-                        }
-                        strings.add((String) string);
                     }
                 }
                 return strings;
             }
+            return singletonList(string(option, value));
+        }
+
+        private static String string(String option, Expression value) {
             Object string = literal(value);
-            return string instanceof String ? singletonList((String) string) : null;
+            if (!(string instanceof String)) {
+                throw new NotConvertible("`" + option + "` is not a string literal");
+            }
+            return (String) string;
         }
 
         private static @Nullable Object literal(Expression expression) {
             return expression instanceof J.Literal ? ((J.Literal) expression).getValue() : null;
         }
 
-        private boolean addStrings(String constant, Expression value) {
-            List<String> strings = strings(value);
-            if (strings == null) {
-                return false;
-            }
-            if (!strings.isEmpty()) {
-                add(constant, String.join(", ", strings));
-            }
-            return true;
-        }
-
-        private boolean addFlag(String constant, Expression value) {
+        private void addFlag(String constant, String option, Expression value) {
             Object flag = literal(value);
             if (!(flag instanceof Boolean)) {
-                return false;
+                throw new NotConvertible("`" + option + "` is not a boolean literal");
             }
             if ((Boolean) flag) {
                 add(constant, "true");
             }
-            return true;
         }
 
-        private boolean addClass(String constant, Expression value) {
-            if (!(value instanceof J.FieldAccess) || !"class".equals(((J.FieldAccess) value).getSimpleName())) {
-                return false;
-            }
-            JavaType.FullyQualified type = TypeUtils.asFullyQualified(((J.FieldAccess) value).getTarget().getType());
+        private void addClass(String constant, String option, Expression value) {
+            JavaType.FullyQualified type = value instanceof J.FieldAccess && "class".equals(((J.FieldAccess) value).getSimpleName()) ?
+                    TypeUtils.asFullyQualified(((J.FieldAccess) value).getTarget().getType()) : null;
             if (type == null) {
-                return false;
+                throw new NotConvertible("`" + option + "` is not a class literal");
             }
             add(constant, type.getFullyQualifiedName());
-            return true;
         }
 
         private void add(String constant, String value) {
@@ -403,6 +376,12 @@ public class CucumberRunWithToSuite extends Recipe {
 
         private static String quote(String value) {
             return '"' + value.replace("\\", "\\\\").replace("\"", "\\\"") + '"';
+        }
+    }
+
+    private static class NotConvertible extends RuntimeException {
+        NotConvertible(String reason) {
+            super(reason, null, false, false);
         }
     }
 }
