@@ -325,6 +325,106 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
     }
 
     @Test
+    void classLevelSetupBecomesSuiteLifecycle() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import org.junit.AfterClass;
+              import org.junit.BeforeClass;
+              import org.junit.runner.RunWith;
+
+              @RunWith(Cucumber.class)
+              public class RunCucumberTest {
+                  @BeforeClass
+                  public static void startServer() {
+                  }
+
+                  @AfterClass
+                  public static void stopServer() {
+                  }
+              }
+              """,
+            """
+              package com.example;
+
+              import org.junit.platform.suite.api.*;
+
+              import static io.cucumber.junit.platform.engine.Constants.GLUE_PROPERTY_NAME;
+
+              @Suite
+              @IncludeEngines("cucumber")
+              @SelectClasspathResource("com/example")
+              @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "com.example")
+              public class RunCucumberTest {
+                  @BeforeSuite
+                  public static void startServer() {
+                  }
+
+                  @AfterSuite
+                  public static void stopServer() {
+                  }
+              }
+              """
+          )
+        );
+    }
+
+    @Test
+    void jupiterClassLevelSetupBecomesSuiteLifecycle() {
+        rewriteRun(
+          spec -> spec.parser(JavaParser.fromJavaVersion()
+            .classpathFromResources(new InMemoryExecutionContext(), "junit-4", "cucumber-junit-7", "junit-jupiter-api")),
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import org.junit.jupiter.api.AfterAll;
+              import org.junit.jupiter.api.BeforeAll;
+              import org.junit.runner.RunWith;
+
+              @RunWith(Cucumber.class)
+              public class RunCucumberTest {
+                  @BeforeAll
+                  static void startServer() {
+                  }
+
+                  @AfterAll
+                  static void stopServer() {
+                  }
+              }
+              """,
+            """
+              package com.example;
+
+              import org.junit.platform.suite.api.*;
+
+              import static io.cucumber.junit.platform.engine.Constants.GLUE_PROPERTY_NAME;
+
+              @Suite
+              @IncludeEngines("cucumber")
+              @SelectClasspathResource("com/example")
+              @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "com.example")
+              public class RunCucumberTest {
+                  @BeforeSuite
+                  static void startServer() {
+                  }
+
+                  @AfterSuite
+                  static void stopServer() {
+                  }
+              }
+              """
+          )
+        );
+    }
+
+    @Test
     void leaveRunnerInheritingOptionsUnchanged() {
         rewriteRun(
           //language=java

@@ -47,12 +47,21 @@ public class CucumberRunWithToSuite extends Recipe {
     private static final String SUITE_API = "org.junit.platform.suite.api.";
     private static final AnnotationMatcher RUN_WITH_CUCUMBER = new AnnotationMatcher("@org.junit.runner.RunWith(" + CUCUMBER + ".class)");
     private static final AnnotationMatcher CUCUMBER_OPTIONS_MATCHER = new AnnotationMatcher("@" + CUCUMBER_OPTIONS);
+    private static final String RUNNER_CLASS = "RUNNER_CLASS";
+    private static final Map<String, String> SUITE_LIFECYCLE_ANNOTATIONS = new HashMap<>();
     private static final String CLASSPATH_PREFIX = "classpath:";
     private static final String TEST_RESOURCES_PREFIX = "src/test/resources/";
 
     // Options of the JUnit 4 runner itself, with no counterpart on the JUnit Platform, and `strict`, which
     // `DropStrictOption` removes as Cucumber 7 always runs strict
     private static final Set<String> DROPPED_OPTIONS = new HashSet<>(asList("junit", "stepNotifications", "useFileNameCompatibleName", "strict"));
+
+    static {
+        SUITE_LIFECYCLE_ANNOTATIONS.put("org.junit.BeforeClass", "BeforeSuite");
+        SUITE_LIFECYCLE_ANNOTATIONS.put("org.junit.AfterClass", "AfterSuite");
+        SUITE_LIFECYCLE_ANNOTATIONS.put("org.junit.jupiter.api.BeforeAll", "BeforeSuite");
+        SUITE_LIFECYCLE_ANNOTATIONS.put("org.junit.jupiter.api.AfterAll", "AfterSuite");
+    }
 
     @Getter
     final String displayName = "Cucumber JUnit 4 `@RunWith(Cucumber.class)` to JUnit Platform `@Suite`";
@@ -62,27 +71,28 @@ public class CucumberRunWithToSuite extends Recipe {
             "The `@CucumberOptions` become `@ConfigurationParameter` annotations, and the features become " +
             "`@SelectClasspathResource` selectors where they are on the classpath. The JUnit 4 runner looks for glue in " +
             "the package of the annotated class by default, and the Cucumber engine in the whole classpath, so that package " +
-            "becomes the explicit glue when none is configured. A class with an option that cannot be carried over, such as " +
-            "one that refers to a constant, is left unchanged.";
+            "becomes the explicit glue when none is configured. Class-level setup and teardown methods become " +
+            "`@BeforeSuite` and `@AfterSuite` methods, as a `@Suite` does not run `@BeforeClass` or `@BeforeAll`. " +
+            "A class with an option that cannot be carried over, such as one that refers to a constant, is left unchanged.";
 
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {
         return Preconditions.check(new UsesType<>(CUCUMBER, false), new JavaIsoVisitor<ExecutionContext>() {
             @Override
             public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext ctx) {
-                J.ClassDeclaration cd = super.visitClassDeclaration(classDecl, ctx);
-                Cursor cursor = updateCursor(cd);
-                J.Annotation runWith = findAnnotation(cursor, RUN_WITH_CUCUMBER);
                 // A superclass may contribute `@CucumberOptions` the suite would lose
-                if (runWith == null || cd.getExtends() != null) {
-                    return cd;
+                if (!service(AnnotationService.class).matches(getCursor(), RUN_WITH_CUCUMBER) || classDecl.getExtends() != null) {
+                    return super.visitClassDeclaration(classDecl, ctx);
                 }
-                J.Annotation options = findAnnotation(cursor, CUCUMBER_OPTIONS_MATCHER);
-                String packageName = cd.getType() == null ? "" : cd.getType().getPackageName();
+                J.Annotation options = findAnnotation(getCursor(), CUCUMBER_OPTIONS_MATCHER);
+                String packageName = classDecl.getType() == null ? "" : classDecl.getType().getPackageName();
                 SuiteAnnotations suite = SuiteAnnotations.from(options, packageName);
                 if (suite == null) {
-                    return cd;
+                    return super.visitClassDeclaration(classDecl, ctx);
                 }
+
+                getCursor().putMessage(RUNNER_CLASS, true);
+                J.ClassDeclaration cd = super.visitClassDeclaration(classDecl, ctx);
 
                 maybeRemoveImport("org.junit.runner.RunWith");
                 maybeRemoveImport(CUCUMBER);
@@ -95,13 +105,37 @@ public class CucumberRunWithToSuite extends Recipe {
                     maybeAddImport(CONSTANTS, constant, false);
                 }
 
-                cd = cd.withLeadingAnnotations(ListUtils.map(cd.getLeadingAnnotations(), a -> a == runWith || a == options ? null : a));
+                cd = cd.withLeadingAnnotations(ListUtils.map(cd.getLeadingAnnotations(),
+                        a -> RUN_WITH_CUCUMBER.matches(a) || CUCUMBER_OPTIONS_MATCHER.matches(a) ? null : a));
                 return JavaTemplate.builder(suite.template())
                         .javaParser(JavaParser.fromJavaVersion().classpathFromResources(ctx, "junit-platform-suite-api-1", "cucumber-junit-platform-engine-7"))
                         .imports(suite.imports().toArray(new String[0]))
                         .staticImports(suite.staticImports().toArray(new String[0]))
                         .build()
                         .apply(updateCursor(cd), cd.getCoordinates().addAnnotation((a, b) -> 0));
+            }
+
+            @Override
+            public J.Annotation visitAnnotation(J.Annotation annotation, ExecutionContext ctx) {
+                J.Annotation a = super.visitAnnotation(annotation, ctx);
+                JavaType.FullyQualified type = TypeUtils.asFullyQualified(a.getType());
+                String suiteAnnotation = type == null ? null : SUITE_LIFECYCLE_ANNOTATIONS.get(type.getFullyQualifiedName());
+                if (suiteAnnotation == null || !isOnRunnerMethod()) {
+                    return a;
+                }
+                maybeRemoveImport(type);
+                maybeAddImport(SUITE_API + suiteAnnotation);
+                return JavaTemplate.builder("@" + suiteAnnotation)
+                        .javaParser(JavaParser.fromJavaVersion().classpathFromResources(ctx, "junit-platform-suite-api-1"))
+                        .imports(SUITE_API + suiteAnnotation)
+                        .build()
+                        .apply(getCursor(), a.getCoordinates().replace());
+            }
+
+            private boolean isOnRunnerMethod() {
+                Cursor method = getCursor().getParentTreeCursor();
+                return method.getValue() instanceof J.MethodDeclaration &&
+                        method.getParentTreeCursor().getParentTreeCursor().getMessage(RUNNER_CLASS, false);
             }
 
             private J.@Nullable Annotation findAnnotation(Cursor cursor, AnnotationMatcher matcher) {
