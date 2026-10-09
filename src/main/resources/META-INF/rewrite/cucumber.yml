@@ -506,14 +506,17 @@ name: org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite
 displayName: Cucumber to JUnit test `@Suite`
 description: >-
   Migrates Cucumber tests run by the `@Cucumber` annotation or the JUnit 4 `@RunWith(Cucumber.class)` runner to a
-  JUnit Platform `@Suite`, and swaps `cucumber-junit` for `cucumber-junit-platform-engine`.
+  JUnit Platform `@Suite`, and swaps `cucumber-junit` for `cucumber-junit-platform-engine` 7.x. Each Cucumber-JVM
+  module depends on the `cucumber-core` of its own release, and the engine fails to run against any other, so the rest
+  of the Cucumber-JVM dependencies move to that same 7.x.
 tags:
   - testing
   - cucumber
 recipeList:
   - org.openrewrite.cucumber.jvm.CucumberAnnotationToSuite
   - org.openrewrite.cucumber.jvm.CucumberRunWithToSuite
-  # Gated on the types the suite replaces, as those are what the dependency scan sees in a single cycle
+  # Gated on the types the suite replaces, as those are what the dependency scan sees in a single cycle; when upgrading
+  # from before 5.0.0 that is still the `cucumber.api` runner, which `UpgradeCucumber7x` renames in that same cycle
   - org.openrewrite.java.dependencies.AddDependency:
       groupId: org.junit.platform
       artifactId: junit-platform-suite
@@ -530,9 +533,40 @@ recipeList:
       groupId: org.junit.platform
       artifactId: junit-platform-suite
       version: 1.x
+      onlyIfUsing: cucumber.api.junit.Cucumber
+      acceptTransitive: true
+  - org.openrewrite.java.dependencies.AddDependency:
+      groupId: org.junit.platform
+      artifactId: junit-platform-suite
+      version: 1.x
       onlyIfUsing: org.junit.platform.suite.api.*
       acceptTransitive: true
+  # The version of `cucumber-junit` cannot be carried over, as the engine was first released in 5.0.0, and whatever
+  # manages `cucumber-junit` need not manage the engine; an engine that is managed, as by `cucumber-bom`, stays so
   - org.openrewrite.java.dependencies.ChangeDependency:
       oldGroupId: io.cucumber
       oldArtifactId: cucumber-junit
       newArtifactId: cucumber-junit-platform-engine
+      newVersion: 7.x
+  # Moves a `cucumber-bom` import straight to the latest 7.x, before overriding managed versions has it search for
+  # the release of the BOM that manages each dependency at that version, one BOM download at a time
+  - org.openrewrite.java.dependencies.UpgradeDependencyVersion:
+      groupId: io.cucumber
+      artifactId: cucumber-*
+      newVersion: 7.x
+  # Overriding managed versions too, as a parent that manages `cucumber-java` would otherwise hold it back
+  - org.openrewrite.java.dependencies.UpgradeDependencyVersion:
+      groupId: io.cucumber
+      artifactId: cucumber-*
+      newVersion: 7.x
+      overrideManagedVersion: true
+  - org.openrewrite.java.dependencies.UpgradeDependencyVersion:
+      groupId: io.cucumber
+      artifactId: datatable*
+      newVersion: 7.x
+      overrideManagedVersion: true
+  - org.openrewrite.java.dependencies.UpgradeDependencyVersion:
+      groupId: io.cucumber
+      artifactId: docstring
+      newVersion: 7.x
+      overrideManagedVersion: true

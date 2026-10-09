@@ -569,7 +569,7 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
                         <dependency>
                             <groupId>io.cucumber</groupId>
                             <artifactId>cucumber-junit-platform-engine</artifactId>
-                            <version>7.18.0</version>
+                            <version>%s</version>
                             <scope>test</scope>
                         </dependency>
                         <dependency>
@@ -580,7 +580,7 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
                         </dependency>
                     </dependencies>
                 </project>
-                """.formatted(addedJUnitPlatformSuiteVersion(actual)))
+                """.formatted(CucumberToJunitPlatformSuiteTest.cucumber7(actual), addedJUnitPlatformSuiteVersion(actual)))
             )
           )
         );
@@ -591,7 +591,7 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
     private static final Pattern JUNIT_PLATFORM_SUITE_VERSION =
       Pattern.compile("<artifactId>junit-platform-suite</artifactId>\\s+<version>(1\\.\\d+[^<]*)</version>");
 
-    private static String addedJUnitPlatformSuiteVersion(String actual) {
+    static String addedJUnitPlatformSuiteVersion(String actual) {
         Matcher matcher = JUNIT_PLATFORM_SUITE_VERSION.matcher(actual);
         assertThat(matcher.find()).as("junit-platform-suite added to %s", actual).isTrue();
         return matcher.group(1);
