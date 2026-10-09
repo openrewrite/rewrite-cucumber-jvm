@@ -582,6 +582,12 @@ recipeList:
       oldArtifactId: cucumber-junit
       newArtifactId: cucumber-junit-platform-engine
       newVersion: 7.x
+  # Moves a `cucumber-bom` import straight to the latest 7.x, before overriding managed versions has it search for
+  # the release of the BOM that manages each dependency at that version, one BOM download at a time
+  - org.openrewrite.java.dependencies.UpgradeDependencyVersion:
+      groupId: io.cucumber
+      artifactId: cucumber-*
+      newVersion: 7.x
   # Overriding managed versions too, as a parent that manages `cucumber-java` would otherwise hold it back
   - org.openrewrite.java.dependencies.UpgradeDependencyVersion:
       groupId: io.cucumber
