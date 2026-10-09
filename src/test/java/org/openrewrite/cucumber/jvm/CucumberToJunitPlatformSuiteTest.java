@@ -115,7 +115,7 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
                         <artifactId>app</artifactId>
                         <version>1.0.0</version>
                         <properties>
-                            <cucumber.version>7.18.0</cucumber.version>
+                            <cucumber.version>4.8.1</cucumber.version>
                         </properties>
                         <dependencies>
                             <dependency>
@@ -163,7 +163,7 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
         }
 
         @Test
-        void cucumber4IsLeftOnTheJUnit4Runner() {
+        void cucumber4Runner() {
             rewriteRun(
               spec -> spec.parser(JavaParser.fromJavaVersion()
                 .classpathFromResources(new InMemoryExecutionContext(), "junit-4", "cucumber-junit-4.8.1")),
@@ -178,6 +178,23 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
                       import org.junit.runner.RunWith;
 
                       @RunWith(Cucumber.class)
+                      public class RunCucumberTest {
+                      }
+                      """,
+                    """
+                      package com.example;
+
+                      import org.junit.platform.suite.api.ConfigurationParameter;
+                      import org.junit.platform.suite.api.IncludeEngines;
+                      import org.junit.platform.suite.api.SelectClasspathResource;
+                      import org.junit.platform.suite.api.Suite;
+
+                      import static io.cucumber.junit.platform.engine.Constants.GLUE_PROPERTY_NAME;
+
+                      @Suite
+                      @IncludeEngines("cucumber")
+                      @SelectClasspathResource("com/example")
+                      @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "com.example")
                       public class RunCucumberTest {
                       }
                       """
@@ -205,14 +222,41 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
                             </dependency>
                         </dependencies>
                     </project>
-                    """
+                    """,
+                  spec -> spec.after(actual -> """
+                    <project>
+                        <groupId>com.example</groupId>
+                        <artifactId>app</artifactId>
+                        <version>1.0.0</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.cucumber</groupId>
+                                <artifactId>cucumber-java</artifactId>
+                                <version>%1$s</version>
+                                <scope>test</scope>
+                            </dependency>
+                            <dependency>
+                                <groupId>io.cucumber</groupId>
+                                <artifactId>cucumber-junit-platform-engine</artifactId>
+                                <version>%1$s</version>
+                                <scope>test</scope>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.junit.platform</groupId>
+                                <artifactId>junit-platform-suite</artifactId>
+                                <version>%2$s</version>
+                                <scope>test</scope>
+                            </dependency>
+                        </dependencies>
+                    </project>
+                    """.formatted(cucumber7(actual), CucumberRunWithToSuiteTest.addedJUnitPlatformSuiteVersion(actual)))
                 )
               )
             );
         }
 
         @Test
-        void cucumber1IsLeftAlone() {
+        void cucumber1() {
             rewriteRun(
               mavenProject("app",
                 //language=xml
@@ -237,42 +281,28 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
                             </dependency>
                         </dependencies>
                     </project>
-                    """
-                )
-              )
-            );
-        }
-
-        @Test
-        void sharedVersionPropertyOnCucumber4IsLeftAlone() {
-            rewriteRun(
-              mavenProject("app",
-                //language=xml
-                pomXml(
-                  """
+                    """,
+                  spec -> spec.after(actual -> """
                     <project>
                         <groupId>com.example</groupId>
                         <artifactId>app</artifactId>
                         <version>1.0.0</version>
-                        <properties>
-                            <cucumber.version>4.8.1</cucumber.version>
-                        </properties>
                         <dependencies>
                             <dependency>
                                 <groupId>io.cucumber</groupId>
                                 <artifactId>cucumber-java</artifactId>
-                                <version>${cucumber.version}</version>
+                                <version>%1$s</version>
                                 <scope>test</scope>
                             </dependency>
                             <dependency>
                                 <groupId>io.cucumber</groupId>
-                                <artifactId>cucumber-junit</artifactId>
-                                <version>${cucumber.version}</version>
+                                <artifactId>cucumber-junit-platform-engine</artifactId>
+                                <version>%1$s</version>
                                 <scope>test</scope>
                             </dependency>
                         </dependencies>
                     </project>
-                    """
+                    """.formatted(cucumber7(actual)))
                 )
               )
             );
@@ -460,7 +490,31 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
                             </dependency>
                         </dependencies>
                     </project>
-                    """
+                    """,
+                  spec -> spec.after(actual -> """
+                    <project>
+                        <parent>
+                            <groupId>com.example</groupId>
+                            <artifactId>corporate-parent</artifactId>
+                            <version>1.0.0</version>
+                        </parent>
+                        <artifactId>app</artifactId>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.cucumber</groupId>
+                                <artifactId>cucumber-java</artifactId>
+                                <version>%1$s</version>
+                                <scope>test</scope>
+                            </dependency>
+                            <dependency>
+                                <groupId>io.cucumber</groupId>
+                                <artifactId>cucumber-junit-platform-engine</artifactId>
+                                <scope>test</scope>
+                                <version>%1$s</version>
+                            </dependency>
+                        </dependencies>
+                    </project>
+                    """.formatted(cucumber7(actual)))
                 )
               )
             );
