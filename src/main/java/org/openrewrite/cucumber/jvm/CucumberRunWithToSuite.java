@@ -43,9 +43,11 @@ import static java.util.Collections.singletonList;
 public class CucumberRunWithToSuite extends Recipe {
 
     private static final String CUCUMBER = "io.cucumber.junit.Cucumber";
+    private static final String CUCUMBER_API = "cucumber.api.junit.Cucumber";
     private static final String CUCUMBER_OPTIONS = "io.cucumber.junit.CucumberOptions";
     private static final String CONSTANTS = "io.cucumber.junit.platform.engine.Constants";
     private static final String SUITE_API = "org.junit.platform.suite.api.";
+    private static final AnnotationMatcher RUN_WITH = new AnnotationMatcher("@org.junit.runner.RunWith");
     private static final AnnotationMatcher RUN_WITH_CUCUMBER = new AnnotationMatcher("@org.junit.runner.RunWith(" + CUCUMBER + ".class)");
     private static final AnnotationMatcher CUCUMBER_OPTIONS_MATCHER = new AnnotationMatcher("@" + CUCUMBER_OPTIONS);
     private static final String RUNNER_CLASS = "RUNNER_CLASS";
@@ -74,25 +76,27 @@ public class CucumberRunWithToSuite extends Recipe {
             "the package of the annotated class by default, and the Cucumber engine in the whole classpath, so that package " +
             "becomes the explicit glue when none is configured. Class-level setup and teardown methods become " +
             "`@BeforeSuite` and `@AfterSuite` methods, as a `@Suite` does not run `@BeforeClass` or `@BeforeAll`. " +
-            "A class that extends another class, which may contribute `@CucumberOptions`, or that has an option that " +
-            "cannot be carried over, such as one that refers to a constant, keeps the JUnit 4 runner, with a comment " +
-            "explaining why.";
+            "A class that runs with a subclass of the runner, that extends another class, which may contribute " +
+            "`@CucumberOptions`, or that has an option that cannot be carried over, such as one that refers to a " +
+            "constant, keeps the JUnit 4 runner, with a comment explaining why.";
 
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {
-        return Preconditions.check(new UsesType<>(CUCUMBER, false), new JavaIsoVisitor<ExecutionContext>() {
+        // A subclass of the runner is used without referring to the runner itself
+        return Preconditions.check(new UsesType<>("org.junit.runner.RunWith", false), new JavaIsoVisitor<ExecutionContext>() {
             @Override
             public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext ctx) {
                 if (!service(AnnotationService.class).matches(getCursor(), RUN_WITH_CUCUMBER)) {
-                    return super.visitClassDeclaration(classDecl, ctx);
+                    JavaType.FullyQualified runner = cucumberRunnerSubclass(findAnnotation(getCursor(), RUN_WITH));
+                    J.ClassDeclaration cd = super.visitClassDeclaration(classDecl, ctx);
+                    return runner == null ? cd : notMigrated(cd,
+                            "it runs with `" + runner.getClassName() + "`, which extends the Cucumber JUnit 4 runner");
                 }
                 SuiteAnnotations suite;
                 try {
                     suite = SuiteAnnotations.from(classDecl, findAnnotation(getCursor(), CUCUMBER_OPTIONS_MATCHER));
                 } catch (NotConvertible e) {
-                    J.ClassDeclaration cd = super.visitClassDeclaration(classDecl, ctx);
-                    return Comments.of(updateCursor(cd)).comment(" TODO Not migrated to a JUnit Platform `@Suite`, as " + e.getMessage(),
-                            Comments.Placement.BEFORE, "\n" + cd.getPrefix().getIndent());
+                    return notMigrated(super.visitClassDeclaration(classDecl, ctx), e.getMessage());
                 }
 
                 getCursor().putMessage(RUNNER_CLASS, true);
@@ -136,10 +140,36 @@ public class CucumberRunWithToSuite extends Recipe {
                         .apply(getCursor(), a.getCoordinates().replace());
             }
 
+            private J.ClassDeclaration notMigrated(J.ClassDeclaration cd, String reason) {
+                return Comments.of(updateCursor(cd)).comment(" TODO Not migrated to a JUnit Platform `@Suite`, as " + reason,
+                        Comments.Placement.BEFORE, "\n" + cd.getPrefix().getIndent());
+            }
+
             private boolean isOnRunnerMethod() {
                 Cursor method = getCursor().getParentTreeCursor();
                 return method.getValue() instanceof J.MethodDeclaration &&
                         method.getParentTreeCursor().getParentTreeCursor().getMessage(RUNNER_CLASS, false);
+            }
+
+            // The `cucumber.api` runner itself is left for the package rename, after which it is migrated
+            private JavaType.@Nullable FullyQualified cucumberRunnerSubclass(J.@Nullable Annotation runWith) {
+                if (runWith == null || runWith.getArguments() == null || runWith.getArguments().size() != 1) {
+                    return null;
+                }
+                Expression value = runWith.getArguments().get(0);
+                if (value instanceof J.Assignment) {
+                    value = ((J.Assignment) value).getAssignment();
+                }
+                if (!(value instanceof J.FieldAccess)) {
+                    return null;
+                }
+                J.FieldAccess classLiteral = (J.FieldAccess) value;
+                JavaType.FullyQualified runner = TypeUtils.asFullyQualified(classLiteral.getTarget().getType());
+                if (runner == null || !"class".equals(classLiteral.getSimpleName()) ||
+                        TypeUtils.isOfClassType(runner, CUCUMBER) || TypeUtils.isOfClassType(runner, CUCUMBER_API)) {
+                    return null;
+                }
+                return TypeUtils.isAssignableTo(CUCUMBER, runner) || TypeUtils.isAssignableTo(CUCUMBER_API, runner) ? runner : null;
             }
 
             private J.@Nullable Annotation findAnnotation(Cursor cursor, AnnotationMatcher matcher) {

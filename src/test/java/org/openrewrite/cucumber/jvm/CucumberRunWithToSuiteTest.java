@@ -507,6 +507,201 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
     }
 
     @Test
+    void commentOnRunnerSubclass() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import org.junit.runners.model.InitializationError;
+
+              public class GlueCucumber extends Cucumber {
+                  public GlueCucumber(Class<?> clazz) throws InitializationError {
+                      super(clazz);
+                  }
+              }
+              """
+          ),
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import io.cucumber.junit.CucumberOptions;
+              import org.junit.runner.RunWith;
+
+              @RunWith(GlueCucumber.class)
+              @CucumberOptions(features = "classpath:features")
+              public class RunCucumberTest {
+              }
+              """,
+            """
+              package com.example;
+
+              import io.cucumber.junit.CucumberOptions;
+              import org.junit.runner.RunWith;
+
+              // TODO Not migrated to a JUnit Platform `@Suite`, as it runs with `GlueCucumber`, which extends the Cucumber JUnit 4 runner
+              @RunWith(GlueCucumber.class)
+              @CucumberOptions(features = "classpath:features")
+              public class RunCucumberTest {
+              }
+              """
+          )
+        );
+    }
+
+    @Test
+    void commentOnCucumberApiRunnerSubclass() {
+        rewriteRun(
+          spec -> spec.parser(JavaParser.fromJavaVersion()
+            .classpathFromResources(new InMemoryExecutionContext(), "junit-4", "cucumber-junit-4", "cucumber-core-4")),
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import cucumber.api.junit.Cucumber;
+              import org.junit.runners.model.InitializationError;
+
+              public class GlueCucumber extends Cucumber {
+                  public GlueCucumber(Class<?> clazz) throws InitializationError {
+                      super(clazz);
+                  }
+              }
+              """
+          ),
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import org.junit.runner.RunWith;
+
+              @RunWith(value = GlueCucumber.class)
+              public class RunCucumberTest {
+              }
+              """,
+            """
+              package com.example;
+
+              import org.junit.runner.RunWith;
+
+              // TODO Not migrated to a JUnit Platform `@Suite`, as it runs with `GlueCucumber`, which extends the Cucumber JUnit 4 runner
+              @RunWith(value = GlueCucumber.class)
+              public class RunCucumberTest {
+              }
+              """
+          )
+        );
+    }
+
+    @Test
+    void cucumberApiRunnerIsLeftForThePackageRename() {
+        rewriteRun(
+          spec -> spec.parser(JavaParser.fromJavaVersion()
+            .classpathFromResources(new InMemoryExecutionContext(), "junit-4", "cucumber-junit-4", "cucumber-core-4")),
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import cucumber.api.junit.Cucumber;
+              import org.junit.runner.RunWith;
+
+              @RunWith(Cucumber.class)
+              public class RunCucumberTest {
+              }
+              """
+          )
+        );
+    }
+
+    @Test
+    void commentOnRunnerSubclassWhenUpgradingFromCucumber4() {
+        rewriteRun(
+          spec -> spec
+            .parser(JavaParser.fromJavaVersion()
+              .classpathFromResources(new InMemoryExecutionContext(), "junit-4", "cucumber-junit-4", "cucumber-core-4"))
+            .recipeFromResources("org.openrewrite.cucumber.jvm.UpgradeCucumber7x"),
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import cucumber.api.junit.Cucumber;
+              import org.junit.runners.model.InitializationError;
+
+              public class GlueCucumber extends Cucumber {
+                  public GlueCucumber(Class<?> clazz) throws InitializationError {
+                      super(clazz);
+                  }
+              }
+              """,
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import org.junit.runners.model.InitializationError;
+
+              public class GlueCucumber extends Cucumber {
+                  public GlueCucumber(Class<?> clazz) throws InitializationError {
+                      super(clazz);
+                  }
+              }
+              """
+          ),
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import cucumber.api.CucumberOptions;
+              import org.junit.runner.RunWith;
+
+              @RunWith(GlueCucumber.class)
+              @CucumberOptions(features = "classpath:features")
+              public class RunCucumberTest {
+              }
+              """,
+            """
+              package com.example;
+
+              import io.cucumber.junit.CucumberOptions;
+              import org.junit.runner.RunWith;
+
+              // TODO Not migrated to a JUnit Platform `@Suite`, as it runs with `GlueCucumber`, which extends the Cucumber JUnit 4 runner
+              @RunWith(GlueCucumber.class)
+              @CucumberOptions(features = "classpath:features")
+              public class RunCucumberTest {
+              }
+              """
+          )
+        );
+    }
+
+    @Test
+    void otherRunnerIsLeftAlone() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import org.junit.runner.RunWith;
+              import org.junit.runners.JUnit4;
+
+              @RunWith(JUnit4.class)
+              public class SomeTest {
+              }
+              """
+          )
+        );
+    }
+
+    @Test
     void swapsCucumberJUnitDependency() {
         rewriteRun(
           spec -> spec.recipeFromResources("org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite"),
