@@ -48,7 +48,6 @@ public class CucumberRunWithToSuite extends Recipe {
     private static final String CONSTANTS = "io.cucumber.junit.platform.engine.Constants";
     private static final String SUITE_API = "org.junit.platform.suite.api.";
     private static final AnnotationMatcher RUN_WITH = new AnnotationMatcher("@org.junit.runner.RunWith");
-    private static final AnnotationMatcher RUN_WITH_CUCUMBER = new AnnotationMatcher("@org.junit.runner.RunWith(" + CUCUMBER + ".class)");
     private static final AnnotationMatcher CUCUMBER_OPTIONS_MATCHER = new AnnotationMatcher("@" + CUCUMBER_OPTIONS);
     private static final String RUNNER_CLASS = "RUNNER_CLASS";
     private static final Map<String, String> SUITE_LIFECYCLE_ANNOTATIONS = new HashMap<>();
@@ -85,14 +84,15 @@ public class CucumberRunWithToSuite extends Recipe {
         return Preconditions.check(Preconditions.or(new UsesType<>(CUCUMBER, false), new UsesType<>(CUCUMBER_API, false)), new JavaIsoVisitor<ExecutionContext>() {
             @Override
             public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext ctx) {
-                if (!service(AnnotationService.class).matches(getCursor(), RUN_WITH_CUCUMBER)) {
-                    JavaType.FullyQualified runner = cucumberRunnerSubclass(findAnnotation(getCursor(), RUN_WITH));
-                    J.ClassDeclaration cd = super.visitClassDeclaration(classDecl, ctx);
-                    return runner == null ? cd : notMigrated(cd,
-                            "it runs with `" + runner.getClassName() + "`, which extends the Cucumber JUnit 4 runner");
+                JavaType.FullyQualified runner = cucumberRunner(findAnnotation(getCursor(), RUN_WITH));
+                if (runner == null) {
+                    return super.visitClassDeclaration(classDecl, ctx);
                 }
                 SuiteAnnotations suite;
                 try {
+                    if (!TypeUtils.isOfClassType(runner, CUCUMBER)) {
+                        throw new NotConvertible("it runs with `" + runner.getClassName() + "`, which extends the Cucumber JUnit 4 runner");
+                    }
                     suite = SuiteAnnotations.from(classDecl, findAnnotation(getCursor(), CUCUMBER_OPTIONS_MATCHER));
                 } catch (NotConvertible e) {
                     return notMigrated(super.visitClassDeclaration(classDecl, ctx), e.getMessage());
@@ -113,7 +113,7 @@ public class CucumberRunWithToSuite extends Recipe {
                 }
 
                 cd = cd.withLeadingAnnotations(ListUtils.map(cd.getLeadingAnnotations(),
-                        a -> RUN_WITH_CUCUMBER.matches(a) || CUCUMBER_OPTIONS_MATCHER.matches(a) ? null : a));
+                        a -> RUN_WITH.matches(a) || CUCUMBER_OPTIONS_MATCHER.matches(a) ? null : a));
                 return JavaTemplate.builder(suite.template())
                         .javaParser(JavaParser.fromJavaVersion().classpathFromResources(ctx, "junit-platform-suite-api-1", "cucumber-junit-platform-engine-7"))
                         .imports(suite.imports().toArray(new String[0]))
@@ -150,27 +150,6 @@ public class CucumberRunWithToSuite extends Recipe {
                         method.getParentTreeCursor().getParentTreeCursor().getMessage(RUNNER_CLASS, false);
             }
 
-            // The `cucumber.api` runner itself is left for the package rename, after which it is migrated
-            private JavaType.@Nullable FullyQualified cucumberRunnerSubclass(J.@Nullable Annotation runWith) {
-                if (runWith == null || runWith.getArguments() == null || runWith.getArguments().size() != 1) {
-                    return null;
-                }
-                Expression value = runWith.getArguments().get(0);
-                if (value instanceof J.Assignment) {
-                    value = ((J.Assignment) value).getAssignment();
-                }
-                if (!(value instanceof J.FieldAccess)) {
-                    return null;
-                }
-                J.FieldAccess classLiteral = (J.FieldAccess) value;
-                JavaType.FullyQualified runner = TypeUtils.asFullyQualified(classLiteral.getTarget().getType());
-                if (runner == null || !"class".equals(classLiteral.getSimpleName()) ||
-                        TypeUtils.isOfClassType(runner, CUCUMBER) || TypeUtils.isOfClassType(runner, CUCUMBER_API)) {
-                    return null;
-                }
-                return TypeUtils.isAssignableTo(CUCUMBER, runner) || TypeUtils.isAssignableTo(CUCUMBER_API, runner) ? runner : null;
-            }
-
             private J.@Nullable Annotation findAnnotation(Cursor cursor, AnnotationMatcher matcher) {
                 for (J.Annotation annotation : service(AnnotationService.class).getAllAnnotations(cursor)) {
                     if (matcher.matches(annotation)) {
@@ -180,6 +159,22 @@ public class CucumberRunWithToSuite extends Recipe {
                 return null;
             }
         });
+    }
+
+    // The `cucumber.api` runner itself is left for the package rename, after which it is migrated
+    private static JavaType.@Nullable FullyQualified cucumberRunner(J.@Nullable Annotation runWith) {
+        if (runWith == null || runWith.getArguments() == null || runWith.getArguments().size() != 1) {
+            return null;
+        }
+        Expression value = runWith.getArguments().get(0);
+        JavaType.FullyQualified runner = classLiteral(value instanceof J.Assignment ? ((J.Assignment) value).getAssignment() : value);
+        return runner != null && !TypeUtils.isOfClassType(runner, CUCUMBER_API) &&
+                (TypeUtils.isAssignableTo(CUCUMBER, runner) || TypeUtils.isAssignableTo(CUCUMBER_API, runner)) ? runner : null;
+    }
+
+    private static JavaType.@Nullable FullyQualified classLiteral(Expression expression) {
+        return expression instanceof J.FieldAccess && "class".equals(((J.FieldAccess) expression).getSimpleName()) ?
+                TypeUtils.asFullyQualified(((J.FieldAccess) expression).getTarget().getType()) : null;
     }
 
     private static class SuiteAnnotations {
@@ -359,8 +354,7 @@ public class CucumberRunWithToSuite extends Recipe {
         }
 
         private void addClass(String constant, String option, Expression value) {
-            JavaType.FullyQualified type = value instanceof J.FieldAccess && "class".equals(((J.FieldAccess) value).getSimpleName()) ?
-                    TypeUtils.asFullyQualified(((J.FieldAccess) value).getTarget().getType()) : null;
+            JavaType.FullyQualified type = classLiteral(value);
             if (type == null) {
                 throw new NotConvertible("`" + option + "` is not a class literal");
             }
