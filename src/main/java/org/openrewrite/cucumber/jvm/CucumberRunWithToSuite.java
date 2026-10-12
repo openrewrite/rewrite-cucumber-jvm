@@ -91,7 +91,8 @@ public class CucumberRunWithToSuite extends Recipe {
                 SuiteAnnotations suite;
                 try {
                     if (!TypeUtils.isOfClassType(runner, CUCUMBER)) {
-                        throw new NotConvertible("it runs with `" + runner.getClassName() + "`, which extends the Cucumber JUnit 4 runner");
+                        throw new NotConvertible("it runs with `" + runner.getClassName() + "`; carry over what that adds to the Cucumber runner, " +
+                                "as configuration parameters, hooks or a plugin, then replace `@RunWith` and `@CucumberOptions` with a `@Suite`");
                     }
                     suite = SuiteAnnotations.from(classDecl, findAnnotation(getCursor(), CUCUMBER_OPTIONS_MATCHER));
                 } catch (NotConvertible e) {
