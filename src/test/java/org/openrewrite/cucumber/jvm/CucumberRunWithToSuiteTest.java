@@ -556,8 +556,21 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
     @Test
     void commentOnCucumberApiRunnerSubclass() {
         rewriteRun(
-          spec -> spec.parser(JavaParser.fromJavaVersion()
-            .classpathFromResources(new InMemoryExecutionContext(), "junit-4", "cucumber-junit-4", "cucumber-core-4")),
+          //language=java
+          java(
+            """
+              package cucumber.api.junit;
+
+              import org.junit.runners.BlockJUnit4ClassRunner;
+              import org.junit.runners.model.InitializationError;
+
+              public class Cucumber extends BlockJUnit4ClassRunner {
+                  public Cucumber(Class<?> clazz) throws InitializationError {
+                      super(clazz);
+                  }
+              }
+              """
+          ),
           //language=java
           java(
             """

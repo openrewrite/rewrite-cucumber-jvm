@@ -82,8 +82,7 @@ public class CucumberRunWithToSuite extends Recipe {
 
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {
-        // A subclass of the runner is used without referring to the runner itself
-        return Preconditions.check(new UsesType<>("org.junit.runner.RunWith", false), new JavaIsoVisitor<ExecutionContext>() {
+        return Preconditions.check(Preconditions.or(new UsesType<>(CUCUMBER, false), new UsesType<>(CUCUMBER_API, false)), new JavaIsoVisitor<ExecutionContext>() {
             @Override
             public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext ctx) {
                 if (!service(AnnotationService.class).matches(getCursor(), RUN_WITH_CUCUMBER)) {
