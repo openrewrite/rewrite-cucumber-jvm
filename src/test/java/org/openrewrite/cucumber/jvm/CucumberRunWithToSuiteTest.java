@@ -543,7 +543,11 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
               import io.cucumber.junit.CucumberOptions;
               import org.junit.runner.RunWith;
 
-              // TODO Not migrated to a JUnit Platform `@Suite`, as it runs with `GlueCucumber`; carry over what that adds to the Cucumber runner, as configuration parameters, hooks or a plugin, then replace `@RunWith` and `@CucumberOptions` with a `@Suite`
+              /*
+               * TODO Not migrated to a JUnit Platform `@Suite`, as it runs with `GlueCucumber`.
+               * Carry over what that adds to the Cucumber runner, as configuration parameters, hooks or a plugin,
+               * then replace `@RunWith` and `@CucumberOptions` with a `@Suite`.
+               */
               @RunWith(GlueCucumber.class)
               @CucumberOptions(features = "classpath:features")
               public class RunCucumberTest {
@@ -602,7 +606,11 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
 
               import org.junit.runner.RunWith;
 
-              // TODO Not migrated to a JUnit Platform `@Suite`, as it runs with `GlueCucumber`; carry over what that adds to the Cucumber runner, as configuration parameters, hooks or a plugin, then replace `@RunWith` and `@CucumberOptions` with a `@Suite`
+              /*
+               * TODO Not migrated to a JUnit Platform `@Suite`, as it runs with `GlueCucumber`.
+               * Carry over what that adds to the Cucumber runner, as configuration parameters, hooks or a plugin,
+               * then replace `@RunWith` and `@CucumberOptions` with a `@Suite`.
+               */
               @RunWith(value = GlueCucumber.class)
               public class RunCucumberTest {
               }
@@ -685,7 +693,11 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
               import io.cucumber.junit.CucumberOptions;
               import org.junit.runner.RunWith;
 
-              // TODO Not migrated to a JUnit Platform `@Suite`, as it runs with `GlueCucumber`; carry over what that adds to the Cucumber runner, as configuration parameters, hooks or a plugin, then replace `@RunWith` and `@CucumberOptions` with a `@Suite`
+              /*
+               * TODO Not migrated to a JUnit Platform `@Suite`, as it runs with `GlueCucumber`.
+               * Carry over what that adds to the Cucumber runner, as configuration parameters, hooks or a plugin,
+               * then replace `@RunWith` and `@CucumberOptions` with a `@Suite`.
+               */
               @RunWith(GlueCucumber.class)
               @CucumberOptions(features = "classpath:features")
               public class RunCucumberTest {

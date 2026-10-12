@@ -91,12 +91,13 @@ public class CucumberRunWithToSuite extends Recipe {
                 SuiteAnnotations suite;
                 try {
                     if (!TypeUtils.isOfClassType(runner, CUCUMBER)) {
-                        throw new NotConvertible("it runs with `" + runner.getClassName() + "`; carry over what that adds to the Cucumber runner, " +
-                                "as configuration parameters, hooks or a plugin, then replace `@RunWith` and `@CucumberOptions` with a `@Suite`");
+                        throw new NotConvertible("it runs with `" + runner.getClassName() + "`",
+                                "Carry over what that adds to the Cucumber runner, as configuration parameters, hooks or a plugin,",
+                                "then replace `@RunWith` and `@CucumberOptions` with a `@Suite`.");
                     }
                     suite = SuiteAnnotations.from(classDecl, findAnnotation(getCursor(), CUCUMBER_OPTIONS_MATCHER));
                 } catch (NotConvertible e) {
-                    return notMigrated(super.visitClassDeclaration(classDecl, ctx), e.getMessage());
+                    return notMigrated(super.visitClassDeclaration(classDecl, ctx), e);
                 }
 
                 getCursor().putMessage(RUNNER_CLASS, true);
@@ -140,9 +141,18 @@ public class CucumberRunWithToSuite extends Recipe {
                         .apply(getCursor(), a.getCoordinates().replace());
             }
 
-            private J.ClassDeclaration notMigrated(J.ClassDeclaration cd, String reason) {
-                return Comments.of(updateCursor(cd)).comment(" TODO Not migrated to a JUnit Platform `@Suite`, as " + reason,
-                        Comments.Placement.BEFORE, "\n" + cd.getPrefix().getIndent());
+            private J.ClassDeclaration notMigrated(J.ClassDeclaration cd, NotConvertible e) {
+                String todo = "TODO Not migrated to a JUnit Platform `@Suite`, as " + e.getMessage();
+                String newline = "\n" + cd.getPrefix().getIndent();
+                Comments comments = Comments.of(updateCursor(cd));
+                if (e.nextSteps.length == 0) {
+                    return comments.comment(" " + todo, Comments.Placement.BEFORE, newline);
+                }
+                StringBuilder text = new StringBuilder(newline).append(" * ").append(todo).append('.');
+                for (String nextStep : e.nextSteps) {
+                    text.append(newline).append(" * ").append(nextStep);
+                }
+                return comments.multilineComment(text.append(newline).append(' ').toString(), Comments.Placement.BEFORE, newline);
             }
 
             private boolean isOnRunnerMethod() {
@@ -404,8 +414,11 @@ public class CucumberRunWithToSuite extends Recipe {
     }
 
     private static class NotConvertible extends RuntimeException {
-        NotConvertible(String reason) {
+        final String[] nextSteps;
+
+        NotConvertible(String reason, String... nextSteps) {
             super(reason, null, false, false);
+            this.nextSteps = nextSteps;
         }
     }
 }
