@@ -43,10 +43,11 @@ import static java.util.Collections.singletonList;
 public class CucumberRunWithToSuite extends Recipe {
 
     private static final String CUCUMBER = "io.cucumber.junit.Cucumber";
+    private static final String CUCUMBER_API = "cucumber.api.junit.Cucumber";
     private static final String CUCUMBER_OPTIONS = "io.cucumber.junit.CucumberOptions";
     private static final String CONSTANTS = "io.cucumber.junit.platform.engine.Constants";
     private static final String SUITE_API = "org.junit.platform.suite.api.";
-    private static final AnnotationMatcher RUN_WITH_CUCUMBER = new AnnotationMatcher("@org.junit.runner.RunWith(" + CUCUMBER + ".class)");
+    private static final AnnotationMatcher RUN_WITH = new AnnotationMatcher("@org.junit.runner.RunWith");
     private static final AnnotationMatcher CUCUMBER_OPTIONS_MATCHER = new AnnotationMatcher("@" + CUCUMBER_OPTIONS);
     private static final String RUNNER_CLASS = "RUNNER_CLASS";
     private static final Map<String, String> SUITE_LIFECYCLE_ANNOTATIONS = new HashMap<>();
@@ -74,25 +75,29 @@ public class CucumberRunWithToSuite extends Recipe {
             "the package of the annotated class by default, and the Cucumber engine in the whole classpath, so that package " +
             "becomes the explicit glue when none is configured. Class-level setup and teardown methods become " +
             "`@BeforeSuite` and `@AfterSuite` methods, as a `@Suite` does not run `@BeforeClass` or `@BeforeAll`. " +
-            "A class that extends another class, which may contribute `@CucumberOptions`, or that has an option that " +
-            "cannot be carried over, such as one that refers to a constant, keeps the JUnit 4 runner, with a comment " +
-            "explaining why.";
+            "A class that runs with a subclass of the runner, that extends another class, which may contribute " +
+            "`@CucumberOptions`, or that has an option that cannot be carried over, such as one that refers to a " +
+            "constant, keeps the JUnit 4 runner, with a comment explaining why.";
 
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {
-        return Preconditions.check(new UsesType<>(CUCUMBER, false), new JavaIsoVisitor<ExecutionContext>() {
+        return Preconditions.check(Preconditions.or(new UsesType<>(CUCUMBER, false), new UsesType<>(CUCUMBER_API, false)), new JavaIsoVisitor<ExecutionContext>() {
             @Override
             public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext ctx) {
-                if (!service(AnnotationService.class).matches(getCursor(), RUN_WITH_CUCUMBER)) {
+                JavaType.FullyQualified runner = cucumberRunner(findAnnotation(getCursor(), RUN_WITH));
+                if (runner == null) {
                     return super.visitClassDeclaration(classDecl, ctx);
                 }
                 SuiteAnnotations suite;
                 try {
+                    if (!TypeUtils.isOfClassType(runner, CUCUMBER)) {
+                        throw new NotConvertible("it runs with `" + runner.getClassName() + "`",
+                                "Carry over what that adds to the Cucumber runner, as configuration parameters, hooks or a plugin,",
+                                "then replace `@RunWith` and `@CucumberOptions` with a `@Suite`.");
+                    }
                     suite = SuiteAnnotations.from(classDecl, findAnnotation(getCursor(), CUCUMBER_OPTIONS_MATCHER));
                 } catch (NotConvertible e) {
-                    J.ClassDeclaration cd = super.visitClassDeclaration(classDecl, ctx);
-                    return Comments.of(updateCursor(cd)).comment(" TODO Not migrated to a JUnit Platform `@Suite`, as " + e.getMessage(),
-                            Comments.Placement.BEFORE, "\n" + cd.getPrefix().getIndent());
+                    return notMigrated(super.visitClassDeclaration(classDecl, ctx), e);
                 }
 
                 getCursor().putMessage(RUNNER_CLASS, true);
@@ -110,7 +115,7 @@ public class CucumberRunWithToSuite extends Recipe {
                 }
 
                 cd = cd.withLeadingAnnotations(ListUtils.map(cd.getLeadingAnnotations(),
-                        a -> RUN_WITH_CUCUMBER.matches(a) || CUCUMBER_OPTIONS_MATCHER.matches(a) ? null : a));
+                        a -> RUN_WITH.matches(a) || CUCUMBER_OPTIONS_MATCHER.matches(a) ? null : a));
                 return JavaTemplate.builder(suite.template())
                         .javaParser(JavaParser.fromJavaVersion().classpathFromResources(ctx, "junit-platform-suite-api-1", "cucumber-junit-platform-engine-7"))
                         .imports(suite.imports().toArray(new String[0]))
@@ -136,6 +141,20 @@ public class CucumberRunWithToSuite extends Recipe {
                         .apply(getCursor(), a.getCoordinates().replace());
             }
 
+            private J.ClassDeclaration notMigrated(J.ClassDeclaration cd, NotConvertible e) {
+                String todo = "TODO Not migrated to a JUnit Platform `@Suite`, as " + e.getMessage();
+                String newline = "\n" + cd.getPrefix().getIndent();
+                Comments comments = Comments.of(updateCursor(cd));
+                if (e.nextSteps.length == 0) {
+                    return comments.comment(" " + todo, Comments.Placement.BEFORE, newline);
+                }
+                StringBuilder text = new StringBuilder(newline).append(" * ").append(todo).append('.');
+                for (String nextStep : e.nextSteps) {
+                    text.append(newline).append(" * ").append(nextStep);
+                }
+                return comments.multilineComment(text.append(newline).append(' ').toString(), Comments.Placement.BEFORE, newline);
+            }
+
             private boolean isOnRunnerMethod() {
                 Cursor method = getCursor().getParentTreeCursor();
                 return method.getValue() instanceof J.MethodDeclaration &&
@@ -151,6 +170,22 @@ public class CucumberRunWithToSuite extends Recipe {
                 return null;
             }
         });
+    }
+
+    // The `cucumber.api` runner itself is left for the package rename, after which it is migrated
+    private static JavaType.@Nullable FullyQualified cucumberRunner(J.@Nullable Annotation runWith) {
+        if (runWith == null || runWith.getArguments() == null || runWith.getArguments().size() != 1) {
+            return null;
+        }
+        Expression value = runWith.getArguments().get(0);
+        JavaType.FullyQualified runner = classLiteral(value instanceof J.Assignment ? ((J.Assignment) value).getAssignment() : value);
+        return runner != null && !TypeUtils.isOfClassType(runner, CUCUMBER_API) &&
+                (TypeUtils.isAssignableTo(CUCUMBER, runner) || TypeUtils.isAssignableTo(CUCUMBER_API, runner)) ? runner : null;
+    }
+
+    private static JavaType.@Nullable FullyQualified classLiteral(Expression expression) {
+        return expression instanceof J.FieldAccess && "class".equals(((J.FieldAccess) expression).getSimpleName()) ?
+                TypeUtils.asFullyQualified(((J.FieldAccess) expression).getTarget().getType()) : null;
     }
 
     private static class SuiteAnnotations {
@@ -330,8 +365,7 @@ public class CucumberRunWithToSuite extends Recipe {
         }
 
         private void addClass(String constant, String option, Expression value) {
-            JavaType.FullyQualified type = value instanceof J.FieldAccess && "class".equals(((J.FieldAccess) value).getSimpleName()) ?
-                    TypeUtils.asFullyQualified(((J.FieldAccess) value).getTarget().getType()) : null;
+            JavaType.FullyQualified type = classLiteral(value);
             if (type == null) {
                 throw new NotConvertible("`" + option + "` is not a class literal");
             }
@@ -380,8 +414,11 @@ public class CucumberRunWithToSuite extends Recipe {
     }
 
     private static class NotConvertible extends RuntimeException {
-        NotConvertible(String reason) {
+        final String[] nextSteps;
+
+        NotConvertible(String reason, String... nextSteps) {
             super(reason, null, false, false);
+            this.nextSteps = nextSteps;
         }
     }
 }
