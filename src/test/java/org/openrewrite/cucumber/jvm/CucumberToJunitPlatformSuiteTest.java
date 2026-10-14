@@ -452,7 +452,6 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
         Matcher matcher = CUCUMBER_7_VERSION.matcher(actual);
         assertThat(matcher.find()).as("Cucumber 7.x version in %s", actual).isTrue();
         String version = matcher.group(1);
-        assertThat(version).as("moved off the original 7.18.0").isNotEqualTo("7.18.0");
-        return version;
+        return assertThat(version).as("moved off the original 7.18.0").isNotEqualTo("7.18.0").actual();
     }
 }

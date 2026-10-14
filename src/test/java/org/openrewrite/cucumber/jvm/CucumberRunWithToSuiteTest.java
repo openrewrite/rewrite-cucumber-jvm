@@ -417,7 +417,10 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
     void jupiterClassLevelSetupBecomesSuiteLifecycle() {
         rewriteRun(
           spec -> spec.parser(JavaParser.fromJavaVersion()
-            .classpathFromResources(new InMemoryExecutionContext(), "junit-4", "cucumber-junit-7", "junit-jupiter-api")),
+            .classpathFromResources(new InMemoryExecutionContext(),
+              "junit-4",
+              "cucumber-junit-7",
+              "junit-jupiter-api")),
           //language=java
           java(
             """
@@ -623,7 +626,10 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
     void cucumberApiRunnerIsLeftForThePackageRename() {
         rewriteRun(
           spec -> spec.parser(JavaParser.fromJavaVersion()
-            .classpathFromResources(new InMemoryExecutionContext(), "junit-4", "cucumber-junit-4", "cucumber-core-4")),
+            .classpathFromResources(new InMemoryExecutionContext(),
+              "junit-4",
+              "cucumber-junit-4",
+              "cucumber-core-4")),
           //language=java
           java(
             """
@@ -645,7 +651,10 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
         rewriteRun(
           spec -> spec
             .parser(JavaParser.fromJavaVersion()
-              .classpathFromResources(new InMemoryExecutionContext(), "junit-4", "cucumber-junit-4", "cucumber-core-4"))
+              .classpathFromResources(new InMemoryExecutionContext(),
+                "junit-4",
+                "cucumber-junit-4",
+                "cucumber-core-4"))
             .recipeFromResources("org.openrewrite.cucumber.jvm.UpgradeCucumber7x"),
           //language=java
           java(

@@ -31,9 +31,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 import static org.openrewrite.Tree.randomId;
 
 public class CucumberOptionsPropertyToIndividualProperties extends Recipe {

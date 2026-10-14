@@ -36,18 +36,8 @@ import java.time.Duration;
 import java.util.*;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptyMap;
-import static java.util.Collections.nCopies;
-import static java.util.Collections.singletonList;
-import static org.openrewrite.cucumber.jvm.GlueMethods.PARAMETER_TYPE_IMPORTS;
-import static org.openrewrite.cucumber.jvm.GlueMethods.decapitalize;
-import static org.openrewrite.cucumber.jvm.GlueMethods.declaredMethodNames;
-import static org.openrewrite.cucumber.jvm.GlueMethods.fullyQualifiedName;
-import static org.openrewrite.cucumber.jvm.GlueMethods.literalSource;
-import static org.openrewrite.cucumber.jvm.GlueMethods.sanitize;
-import static org.openrewrite.cucumber.jvm.GlueMethods.stringLiteral;
-import static org.openrewrite.cucumber.jvm.GlueMethods.uniqueMethodName;
+import static java.util.Collections.*;
+import static org.openrewrite.cucumber.jvm.GlueMethods.*;
 
 @EqualsAndHashCode(callSuper = false)
 @Value

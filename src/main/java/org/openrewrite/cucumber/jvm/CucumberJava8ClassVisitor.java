@@ -31,9 +31,7 @@ import org.openrewrite.staticanalysis.UnnecessaryThrows;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singletonList;
+import static java.util.Collections.*;
 
 @RequiredArgsConstructor
 class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
