@@ -100,10 +100,9 @@ public class RegexToCucumberExpression extends Recipe {
         }
 
         // Replace regular expression with cucumber expression
-        final String finalReplacement = String.format("\"%s\"", replacement);
         return annotation.withArguments(ListUtils.map(annotation.getArguments(), arg -> ((J.Literal) arg)
-                .withValue(finalReplacement)
-                .withValueSource(finalReplacement)));
+                .withValue(replacement)
+                .withValueSource(String.format("\"%s\"", replacement))));
     }
 
     private static String stripAnchors(final String initialExpression) {
