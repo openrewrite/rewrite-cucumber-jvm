@@ -162,9 +162,9 @@ public class TypeRegistryConfigurerToAnnotations extends Recipe {
                         }
 
                         J.MethodDeclaration removedConfigureTypeRegistry = configureTypeRegistry;
-                        c = c.withImplements(ListUtils.map(c.getImplements(), i -> TYPE_REGISTRY_CONFIGURER.matches(i) ? null : i))
-                                .withBody(c.getBody().withStatements(ListUtils.map(c.getBody().getStatements(),
-                                        s -> s == removedConfigureTypeRegistry || isLocaleMethod(s) ? null : s)));
+                        c = c.withImplements(ListUtils.filter(c.getImplements(), i -> !TYPE_REGISTRY_CONFIGURER.matches(i)))
+                                .withBody(c.getBody().withStatements(ListUtils.filter(c.getBody().getStatements(),
+                                        s -> !(s == removedConfigureTypeRegistry || isLocaleMethod(s)))));
                         OBSOLETE_IMPORTS.forEach(this::maybeRemoveImport);
 
                         JavaParser.Builder<?, ?> javaParser = JavaParser.fromJavaVersion()

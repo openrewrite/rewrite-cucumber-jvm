@@ -114,8 +114,8 @@ public class CucumberRunWithToSuite extends Recipe {
                     maybeAddImport(CONSTANTS, constant, false);
                 }
 
-                cd = cd.withLeadingAnnotations(ListUtils.map(cd.getLeadingAnnotations(),
-                        a -> RUN_WITH.matches(a) || CUCUMBER_OPTIONS_MATCHER.matches(a) ? null : a));
+                cd = cd.withLeadingAnnotations(ListUtils.filter(cd.getLeadingAnnotations(),
+                        a -> !(RUN_WITH.matches(a) || CUCUMBER_OPTIONS_MATCHER.matches(a))));
                 return JavaTemplate.builder(suite.template())
                         .javaParser(JavaParser.fromJavaVersion().classpathFromResources(ctx, "junit-platform-suite-api-1", "cucumber-junit-platform-engine-7"))
                         .imports(suite.imports().toArray(new String[0]))

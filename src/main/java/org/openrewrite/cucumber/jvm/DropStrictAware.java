@@ -63,8 +63,8 @@ public class DropStrictAware extends Recipe {
                     return classDeclaration;
                 }
                 maybeRemoveImport(IO_CUCUMBER_PLUGIN_STRICT_AWARE);
-                return classDeclaration.withImplements(ListUtils.map(classDeclaration.getImplements(),
-                        t -> isStrictAware(t) ? null : t));
+                return classDeclaration.withImplements(ListUtils.filter(classDeclaration.getImplements(),
+                        t -> !isStrictAware(t)));
             }
 
             @Override

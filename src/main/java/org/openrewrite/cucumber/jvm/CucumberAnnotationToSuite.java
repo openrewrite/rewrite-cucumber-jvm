@@ -86,8 +86,8 @@ public class CucumberAnnotationToSuite extends Recipe {
                             maybeAddImport(SELECT_CLASSPATH_RESOURCE);
 
                             // Remove cucumber annotation
-                            classDecl = classDecl.withLeadingAnnotations(ListUtils.map(classDecl.getLeadingAnnotations(),
-                                    ann -> CUCUMBER_ANNOTATION_MATCHER.matches(ann) ? null : ann));
+                            classDecl = classDecl.withLeadingAnnotations(ListUtils.filter(classDecl.getLeadingAnnotations(),
+                                    ann -> !CUCUMBER_ANNOTATION_MATCHER.matches(ann)));
                             maybeRemoveImport(IO_CUCUMBER_JUNIT_PLATFORM_ENGINE_CUCUMBER);
                         }
                         return classDecl;
