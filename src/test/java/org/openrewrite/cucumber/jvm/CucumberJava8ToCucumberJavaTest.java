@@ -1471,7 +1471,6 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
             // For simplicity, anonymous classes are not converted for now; it's
             // not how cucumber-java8 usage was intended
             rewriteRun(
-              spec -> spec.cycles(2),
               // language=java
               java(
                 """
