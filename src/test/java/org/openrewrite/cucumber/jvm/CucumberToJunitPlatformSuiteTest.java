@@ -16,27 +16,19 @@
 package org.openrewrite.cucumber.jvm;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.openrewrite.DocumentExample;
 import org.openrewrite.InMemoryExecutionContext;
 import org.openrewrite.java.JavaParser;
-import org.openrewrite.maven.MavenExecutionContextView;
-import org.openrewrite.maven.tree.MavenRepository;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
-import org.openrewrite.test.SourceSpec;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.openrewrite.java.Assertions.*;
 import static org.openrewrite.maven.Assertions.pomXml;
+import static org.openrewrite.maven.Assertions.withLocalRepository;
 
 class CucumberToJunitPlatformSuiteTest implements RewriteTest {
 
@@ -44,9 +36,6 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
     public void defaults(RecipeSpec spec) {
         spec.recipeFromResources("org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite");
     }
-
-    @TempDir
-    Path corporateRepository;
 
     @DocumentExample
     @Test
@@ -110,8 +99,8 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
 
     @Test
     void parentManagesOnlyCucumberJUnit() {
-        rewriteRun(
-          spec -> remoteParent(spec,
+        withLocalRepository(
+          corporateParent(
             //language=xml
             """
               <dependency>
@@ -120,56 +109,58 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
                   <version>4.8.1</version>
               </dependency>
               """),
-          mavenProject("app",
-            //language=xml
-            pomXml(
-              """
-                <project>
-                    <parent>
-                        <groupId>com.example</groupId>
-                        <artifactId>corporate-parent</artifactId>
-                        <version>1.0.0</version>
-                    </parent>
-                    <artifactId>app</artifactId>
-                    <dependencies>
-                        <dependency>
-                            <groupId>io.cucumber</groupId>
-                            <artifactId>cucumber-java</artifactId>
-                            <version>4.8.1</version>
-                            <scope>test</scope>
-                        </dependency>
-                        <dependency>
-                            <groupId>io.cucumber</groupId>
-                            <artifactId>cucumber-junit</artifactId>
-                            <scope>test</scope>
-                        </dependency>
-                    </dependencies>
-                </project>
-                """,
-              spec -> spec.after(actual -> """
-                <project>
-                    <parent>
-                        <groupId>com.example</groupId>
-                        <artifactId>corporate-parent</artifactId>
-                        <version>1.0.0</version>
-                    </parent>
-                    <artifactId>app</artifactId>
-                    <dependencies>
-                        <dependency>
-                            <groupId>io.cucumber</groupId>
-                            <artifactId>cucumber-java</artifactId>
-                            <version>%1$s</version>
-                            <scope>test</scope>
-                        </dependency>
-                        <dependency>
-                            <groupId>io.cucumber</groupId>
-                            <artifactId>cucumber-junit-platform-engine</artifactId>
-                            <scope>test</scope>
-                            <version>%1$s</version>
-                        </dependency>
-                    </dependencies>
-                </project>
-                """.formatted(cucumber7(actual)))
+          () -> rewriteRun(
+            mavenProject("app",
+              //language=xml
+              pomXml(
+                """
+                  <project>
+                      <parent>
+                          <groupId>com.example</groupId>
+                          <artifactId>corporate-parent</artifactId>
+                          <version>1.0.0</version>
+                      </parent>
+                      <artifactId>app</artifactId>
+                      <dependencies>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-java</artifactId>
+                              <version>4.8.1</version>
+                              <scope>test</scope>
+                          </dependency>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-junit</artifactId>
+                              <scope>test</scope>
+                          </dependency>
+                      </dependencies>
+                  </project>
+                  """,
+                spec -> spec.after(actual -> """
+                  <project>
+                      <parent>
+                          <groupId>com.example</groupId>
+                          <artifactId>corporate-parent</artifactId>
+                          <version>1.0.0</version>
+                      </parent>
+                      <artifactId>app</artifactId>
+                      <dependencies>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-java</artifactId>
+                              <version>%1$s</version>
+                              <scope>test</scope>
+                          </dependency>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-junit-platform-engine</artifactId>
+                              <scope>test</scope>
+                              <version>%1$s</version>
+                          </dependency>
+                      </dependencies>
+                  </project>
+                  """.formatted(cucumber7(actual)))
+              )
             )
           )
         );
@@ -177,8 +168,8 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
 
     @Test
     void parentManagesTheFamily() {
-        rewriteRun(
-          spec -> remoteParent(spec,
+        withLocalRepository(
+          corporateParent(
             //language=xml
             """
               <dependency>
@@ -192,55 +183,57 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
                   <version>7.18.0</version>
               </dependency>
               """),
-          mavenProject("app",
-            //language=xml
-            pomXml(
-              """
-                <project>
-                    <parent>
-                        <groupId>com.example</groupId>
-                        <artifactId>corporate-parent</artifactId>
-                        <version>1.0.0</version>
-                    </parent>
-                    <artifactId>app</artifactId>
-                    <dependencies>
-                        <dependency>
-                            <groupId>io.cucumber</groupId>
-                            <artifactId>cucumber-java</artifactId>
-                            <scope>test</scope>
-                        </dependency>
-                        <dependency>
-                            <groupId>io.cucumber</groupId>
-                            <artifactId>cucumber-junit</artifactId>
-                            <scope>test</scope>
-                        </dependency>
-                    </dependencies>
-                </project>
-                """,
-              spec -> spec.after(actual -> """
-                <project>
-                    <parent>
-                        <groupId>com.example</groupId>
-                        <artifactId>corporate-parent</artifactId>
-                        <version>1.0.0</version>
-                    </parent>
-                    <artifactId>app</artifactId>
-                    <dependencies>
-                        <dependency>
-                            <groupId>io.cucumber</groupId>
-                            <artifactId>cucumber-java</artifactId>
-                            <scope>test</scope>
-                            <version>%1$s</version>
-                        </dependency>
-                        <dependency>
-                            <groupId>io.cucumber</groupId>
-                            <artifactId>cucumber-junit-platform-engine</artifactId>
-                            <scope>test</scope>
-                            <version>%1$s</version>
-                        </dependency>
-                    </dependencies>
-                </project>
-                """.formatted(cucumber7(actual)))
+          () -> rewriteRun(
+            mavenProject("app",
+              //language=xml
+              pomXml(
+                """
+                  <project>
+                      <parent>
+                          <groupId>com.example</groupId>
+                          <artifactId>corporate-parent</artifactId>
+                          <version>1.0.0</version>
+                      </parent>
+                      <artifactId>app</artifactId>
+                      <dependencies>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-java</artifactId>
+                              <scope>test</scope>
+                          </dependency>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-junit</artifactId>
+                              <scope>test</scope>
+                          </dependency>
+                      </dependencies>
+                  </project>
+                  """,
+                spec -> spec.after(actual -> """
+                  <project>
+                      <parent>
+                          <groupId>com.example</groupId>
+                          <artifactId>corporate-parent</artifactId>
+                          <version>1.0.0</version>
+                      </parent>
+                      <artifactId>app</artifactId>
+                      <dependencies>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-java</artifactId>
+                              <scope>test</scope>
+                              <version>%1$s</version>
+                          </dependency>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-junit-platform-engine</artifactId>
+                              <scope>test</scope>
+                              <version>%1$s</version>
+                          </dependency>
+                      </dependencies>
+                  </project>
+                  """.formatted(cucumber7(actual)))
+              )
             )
           )
         );
@@ -413,35 +406,24 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
     }
 
     // A parent that is not among the sources, as in a corporate parent resolved from a repository, which the
-    // recipe can neither see the sources of nor change
-    private void remoteParent(RecipeSpec spec, String managedDependencies) {
-        Path pom = corporateRepository.resolve("com/example/corporate-parent/1.0.0/corporate-parent-1.0.0.pom");
-        try {
-            Files.createDirectories(pom.getParent());
-            //language=xml
-            Files.writeString(pom, """
-              <project>
-                  <groupId>com.example</groupId>
-                  <artifactId>corporate-parent</artifactId>
-                  <version>1.0.0</version>
-                  <packaging>pom</packaging>
-                  <dependencyManagement>
-                      <dependencies>
-                          %s
-                      </dependencies>
-                  </dependencyManagement>
-              </project>
-              """.formatted(managedDependencies));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-        MavenRepository repository = MavenRepository.builder()
-          .id("corporate")
-          .uri(corporateRepository.toUri().toString())
-          .knownToExist(true)
-          .build();
-        spec.executionContext(MavenExecutionContextView.view(defaultExecutionContext(new SourceSpec[0]))
-          .setRepositories(List.of(repository)));
+    // recipe can neither see the sources of nor change. The local repository needs no context of the test's own, so
+    // the test keeps the default one, which loads the Maven settings and resolves Cucumber through the mirror they
+    // name, if any, as the other tests do
+    private static String corporateParent(String managedDependencies) {
+        //language=xml
+        return """
+          <project>
+              <groupId>com.example</groupId>
+              <artifactId>corporate-parent</artifactId>
+              <version>1.0.0</version>
+              <packaging>pom</packaging>
+              <dependencyManagement>
+                  <dependencies>
+                      %s
+                  </dependencies>
+              </dependencyManagement>
+          </project>
+          """.formatted(managedDependencies);
     }
 
     // The family moves to whichever 7.x is the latest on Maven Central; read it back out of the migrated pom to keep
