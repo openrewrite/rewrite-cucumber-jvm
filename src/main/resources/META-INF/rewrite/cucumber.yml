@@ -19,8 +19,9 @@ type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.UpgradeCucumber8x
 displayName: Upgrade to Cucumber-JVM 8.x
 description: >-
-  Upgrade to Cucumber-JVM 8.x from any previous version. Cucumber-JVM 8 requires Java 17, its JUnit Platform engine
-  requires JUnit 6.1, and its report plugins no longer bring Jackson along with them.
+  Upgrade to Cucumber-JVM 8.x from any previous version. Its JUnit Platform engine requires JUnit 6.1, and its report
+  plugins no longer bring Jackson along with them. Cucumber-JVM 8 also requires Java 17, which this recipe does not
+  upgrade to; do that separately first.
 tags:
   - testing
   - cucumber
@@ -28,7 +29,6 @@ recipeList:
   - org.openrewrite.cucumber.jvm.UpgradeCucumber7x
   - org.openrewrite.cucumber.jvm.AddTestContextToScenarios
   - org.openrewrite.cucumber.jvm.AddJacksonForCucumberPlugins
-  - org.openrewrite.cucumber.jvm.UpgradeJavaForCucumber8
   - org.openrewrite.cucumber.jvm.UpgradeJUnitForCucumber8
   # As in `CucumberToJunitPlatformSuite`, first straight to the latest 8.x, then overriding managed versions too; the
   # other `io.cucumber` artifacts, such as `cucumber-expressions` and `gherkin`, are versioned on their own
@@ -51,28 +51,6 @@ recipeList:
       artifactId: docstring
       newVersion: 8.x
       overrideManagedVersion: true
----
-type: specs.openrewrite.org/v1beta/recipe
-name: org.openrewrite.cucumber.jvm.UpgradeJavaForCucumber8
-displayName: Upgrade to Java 17 for Cucumber-JVM 8
-description: >-
-  Cucumber-JVM 8.0.0 requires Java 17. Raise the Java version the build targets to at least 17, in every build file of
-  a repository that depends on Cucumber-JVM, as a parent POM need not depend on Cucumber-JVM itself. A build already
-  at a later version stays there.
-tags:
-  - testing
-  - cucumber
-preconditions:
-  - org.openrewrite.java.dependencies.search.RepositoryHasDependency:
-      groupIdPattern: io.cucumber
-      artifactIdPattern: cucumber-*
-recipeList:
-  - org.openrewrite.maven.UpdateMavenProjectPropertyJavaVersion:
-      version: 17
-  - org.openrewrite.maven.UseMavenCompilerPluginReleaseConfiguration:
-      releaseVersion: 17
-  - org.openrewrite.gradle.UpdateJavaCompatibility:
-      version: 17
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.UpgradeJUnitForCucumber8
@@ -117,7 +95,7 @@ displayName: Upgrade the JUnit a Spring Boot 3 parent manages for Cucumber-JVM 8
 description: >-
   A Spring Boot 3 parent manages JUnit 5.x through its `junit-jupiter.version` property, which wins over a `junit-bom`
   imported by the project itself. Set that property to the JUnit 6.1.3 that the Cucumber-JVM 8
-  `cucumber-junit-platform-engine` is built against, unless it is already set to a JUnit 6 version.
+  `cucumber-junit-platform-engine` is built against, unless the project already sets it.
 tags:
   - testing
   - cucumber
@@ -133,27 +111,6 @@ recipeList:
       key: junit-jupiter.version
       value: 6.1.3
       preserveExistingValue: true
-  - org.openrewrite.cucumber.jvm.UpgradeJUnitJupiterVersionProperty
----
-type: specs.openrewrite.org/v1beta/recipe
-name: org.openrewrite.cucumber.jvm.UpgradeJUnitJupiterVersionProperty
-displayName: Upgrade a JUnit 5 `junit-jupiter.version` property to JUnit 6
-description: >-
-  Set a `junit-jupiter.version` property that holds a JUnit 5 version to the JUnit 6.1.3 that the Cucumber-JVM 8
-  `cucumber-junit-platform-engine` is built against, and leave one that already holds a JUnit 6 version be.
-tags:
-  - testing
-  - cucumber
-  - junit
-preconditions:
-  - org.openrewrite.text.Find:
-      find: <junit-jupiter\.version>\s*5\.
-      regex: true
-      filePattern: '**/pom.xml'
-recipeList:
-  - org.openrewrite.maven.ChangePropertyValue:
-      key: junit-jupiter.version
-      newValue: 6.1.3
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.UpgradeCucumber7x

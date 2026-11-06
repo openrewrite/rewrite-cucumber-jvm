@@ -49,9 +49,9 @@ class UpgradeCucumber8xTest implements RewriteTest {
                     <artifactId>app</artifactId>
                     <version>1.0.0</version>
                     <properties>
-                        <java.version>11</java.version>
-                        <maven.compiler.source>11</maven.compiler.source>
-                        <maven.compiler.target>11</maven.compiler.target>
+                        <java.version>17</java.version>
+                        <maven.compiler.source>17</maven.compiler.source>
+                        <maven.compiler.target>17</maven.compiler.target>
                         <cucumber.version>7.18.0</cucumber.version>
                     </properties>
                     <dependencyManagement>
@@ -175,65 +175,6 @@ class UpgradeCucumber8xTest implements RewriteTest {
                     <version>1.0.0</version>
                     <properties>
                         <java.version>17</java.version>
-                        <junit-jupiter.version>6.1.3</junit-jupiter.version>
-                    </properties>
-                    <dependencies>
-                        <dependency>
-                            <groupId>io.cucumber</groupId>
-                            <artifactId>cucumber-junit-platform-engine</artifactId>
-                            <version>%s</version>
-                            <scope>test</scope>
-                        </dependency>
-                    </dependencies>
-                </project>
-                """.formatted(version(actual, "8")))
-            )
-          )
-        );
-    }
-
-    @Test
-    void springBoot3ParentWithJUnit5Override() {
-        rewriteRun(
-          mavenProject("app",
-            //language=xml
-            pomXml(
-              """
-                <project>
-                    <parent>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-starter-parent</artifactId>
-                        <version>3.5.6</version>
-                    </parent>
-                    <groupId>com.example</groupId>
-                    <artifactId>app</artifactId>
-                    <version>1.0.0</version>
-                    <properties>
-                        <java.version>21</java.version>
-                        <junit-jupiter.version>5.13.4</junit-jupiter.version>
-                    </properties>
-                    <dependencies>
-                        <dependency>
-                            <groupId>io.cucumber</groupId>
-                            <artifactId>cucumber-junit-platform-engine</artifactId>
-                            <version>7.18.0</version>
-                            <scope>test</scope>
-                        </dependency>
-                    </dependencies>
-                </project>
-                """,
-              spec -> spec.after(actual -> """
-                <project>
-                    <parent>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-starter-parent</artifactId>
-                        <version>3.5.6</version>
-                    </parent>
-                    <groupId>com.example</groupId>
-                    <artifactId>app</artifactId>
-                    <version>1.0.0</version>
-                    <properties>
-                        <java.version>21</java.version>
                         <junit-jupiter.version>6.1.3</junit-jupiter.version>
                     </properties>
                     <dependencies>
