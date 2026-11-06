@@ -15,6 +15,7 @@
  */
 package org.openrewrite.cucumber.jvm;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -160,110 +161,6 @@ class AddJacksonForCucumberPluginsTest implements RewriteTest {
         );
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {
-      "cucumber.plugin=pretty, junit:target/cucumber.xml, rerun:target/rerun.txt",
-      "cucumber.publish.enabled=false",
-      "cucumber.publish.quiet=true"
-    })
-    void noPluginNeedingJackson(String property) {
-        rewriteRun(
-          mavenProject("app",
-            pomXml(POM),
-            srcTestResources(
-              properties(property, spec -> spec.path("cucumber.properties"))
-            )
-          )
-        );
-    }
-
-    @Test
-    void cucumberPluginKeyOutsideOfCucumberProperties() {
-        rewriteRun(
-          mavenProject("app",
-            pomXml(POM),
-            srcMainResources(
-              properties("cucumber.plugin=html:target/cucumber.html", spec -> spec.path("application.properties"))
-            )
-          )
-        );
-    }
-
-    @Test
-    void jackson2AlreadyPresent() {
-        rewriteRun(
-          mavenProject("app",
-            //language=xml
-            pomXml(
-              """
-                <project>
-                    <groupId>com.example</groupId>
-                    <artifactId>app</artifactId>
-                    <version>1.0.0</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>com.fasterxml.jackson.core</groupId>
-                            <artifactId>jackson-databind</artifactId>
-                            <version>2.17.2</version>
-                            <scope>test</scope>
-                        </dependency>
-                        <dependency>
-                            <groupId>com.fasterxml.jackson.datatype</groupId>
-                            <artifactId>jackson-datatype-jdk8</artifactId>
-                            <version>2.17.2</version>
-                            <scope>test</scope>
-                        </dependency>
-                        <dependency>
-                            <groupId>io.cucumber</groupId>
-                            <artifactId>cucumber-java</artifactId>
-                            <version>7.18.0</version>
-                            <scope>test</scope>
-                        </dependency>
-                    </dependencies>
-                </project>
-                """
-            ),
-            srcTestResources(
-              properties("cucumber.plugin=html:target/cucumber.html", spec -> spec.path("junit-platform.properties"))
-            )
-          )
-        );
-    }
-
-    @Test
-    void jackson3AlreadyPresent() {
-        rewriteRun(
-          mavenProject("app",
-            //language=xml
-            pomXml(
-              """
-                <project>
-                    <groupId>com.example</groupId>
-                    <artifactId>app</artifactId>
-                    <version>1.0.0</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>tools.jackson.core</groupId>
-                            <artifactId>jackson-databind</artifactId>
-                            <version>3.0.0</version>
-                        </dependency>
-                        <dependency>
-                            <groupId>io.cucumber</groupId>
-                            <artifactId>cucumber-java</artifactId>
-                            <version>7.18.0</version>
-                            <scope>test</scope>
-                        </dependency>
-                    </dependencies>
-                </project>
-                """
-            ),
-            srcTestResources(
-              properties("cucumber.plugin=html:target/cucumber.html", spec -> spec.path("junit-platform.properties"))
-            )
-          )
-        );
-    }
-
     @Test
     void onlyTheModuleConfiguringThePlugin() {
         rewriteRun(
@@ -294,5 +191,113 @@ class AddJacksonForCucumberPluginsTest implements RewriteTest {
             )
           )
         );
+    }
+
+    @Nested
+    class NoChange {
+
+        @ParameterizedTest
+        @ValueSource(strings = {
+          "cucumber.plugin=pretty, junit:target/cucumber.xml, rerun:target/rerun.txt",
+          "cucumber.publish.enabled=false",
+          "cucumber.publish.quiet=true"
+        })
+        void noPluginNeedingJackson(String property) {
+            rewriteRun(
+              mavenProject("app",
+                pomXml(POM),
+                srcTestResources(
+                  properties(property, spec -> spec.path("cucumber.properties"))
+                )
+              )
+            );
+        }
+
+        @Test
+        void cucumberPluginKeyOutsideOfCucumberProperties() {
+            rewriteRun(
+              mavenProject("app",
+                pomXml(POM),
+                srcMainResources(
+                  properties("cucumber.plugin=html:target/cucumber.html", spec -> spec.path("application.properties"))
+                )
+              )
+            );
+        }
+
+        @Test
+        void jackson2AlreadyPresent() {
+            rewriteRun(
+              mavenProject("app",
+                //language=xml
+                pomXml(
+                  """
+                    <project>
+                        <groupId>com.example</groupId>
+                        <artifactId>app</artifactId>
+                        <version>1.0.0</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.fasterxml.jackson.core</groupId>
+                                <artifactId>jackson-databind</artifactId>
+                                <version>2.17.2</version>
+                                <scope>test</scope>
+                            </dependency>
+                            <dependency>
+                                <groupId>com.fasterxml.jackson.datatype</groupId>
+                                <artifactId>jackson-datatype-jdk8</artifactId>
+                                <version>2.17.2</version>
+                                <scope>test</scope>
+                            </dependency>
+                            <dependency>
+                                <groupId>io.cucumber</groupId>
+                                <artifactId>cucumber-java</artifactId>
+                                <version>7.18.0</version>
+                                <scope>test</scope>
+                            </dependency>
+                        </dependencies>
+                    </project>
+                    """
+                ),
+                srcTestResources(
+                  properties("cucumber.plugin=html:target/cucumber.html", spec -> spec.path("junit-platform.properties"))
+                )
+              )
+            );
+        }
+
+        @Test
+        void jackson3AlreadyPresent() {
+            rewriteRun(
+              mavenProject("app",
+                //language=xml
+                pomXml(
+                  """
+                    <project>
+                        <groupId>com.example</groupId>
+                        <artifactId>app</artifactId>
+                        <version>1.0.0</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>tools.jackson.core</groupId>
+                                <artifactId>jackson-databind</artifactId>
+                                <version>3.0.0</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>io.cucumber</groupId>
+                                <artifactId>cucumber-java</artifactId>
+                                <version>7.18.0</version>
+                                <scope>test</scope>
+                            </dependency>
+                        </dependencies>
+                    </project>
+                    """
+                ),
+                srcTestResources(
+                  properties("cucumber.plugin=html:target/cucumber.html", spec -> spec.path("junit-platform.properties"))
+                )
+              )
+            );
+        }
     }
 }
