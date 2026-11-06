@@ -111,6 +111,33 @@ class AddJacksonForCucumberPluginsTest implements RewriteTest {
     }
 
     @Test
+    void jsonPluginInCucumberApiCucumberOptions() {
+        rewriteRun(
+          // Before `UpgradeCucumber5x` moves it, which the scan does not see
+          spec -> spec.parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
+            "cucumber-core-4.8.1", "cucumber-junit-4.8.1", "junit-4")),
+          mavenProject("app",
+            pomGainingJackson(),
+            srcTestJava(
+              //language=java
+              java(
+                """
+                  import cucumber.api.CucumberOptions;
+                  import cucumber.api.junit.Cucumber;
+                  import org.junit.runner.RunWith;
+
+                  @RunWith(Cucumber.class)
+                  @CucumberOptions(plugin = {"progress", "json:cucumber-results.json"})
+                  public class RunCucumberIT {
+                  }
+                  """
+              )
+            )
+          )
+        );
+    }
+
+    @Test
     void publishInTestNGCucumberOptions() {
         rewriteRun(
           mavenProject("app",
