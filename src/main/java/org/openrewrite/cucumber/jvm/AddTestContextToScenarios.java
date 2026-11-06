@@ -103,17 +103,15 @@ public class AddTestContextToScenarios extends Recipe {
             }
 
             private boolean referencesIdentifier(J.MethodDeclaration md, String name) {
-                AtomicBoolean found = new AtomicBoolean();
-                new JavaIsoVisitor<AtomicBoolean>() {
+                return new JavaIsoVisitor<AtomicBoolean>() {
                     @Override
-                    public J.Identifier visitIdentifier(J.Identifier identifier, AtomicBoolean f) {
+                    public J.Identifier visitIdentifier(J.Identifier identifier, AtomicBoolean found) {
                         if (name.equals(identifier.getSimpleName())) {
-                            f.set(true);
+                            found.set(true);
                         }
                         return identifier;
                     }
-                }.visit(md.getBody(), found);
-                return found.get();
+                }.reduce(md, new AtomicBoolean()).get();
             }
         });
     }

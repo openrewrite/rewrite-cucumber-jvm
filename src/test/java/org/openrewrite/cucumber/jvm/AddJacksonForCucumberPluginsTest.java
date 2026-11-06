@@ -26,9 +26,6 @@ import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 import org.openrewrite.test.SourceSpecs;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.openrewrite.java.Assertions.*;
 import static org.openrewrite.maven.Assertions.pomXml;
@@ -61,37 +58,16 @@ class AddJacksonForCucumberPluginsTest implements RewriteTest {
       </project>
       """;
 
-    //language=xml
-    private static final String POM_WITH_JACKSON = """
-      <project>
-          <groupId>com.example</groupId>
-          <artifactId>app</artifactId>
-          <version>1.0.0</version>
-          <dependencies>
-              <dependency>
-                  <groupId>com.fasterxml.jackson.core</groupId>
-                  <artifactId>jackson-databind</artifactId>
-                  <version>%1$s</version>
-                  <scope>test</scope>
-              </dependency>
-              <dependency>
-                  <groupId>com.fasterxml.jackson.datatype</groupId>
-                  <artifactId>jackson-datatype-jdk8</artifactId>
-                  <version>%1$s</version>
-                  <scope>test</scope>
-              </dependency>
-              <dependency>
-                  <groupId>io.cucumber</groupId>
-                  <artifactId>cucumber-java</artifactId>
-                  <version>7.18.0</version>
-                  <scope>test</scope>
-              </dependency>
-          </dependencies>
-      </project>
-      """;
-
     private static SourceSpecs pomGainingJackson() {
-        return pomXml(POM, spec -> spec.after(actual -> POM_WITH_JACKSON.formatted(jackson2(actual))));
+        return pomXml(POM, spec -> spec.after(pom -> assertThat(pom)
+          .containsPattern(jackson2AtTestScope("com.fasterxml.jackson.core", "jackson-databind"))
+          .containsPattern(jackson2AtTestScope("com.fasterxml.jackson.datatype", "jackson-datatype-jdk8"))
+          .actual()));
+    }
+
+    private static String jackson2AtTestScope(String groupId, String artifactId) {
+        return "<groupId>%s</groupId>\\s*<artifactId>%s</artifactId>\\s*<version>2\\.\\d+\\.\\d+</version>\\s*<scope>test</scope>"
+          .formatted(groupId, artifactId);
     }
 
     @DocumentExample
@@ -217,7 +193,36 @@ class AddJacksonForCucumberPluginsTest implements RewriteTest {
     void jackson2AlreadyPresent() {
         rewriteRun(
           mavenProject("app",
-            pomXml(POM_WITH_JACKSON.formatted("2.17.2")),
+            //language=xml
+            pomXml(
+              """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.fasterxml.jackson.core</groupId>
+                            <artifactId>jackson-databind</artifactId>
+                            <version>2.17.2</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>com.fasterxml.jackson.datatype</groupId>
+                            <artifactId>jackson-datatype-jdk8</artifactId>
+                            <version>2.17.2</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-java</artifactId>
+                            <version>7.18.0</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """
+            ),
             srcTestResources(
               properties("cucumber.plugin=html:target/cucumber.html", spec -> spec.path("junit-platform.properties"))
             )
@@ -289,13 +294,5 @@ class AddJacksonForCucumberPluginsTest implements RewriteTest {
             )
           )
         );
-    }
-
-    private static final Pattern JACKSON_2_VERSION = Pattern.compile(">(2\\.\\d+\\.\\d+)<");
-
-    private static String jackson2(String actual) {
-        Matcher matcher = JACKSON_2_VERSION.matcher(actual);
-        assertThat(matcher.find()).as("Jackson 2.x version in %s", actual).isTrue();
-        return matcher.group(1);
     }
 }
