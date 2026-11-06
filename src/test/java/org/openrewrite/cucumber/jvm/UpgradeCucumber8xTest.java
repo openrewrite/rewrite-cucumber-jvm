@@ -193,6 +193,130 @@ class UpgradeCucumber8xTest implements RewriteTest {
     }
 
     @Test
+    void importedSpringBoot2BomManagesJUnit() {
+        rewriteRun(
+          mavenProject("app",
+            //language=xml
+            pomXml(
+              """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <dependencyManagement>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.springframework.boot</groupId>
+                                <artifactId>spring-boot-dependencies</artifactId>
+                                <version>2.7.18</version>
+                                <type>pom</type>
+                                <scope>import</scope>
+                            </dependency>
+                        </dependencies>
+                    </dependencyManagement>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-junit-platform-engine</artifactId>
+                            <version>7.18.0</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """,
+              spec -> spec.after(actual -> """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <dependencyManagement>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.junit</groupId>
+                                <artifactId>junit-bom</artifactId>
+                                <version>%s</version>
+                                <type>pom</type>
+                                <scope>import</scope>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.springframework.boot</groupId>
+                                <artifactId>spring-boot-dependencies</artifactId>
+                                <version>2.7.18</version>
+                                <type>pom</type>
+                                <scope>import</scope>
+                            </dependency>
+                        </dependencies>
+                    </dependencyManagement>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-junit-platform-engine</artifactId>
+                            <version>%s</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """.formatted(version(actual, "6"), version(actual, "8")))
+            )
+          )
+        );
+    }
+
+    @Test
+    void springBoot2ParentManagesJUnit() {
+        rewriteRun(
+          mavenProject("app",
+            //language=xml
+            pomXml(
+              """
+                <project>
+                    <parent>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-starter-parent</artifactId>
+                        <version>2.7.18</version>
+                    </parent>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-junit-platform-engine</artifactId>
+                            <version>7.18.0</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """,
+              spec -> spec.after(actual -> """
+                <project>
+                    <parent>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-starter-parent</artifactId>
+                        <version>2.7.18</version>
+                    </parent>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <properties>
+                        <junit-jupiter.version>6.1.3</junit-jupiter.version>
+                    </properties>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-junit-platform-engine</artifactId>
+                            <version>%s</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """.formatted(version(actual, "8")))
+            )
+          )
+        );
+    }
+
+    @Test
     void removedModuleUpgradedAlongWithTheRest() {
         rewriteRun(
           mavenProject("app",

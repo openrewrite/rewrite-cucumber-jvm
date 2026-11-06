@@ -250,7 +250,9 @@ public class AddJacksonForCucumberPlugins extends ScanningRecipe<AddJacksonForCu
     }
 
     private static boolean isCucumberOptions(J.Annotation annotation) {
-        return TypeUtils.isOfClassType(annotation.getType(), "io.cucumber.junit.CucumberOptions") ||
+        // `cucumber.api.CucumberOptions` as well, as the scan reads the sources as they are before `UpgradeCucumber5x`
+        return TypeUtils.isOfClassType(annotation.getType(), "cucumber.api.CucumberOptions") ||
+                TypeUtils.isOfClassType(annotation.getType(), "io.cucumber.junit.CucumberOptions") ||
                 TypeUtils.isOfClassType(annotation.getType(), "io.cucumber.testng.CucumberOptions");
     }
 
