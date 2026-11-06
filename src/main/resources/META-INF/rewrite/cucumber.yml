@@ -27,6 +27,7 @@ tags:
   - cucumber
 recipeList:
   - org.openrewrite.cucumber.jvm.UpgradeCucumber7x
+  - org.openrewrite.cucumber.jvm.ReplaceRemovedCucumber8Modules
   - org.openrewrite.cucumber.jvm.AddTestContextToScenarios
   - org.openrewrite.cucumber.jvm.AddJacksonForCucumberPlugins
   - org.openrewrite.cucumber.jvm.UpgradeJUnitForCucumber8
@@ -51,6 +52,58 @@ recipeList:
       artifactId: docstring
       newVersion: 8.x
       overrideManagedVersion: true
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.ReplaceRemovedCucumber8Modules
+displayName: Replace the modules removed in Cucumber-JVM 8.0.0
+description: >-
+  Cucumber-JVM 8.0.0 removed the Java EE based `cucumber-cdi2` and `cucumber-openejb` modules in favor of
+  `cucumber-jakarta-cdi` and `cucumber-jakarta-openejb`. Swap the dependencies, keeping their version, and point every
+  reference to the old object factories at the new ones: in code, in string literals such as an
+  `@ConfigurationParameter` value, and in a `cucumber.object-factory` property. `cucumber-deltaspike` was removed
+  without a replacement, so it is only flagged. Migrating the CDI beans themselves from `javax` to `jakarta` is left to
+  the Jakarta EE recipes.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  # The version is kept, so that a shared `${cucumber.version}` keeps them aligned with the other Cucumber-JVM modules
+  # for `UpgradeCucumber8x` to upgrade together
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: io.cucumber
+      oldArtifactId: cucumber-cdi2
+      newArtifactId: cucumber-jakarta-cdi
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: io.cucumber
+      oldArtifactId: cucumber-openejb
+      newArtifactId: cucumber-jakarta-openejb
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: io.cucumber.cdi2.Cdi2Factory
+      newFullyQualifiedTypeName: io.cucumber.jakarta.cdi.CdiJakartaFactory
+      ignoreDefinition: true
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: io.cucumber.openejb.OpenEJBObjectFactory
+      newFullyQualifiedTypeName: io.cucumber.jakarta.openejb.OpenEJBObjectFactory
+      ignoreDefinition: true
+  - org.openrewrite.java.ReplaceStringLiteralValue:
+      oldLiteralValue: io.cucumber.cdi2.Cdi2Factory
+      newLiteralValue: io.cucumber.jakarta.cdi.CdiJakartaFactory
+  - org.openrewrite.java.ReplaceStringLiteralValue:
+      oldLiteralValue: io.cucumber.openejb.OpenEJBObjectFactory
+      newLiteralValue: io.cucumber.jakarta.openejb.OpenEJBObjectFactory
+  - org.openrewrite.properties.ChangePropertyValue:
+      propertyKey: cucumber.object-factory
+      oldValue: io.cucumber.cdi2.Cdi2Factory
+      newValue: io.cucumber.jakarta.cdi.CdiJakartaFactory
+      relaxedBinding: false
+  - org.openrewrite.properties.ChangePropertyValue:
+      propertyKey: cucumber.object-factory
+      oldValue: io.cucumber.openejb.OpenEJBObjectFactory
+      newValue: io.cucumber.jakarta.openejb.OpenEJBObjectFactory
+      relaxedBinding: false
+  - org.openrewrite.java.dependencies.DependencyInsight:
+      groupIdPattern: io.cucumber
+      artifactIdPattern: cucumber-deltaspike
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.cucumber.jvm.UpgradeJUnitForCucumber8

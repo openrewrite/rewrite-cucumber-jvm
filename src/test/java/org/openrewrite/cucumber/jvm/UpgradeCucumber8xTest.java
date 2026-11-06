@@ -193,6 +193,67 @@ class UpgradeCucumber8xTest implements RewriteTest {
     }
 
     @Test
+    void removedModuleUpgradedAlongWithTheRest() {
+        rewriteRun(
+          mavenProject("app",
+            //language=xml
+            pomXml(
+              """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <properties>
+                        <maven.compiler.release>17</maven.compiler.release>
+                        <cucumber.version>7.34.3</cucumber.version>
+                    </properties>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-java</artifactId>
+                            <version>${cucumber.version}</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-cdi2</artifactId>
+                            <version>${cucumber.version}</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """,
+              spec -> spec.after(actual -> """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <properties>
+                        <maven.compiler.release>17</maven.compiler.release>
+                        <cucumber.version>%s</cucumber.version>
+                    </properties>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-java</artifactId>
+                            <version>${cucumber.version}</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-jakarta-cdi</artifactId>
+                            <version>${cucumber.version}</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """.formatted(version(actual, "8")))
+            )
+          )
+        );
+    }
+
+    @Test
     void noCucumber() {
         rewriteRun(
           mavenProject("app",
