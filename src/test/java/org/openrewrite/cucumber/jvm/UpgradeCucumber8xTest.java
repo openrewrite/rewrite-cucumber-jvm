@@ -15,6 +15,7 @@
  */
 package org.openrewrite.cucumber.jvm;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.openrewrite.DocumentExample;
 import org.openrewrite.Issue;
@@ -192,6 +193,7 @@ class UpgradeCucumber8xTest implements RewriteTest {
         );
     }
 
+    @Disabled("The moderne-cache-3 mirror of Maven Central answers 404 for cucumber-jakarta-cdi:8.0.4, which it has not cached")
     @Test
     void removedModuleUpgradedAlongWithTheRest() {
         rewriteRun(
