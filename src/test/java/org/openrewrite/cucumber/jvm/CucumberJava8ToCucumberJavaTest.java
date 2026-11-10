@@ -920,6 +920,48 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
         }
 
         @Test
+        void declareImplicitlyTypedParametersWithTheirInferredType() {
+            rewriteRun(
+              // language=java
+              java(
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java8.En;
+
+                  public class CalculatorStepDefinitions implements En {
+                      public CalculatorStepDefinitions() {
+                          Given("{int} cakes", i -> {
+                              System.out.println(i);
+                          });
+                          Given("{int} plus {int}", (a, b) -> {
+                              System.out.println(a);
+                          });
+                      }
+                  }
+                  """,
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java.en.Given;
+
+                  public class CalculatorStepDefinitions {
+
+                      @Given("{int} cakes")
+                      public void int_cakes(Object i) {
+                          System.out.println(i);
+                      }
+
+                      @Given("{int} plus {int}")
+                      public void int_plus_int(Object a, Object b) {
+                          System.out.println(a);
+                      }
+                  }
+                  """
+              ));
+        }
+
+        @Test
         void retainThrowsException() {
             rewriteRun(
               // language=java
