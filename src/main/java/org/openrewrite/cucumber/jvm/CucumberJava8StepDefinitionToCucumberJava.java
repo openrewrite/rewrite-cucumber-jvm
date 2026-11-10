@@ -145,8 +145,27 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
         J.Literal cucumberExpression = (J.Literal) arguments.get(0);
         if (definitionBody instanceof J.Lambda) {
             J.Lambda lambda = (J.Lambda) definitionBody;
+            if (isExplicitlyTyped(lambda)) {
+                return new StepDefinitionArguments(annotationName, cucumberExpression,
+                        declaredParameters(lambda), emptyList(), lambda.getBody());
+            }
+            List<JavaType.Class> parameterTypes = new ArrayList<>();
+            List<String> parameterNames = new ArrayList<>();
+            for (J parameter : lambda.getParameters().getParameters()) {
+                if (!(parameter instanceof J.VariableDeclarations)) {
+                    continue;
+                }
+                J.VariableDeclarations.NamedVariable variable = ((J.VariableDeclarations) parameter).getVariables().get(0);
+                JavaType type = variable.getType();
+                if (!(type instanceof JavaType.Class) || type instanceof JavaType.Parameterized) {
+                    return null;
+                }
+                parameterTypes.add((JavaType.Class) type);
+                parameterNames.add(variable.getSimpleName());
+            }
             return new StepDefinitionArguments(annotationName, cucumberExpression,
-                    declaredParameters(lambda), emptyList(), lambda.getBody());
+                    typedParameters(parameterTypes, parameterNames, packageName, replacementImports),
+                    new ArrayList<>(parameterTypes), lambda.getBody());
         }
         if (!(definitionBody instanceof J.MemberReference)) {
             return null;
@@ -162,6 +181,13 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
             return null;
         }
         List<String> parameterNames = MemberReferences.parameterNames(reference, kind, parameterTypes.size());
+        return new StepDefinitionArguments(annotationName, cucumberExpression,
+                typedParameters(parameterTypes, parameterNames, packageName, replacementImports),
+                new ArrayList<>(parameterTypes), MemberReferences.body(reference, kind, parameterNames));
+    }
+
+    private static String typedParameters(List<JavaType.Class> parameterTypes, List<String> parameterNames,
+                                          String packageName, List<String> replacementImports) {
         StringBuilder parameters = new StringBuilder();
         for (int i = 0; i < parameterTypes.size(); i++) {
             JavaType.Class parameterType = parameterTypes.get(i);
@@ -172,8 +198,17 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
             parameters.append(i == 0 ? "" : ", ")
                     .append(typeName(parameterType, packageName)).append(' ').append(parameterNames.get(i));
         }
-        return new StepDefinitionArguments(annotationName, cucumberExpression, parameters.toString(),
-                new ArrayList<>(parameterTypes), MemberReferences.body(reference, kind, parameterNames));
+        return parameters.toString();
+    }
+
+    private static boolean isExplicitlyTyped(J.Lambda lambda) {
+        for (J parameter : lambda.getParameters().getParameters()) {
+            if (parameter instanceof J.VariableDeclarations &&
+                    ((J.VariableDeclarations) parameter).getTypeExpression() == null) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static String declaredParameters(J.Lambda lambda) {
