@@ -108,18 +108,17 @@ class MemberReferences {
     }
 
     /**
+     * @param parameterTypes the types the method replacing the reference declares its parameters with, one for each
+     *                       name, such as a step interface's `Integer` where the method referred to takes an `int`
      * @return the body of the method replacing the reference: a call of the method it refers to, on the parameters
      * that method now declares
      */
-    static Expression body(J.MemberReference reference, Kind kind, List<String> parameterNames) {
-        JavaType.Method methodType = Objects.requireNonNull(reference.getMethodType());
+    static Expression body(J.MemberReference reference, Kind kind, List<String> parameterNames,
+                           List<? extends JavaType> parameterTypes) {
         List<Expression> arguments = new ArrayList<>();
         for (int i = 0; i < parameterNames.size(); i++) {
-            JavaType type = kind == Kind.UNBOUND ?
-                    i == 0 ? reference.getContaining().getType() : methodType.getParameterTypes().get(i - 1) :
-                    methodType.getParameterTypes().get(i);
             arguments.add(new J.Identifier(randomId(), Space.EMPTY, Markers.EMPTY, emptyList(),
-                    parameterNames.get(i), type, null));
+                    parameterNames.get(i), parameterTypes.get(i), null));
         }
         return invocation(reference, kind, arguments);
     }

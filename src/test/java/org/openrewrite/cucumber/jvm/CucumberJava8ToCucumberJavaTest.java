@@ -22,6 +22,7 @@ import org.openrewrite.InMemoryExecutionContext;
 import org.openrewrite.Issue;
 import org.openrewrite.config.Environment;
 import org.openrewrite.java.JavaParser;
+import org.openrewrite.test.RecipeQualityValidation;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
@@ -532,6 +533,8 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
         void flagCapturedLocalVariablesThatCannotBecomeFields() {
             // Two variables declared in one statement have no one type to declare a field with
             rewriteRun(
+              // The migrated method uses `a` and `b` out of their scope, which the parser can't type
+              spec -> spec.recipeQualityValidation(RecipeQualityValidation.builder().parserTypedTrees(false).build()),
               // language=java
               java(
                 """
@@ -1661,6 +1664,84 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                       }
 
                       private void report(Scenario scenario) {
+                      }
+
+                  }
+                  """
+              ));
+        }
+
+        @Test
+        void convertMethodReferenceTakingASupertypeOfScenario() {
+            rewriteRun(
+              // language=java
+              java(
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java8.En;
+
+                  public class HookStepDefinitions implements En {
+
+                      public HookStepDefinitions() {
+                          After(this::report);
+                      }
+
+                      private void report(Object scenario) {
+                      }
+
+                  }
+                  """,
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java.After;
+                  import io.cucumber.java.Scenario;
+
+                  public class HookStepDefinitions {
+
+                      @After
+                      public void after(Scenario scenario) {
+                          this.report(scenario);
+                      }
+
+                      private void report(Object scenario) {
+                      }
+
+                  }
+                  """
+              ));
+        }
+
+        @Test
+        void convertUnboundMethodReference() {
+            rewriteRun(
+              // language=java
+              java(
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java8.En;
+
+                  public class HookStepDefinitions implements En {
+
+                      public HookStepDefinitions() {
+                          Before(Object::hashCode);
+                      }
+
+                  }
+                  """,
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java.Before;
+                  import io.cucumber.java.Scenario;
+
+                  public class HookStepDefinitions {
+
+                      @Before
+                      public void before(Scenario object) {
+                          object.hashCode();
                       }
 
                   }

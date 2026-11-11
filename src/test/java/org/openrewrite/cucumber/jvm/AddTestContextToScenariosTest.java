@@ -17,7 +17,6 @@ package org.openrewrite.cucumber.jvm;
 
 import org.junit.jupiter.api.Test;
 import org.openrewrite.DocumentExample;
-import org.openrewrite.InMemoryExecutionContext;
 import org.openrewrite.Issue;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
@@ -32,10 +31,22 @@ class AddTestContextToScenariosTest implements RewriteTest {
     public void defaults(RecipeSpec spec) {
         spec.recipe(new AddTestContextToScenarios())
           .parser(JavaParser.fromJavaVersion()
-            .classpathFromResources(new InMemoryExecutionContext(), "cucumber-testng-7")
-            // The type tables hold no TestNG
             //language=java
             .dependsOn(
+              // Declares both Cucumber 7's `scenarios()`, which the input calls, and Cucumber 8's
+              // `scenarios(ITestContext)`, which the output calls
+              """
+                package io.cucumber.testng;
+                import org.testng.ITestContext;
+                public abstract class AbstractTestNGCucumberTests {
+                    public Object[][] scenarios() {
+                        return null;
+                    }
+                    public Object[][] scenarios(ITestContext context) {
+                        return null;
+                    }
+                }
+                """,
               """
                 package org.testng;
                 public interface ITestContext {}
