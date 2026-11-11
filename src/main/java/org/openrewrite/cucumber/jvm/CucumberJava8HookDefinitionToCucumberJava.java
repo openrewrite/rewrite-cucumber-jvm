@@ -28,6 +28,7 @@ import org.openrewrite.java.MethodMatcher;
 import org.openrewrite.java.search.UsesMethod;
 import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
+import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.java.tree.JavaType.Primitive;
 import org.openrewrite.marker.SearchResult;
 
@@ -179,13 +180,14 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
         J.MemberReference reference = (J.MemberReference) body;
         int parameterCount = takesScenario ? 1 : 0;
         MemberReferences.Kind kind = MemberReferences.kind(reference, parameterCount);
-        if (kind == null) {
+        List<JavaType> parameterTypes = MemberReferences.functionalMethodParameters(reference);
+        if (kind == null || parameterTypes == null || parameterTypes.size() != parameterCount) {
             return null;
         }
         List<String> parameterNames = MemberReferences.parameterNames(reference, kind, parameterCount);
         return new HookArguments(annotationName, null, null,
                 takesScenario ? parameterNames.get(0) : null,
-                MemberReferences.body(reference, kind, parameterNames));
+                MemberReferences.body(reference, kind, parameterNames, parameterTypes));
     }
 
 }

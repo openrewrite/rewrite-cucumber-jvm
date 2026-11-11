@@ -183,7 +183,7 @@ public class CucumberJava8StepDefinitionToCucumberJava extends Recipe {
         List<String> parameterNames = MemberReferences.parameterNames(reference, kind, parameterTypes.size());
         return new StepDefinitionArguments(annotationName, cucumberExpression,
                 typedParameters(parameterTypes, parameterNames, packageName, replacementImports),
-                new ArrayList<>(parameterTypes), MemberReferences.body(reference, kind, parameterNames));
+                new ArrayList<>(parameterTypes), MemberReferences.body(reference, kind, parameterNames, parameterTypes));
     }
 
     private static String typedParameters(List<JavaType.Class> parameterTypes, List<String> parameterNames,

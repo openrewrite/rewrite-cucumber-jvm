@@ -1670,6 +1670,48 @@ class CucumberJava8ToCucumberJavaTest implements RewriteTest {
                   """
               ));
         }
+
+        @Test
+        void convertMethodReferenceTakingASupertypeOfScenario() {
+            rewriteRun(
+              // language=java
+              java(
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java8.En;
+
+                  public class HookStepDefinitions implements En {
+
+                      public HookStepDefinitions() {
+                          After(this::report);
+                      }
+
+                      private void report(Object scenario) {
+                      }
+
+                  }
+                  """,
+                """
+                  package com.example.app;
+
+                  import io.cucumber.java.After;
+                  import io.cucumber.java.Scenario;
+
+                  public class HookStepDefinitions {
+
+                      @After
+                      public void after(Scenario scenario) {
+                          this.report(scenario);
+                      }
+
+                      private void report(Object scenario) {
+                      }
+
+                  }
+                  """
+              ));
+        }
     }
 
     @Issue("https://github.com/openrewrite/rewrite-cucumber-jvm/issues/2")

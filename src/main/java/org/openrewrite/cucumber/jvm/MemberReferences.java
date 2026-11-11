@@ -83,6 +83,22 @@ class MemberReferences {
     }
 
     /**
+     * @return the parameter types of the one abstract method of the interface the reference implements, such as the
+     * `Scenario` of a hook body, or {@code null} where the reference's type has no such method
+     */
+    static @Nullable List<JavaType> functionalMethodParameters(J.MemberReference reference) {
+        JavaType.FullyQualified functionalInterface = TypeUtils.asFullyQualified(reference.getType());
+        if (functionalInterface != null) {
+            for (JavaType.Method method : functionalInterface.getMethods()) {
+                if (method.hasFlags(Flag.Abstract)) {
+                    return method.getParameterTypes();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * @return the names to give the parameters of the method replacing the reference, taken from the method it
      * refers to, and numbered where those names are not all there to take
      */
@@ -108,26 +124,17 @@ class MemberReferences {
     }
 
     /**
+     * @param parameterTypes the types the method replacing the reference declares its parameters with, such as the
+     *                       `Integer` of a step's interface where the method referred to takes an `int`
      * @return the body of the method replacing the reference: a call of the method it refers to, on the parameters
      * that method now declares
      */
-    static Expression body(J.MemberReference reference, Kind kind, List<String> parameterNames) {
-        JavaType.Method methodType = Objects.requireNonNull(reference.getMethodType());
-        // A step declares its parameters as the interface's type arguments, such as `Integer` where the method
-        // referred to takes an `int`. A hook's interface has none, so its `Scenario` keeps the type that method takes.
-        List<JavaType.Class> typeArguments = functionalInterfaceParameters(reference);
+    static Expression body(J.MemberReference reference, Kind kind, List<String> parameterNames,
+                           List<? extends JavaType> parameterTypes) {
         List<Expression> arguments = new ArrayList<>();
         for (int i = 0; i < parameterNames.size(); i++) {
-            JavaType type;
-            if (typeArguments != null && typeArguments.size() == parameterNames.size()) {
-                type = typeArguments.get(i);
-            } else if (kind == Kind.UNBOUND) {
-                type = i == 0 ? reference.getContaining().getType() : methodType.getParameterTypes().get(i - 1);
-            } else {
-                type = methodType.getParameterTypes().get(i);
-            }
             arguments.add(new J.Identifier(randomId(), Space.EMPTY, Markers.EMPTY, emptyList(),
-                    parameterNames.get(i), type, null));
+                    parameterNames.get(i), parameterTypes.get(i), null));
         }
         return invocation(reference, kind, arguments);
     }
