@@ -197,9 +197,10 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
 class HookArguments {
 
     /**
-     * Imported as the `io.cucumber.java8` type the hook body still accepts, rather than as the
-     * `io.cucumber.java.Scenario` it will become: the file is only retyped once every hook and step in it has
-     * migrated, and until then the simple name has to resolve against the import already there.
+     * Imported, and given to the argument a hook passes to the method it refers to, as the `io.cucumber.java8` type
+     * the hook body still accepts, rather than as the `io.cucumber.java.Scenario` it will become: the file is only
+     * retyped once every hook and step in it has migrated, and until then the simple name has to resolve against the
+     * import already there.
      */
     static final String IO_CUCUMBER_JAVA8_SCENARIO = "io.cucumber.java8.Scenario";
 
