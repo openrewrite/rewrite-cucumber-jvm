@@ -113,11 +113,19 @@ class MemberReferences {
      */
     static Expression body(J.MemberReference reference, Kind kind, List<String> parameterNames) {
         JavaType.Method methodType = Objects.requireNonNull(reference.getMethodType());
+        // A step declares its parameters as the interface's type arguments, such as `Integer` where the method
+        // referred to takes an `int`. A hook's interface has none, so its `Scenario` keeps the type that method takes.
+        List<JavaType.Class> typeArguments = functionalInterfaceParameters(reference);
         List<Expression> arguments = new ArrayList<>();
         for (int i = 0; i < parameterNames.size(); i++) {
-            JavaType type = kind == Kind.UNBOUND ?
-                    i == 0 ? reference.getContaining().getType() : methodType.getParameterTypes().get(i - 1) :
-                    methodType.getParameterTypes().get(i);
+            JavaType type;
+            if (typeArguments != null && typeArguments.size() == parameterNames.size()) {
+                type = typeArguments.get(i);
+            } else if (kind == Kind.UNBOUND) {
+                type = i == 0 ? reference.getContaining().getType() : methodType.getParameterTypes().get(i - 1);
+            } else {
+                type = methodType.getParameterTypes().get(i);
+            }
             arguments.add(new J.Identifier(randomId(), Space.EMPTY, Markers.EMPTY, emptyList(),
                     parameterNames.get(i), type, null));
         }
