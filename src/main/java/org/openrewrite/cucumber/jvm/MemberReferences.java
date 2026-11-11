@@ -83,22 +83,6 @@ class MemberReferences {
     }
 
     /**
-     * @return the parameter types of the one abstract method of the interface the reference implements, such as the
-     * `Scenario` of a hook body, or {@code null} where the reference's type has no such method
-     */
-    static @Nullable List<JavaType> functionalMethodParameters(J.MemberReference reference) {
-        JavaType.FullyQualified functionalInterface = TypeUtils.asFullyQualified(reference.getType());
-        if (functionalInterface != null) {
-            for (JavaType.Method method : functionalInterface.getMethods()) {
-                if (method.hasFlags(Flag.Abstract)) {
-                    return method.getParameterTypes();
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
      * @return the names to give the parameters of the method replacing the reference, taken from the method it
      * refers to, and numbered where those names are not all there to take
      */
@@ -124,8 +108,8 @@ class MemberReferences {
     }
 
     /**
-     * @param parameterTypes the types the method replacing the reference declares its parameters with, such as the
-     *                       `Integer` of a step's interface where the method referred to takes an `int`
+     * @param parameterTypes the types the method replacing the reference declares its parameters with, one for each
+     *                       name, such as a step interface's `Integer` where the method referred to takes an `int`
      * @return the body of the method replacing the reference: a call of the method it refers to, on the parameters
      * that method now declares
      */

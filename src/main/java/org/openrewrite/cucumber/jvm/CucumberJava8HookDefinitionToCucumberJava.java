@@ -27,9 +27,11 @@ import org.openrewrite.java.JavaVisitor;
 import org.openrewrite.java.MethodMatcher;
 import org.openrewrite.java.search.UsesMethod;
 import org.openrewrite.java.tree.Expression;
+import org.openrewrite.java.tree.Flag;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.java.tree.JavaType.Primitive;
+import org.openrewrite.java.tree.TypeUtils;
 import org.openrewrite.marker.SearchResult;
 
 import java.time.Duration;
@@ -180,7 +182,7 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
         J.MemberReference reference = (J.MemberReference) body;
         int parameterCount = takesScenario ? 1 : 0;
         MemberReferences.Kind kind = MemberReferences.kind(reference, parameterCount);
-        List<JavaType> parameterTypes = MemberReferences.functionalMethodParameters(reference);
+        List<JavaType> parameterTypes = hookBodyParameters(reference);
         if (kind == null || parameterTypes == null || parameterTypes.size() != parameterCount) {
             return null;
         }
@@ -188,6 +190,22 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
         return new HookArguments(annotationName, null, null,
                 takesScenario ? parameterNames.get(0) : null,
                 MemberReferences.body(reference, kind, parameterNames, parameterTypes));
+    }
+
+    /**
+     * @return the parameter types of the method of the hook body interface the reference implements, the `Scenario`
+     * of {@link #IO_CUCUMBER_JAVA8_HOOK_BODY} or none, or {@code null} where the reference's type doesn't declare it
+     */
+    private static @Nullable List<JavaType> hookBodyParameters(J.MemberReference reference) {
+        JavaType.FullyQualified hookBody = TypeUtils.asFullyQualified(reference.getType());
+        if (hookBody != null) {
+            for (JavaType.Method method : hookBody.getMethods()) {
+                if (method.hasFlags(Flag.Abstract)) {
+                    return method.getParameterTypes();
+                }
+            }
+        }
+        return null;
     }
 
 }
