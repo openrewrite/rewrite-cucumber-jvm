@@ -30,7 +30,6 @@ import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.java.tree.JavaType.Primitive;
-import org.openrewrite.java.tree.TypeUtils;
 import org.openrewrite.marker.SearchResult;
 
 import java.time.Duration;
@@ -184,30 +183,12 @@ public class CucumberJava8HookDefinitionToCucumberJava extends Recipe {
         if (kind == null) {
             return null;
         }
-        List<JavaType> parameterTypes = hookBodyParameters(reference);
-        if (parameterTypes == null || parameterTypes.size() != parameterCount) {
-            return null;
-        }
         List<String> parameterNames = MemberReferences.parameterNames(reference, kind, parameterCount);
+        List<JavaType> parameterTypes = takesScenario ?
+                singletonList(JavaType.ShallowClass.build(HookArguments.IO_CUCUMBER_JAVA8_SCENARIO)) : emptyList();
         return new HookArguments(annotationName, null, null,
                 takesScenario ? parameterNames.get(0) : null,
                 MemberReferences.body(reference, kind, parameterNames, parameterTypes));
-    }
-
-    /**
-     * @return the parameter types of the `accept` method of the hook body interface the reference implements, the
-     * `Scenario` of {@link #IO_CUCUMBER_JAVA8_HOOK_BODY} or none, or {@code null} where its type doesn't declare it
-     */
-    private static @Nullable List<JavaType> hookBodyParameters(J.MemberReference reference) {
-        JavaType.FullyQualified hookBody = TypeUtils.asFullyQualified(reference.getType());
-        if (hookBody != null) {
-            for (JavaType.Method method : hookBody.getMethods()) {
-                if ("accept".equals(method.getName())) {
-                    return method.getParameterTypes();
-                }
-            }
-        }
-        return null;
     }
 
 }
@@ -220,7 +201,7 @@ class HookArguments {
      * `io.cucumber.java.Scenario` it will become: the file is only retyped once every hook and step in it has
      * migrated, and until then the simple name has to resolve against the import already there.
      */
-    private static final String IO_CUCUMBER_JAVA8_SCENARIO = "io.cucumber.java8.Scenario";
+    static final String IO_CUCUMBER_JAVA8_SCENARIO = "io.cucumber.java8.Scenario";
 
     String annotationName;
 
