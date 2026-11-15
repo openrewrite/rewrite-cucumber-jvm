@@ -28,9 +28,9 @@ import org.openrewrite.java.search.UsesType;
 import org.openrewrite.java.tree.*;
 import org.openrewrite.marker.Markers;
 
-import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 public class AddTestContextToScenarios extends Recipe {
@@ -69,7 +69,7 @@ public class AddTestContextToScenarios extends Recipe {
                 JavaType.Method methodType = md.getMethodType();
                 J.VariableDeclarations parameter = (J.VariableDeclarations) md.getParameters().get(0);
                 J.Identifier contextArgument = new J.Identifier(Tree.randomId(), Space.EMPTY, Markers.EMPTY,
-                        Collections.emptyList(), parameterName, parameter.getType(),
+                        emptyList(), parameterName, parameter.getType(),
                         parameter.getVariables().get(0).getVariableType());
                 return (J.MethodDeclaration) new JavaIsoVisitor<ExecutionContext>() {
                     @Override

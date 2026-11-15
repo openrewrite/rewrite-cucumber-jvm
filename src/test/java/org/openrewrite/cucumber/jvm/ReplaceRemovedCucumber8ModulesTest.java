@@ -35,7 +35,9 @@ class ReplaceRemovedCucumber8ModulesTest implements RewriteTest {
         spec.recipeFromResources("org.openrewrite.cucumber.jvm.ReplaceRemovedCucumber8Modules")
           .parser(JavaParser.fromJavaVersion()
             .classpathFromResources(new InMemoryExecutionContext(),
-              "cucumber-junit-7", "cucumber-junit-platform-engine-7", "junit-platform-suite-api-1")
+              "cucumber-junit-7",
+              "cucumber-junit-platform-engine-7",
+              "junit-platform-suite-api-1")
             // The type tables hold neither the removed nor the replacement modules
             //language=java
             .dependsOn(

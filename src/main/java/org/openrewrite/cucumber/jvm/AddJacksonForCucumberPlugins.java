@@ -25,6 +25,7 @@ import org.openrewrite.Tree;
 import org.openrewrite.TreeVisitor;
 import org.openrewrite.gradle.marker.GradleDependencyConfiguration;
 import org.openrewrite.gradle.marker.GradleProject;
+import org.openrewrite.internal.StringUtils;
 import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.dependencies.AddDependency;
 import org.openrewrite.java.marker.JavaProject;
@@ -39,6 +40,9 @@ import org.openrewrite.properties.tree.Properties;
 
 import java.nio.file.Path;
 import java.util.*;
+
+import static java.util.Collections.emptyList;
+import static java.util.Collections.unmodifiableMap;
 
 /**
  * Cucumber-JVM 8.0.0 no longer shades Jackson, so the plugins that write JSON need it on the classpath.
@@ -62,7 +66,7 @@ public class AddJacksonForCucumberPlugins extends ScanningRecipe<AddJacksonForCu
         constants.put("PLUGIN_PROPERTY_NAME", PLUGIN_PROPERTY);
         constants.put("PLUGIN_PUBLISH_ENABLED_PROPERTY_NAME", PUBLISH_ENABLED_PROPERTY);
         constants.put("PLUGIN_PUBLISH_TOKEN_PROPERTY_NAME", PUBLISH_TOKEN_PROPERTY);
-        PROPERTY_CONSTANTS = Collections.unmodifiableMap(constants);
+        PROPERTY_CONSTANTS = unmodifiableMap(constants);
     }
 
     /**
@@ -257,7 +261,7 @@ public class AddJacksonForCucumberPlugins extends ScanningRecipe<AddJacksonForCu
     }
 
     private static List<Expression> arguments(J.Annotation annotation) {
-        return annotation.getArguments() == null ? Collections.emptyList() : annotation.getArguments();
+        return annotation.getArguments() == null ? emptyList() : annotation.getArguments();
     }
 
     private static boolean isCucumberPropertiesFile(Path sourcePath) {
@@ -290,7 +294,7 @@ public class AddJacksonForCucumberPlugins extends ScanningRecipe<AddJacksonForCu
             case PUBLISH_ENABLED_PROPERTY:
                 return "true".equalsIgnoreCase(value.trim());
             case PUBLISH_TOKEN_PROPERTY:
-                return !value.trim().isEmpty();
+                return !StringUtils.isBlank(value);
             default:
                 return false;
         }

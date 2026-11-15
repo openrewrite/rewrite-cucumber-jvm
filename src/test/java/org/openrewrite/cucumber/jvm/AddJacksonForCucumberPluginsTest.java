@@ -39,7 +39,10 @@ class AddJacksonForCucumberPluginsTest implements RewriteTest {
     public void defaults(RecipeSpec spec) {
         spec.recipe(new AddJacksonForCucumberPlugins())
           .parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
-            "cucumber-junit-7", "cucumber-testng-7", "cucumber-junit-platform-engine-7", "junit-platform-suite-api-1"));
+            "cucumber-junit-7",
+            "cucumber-testng-7",
+            "cucumber-junit-platform-engine-7",
+            "junit-platform-suite-api-1"));
     }
 
     //language=xml
@@ -115,7 +118,9 @@ class AddJacksonForCucumberPluginsTest implements RewriteTest {
         rewriteRun(
           // Before `UpgradeCucumber5x` moves it, which the scan does not see
           spec -> spec.parser(JavaParser.fromJavaVersion().classpathFromResources(new InMemoryExecutionContext(),
-            "cucumber-core-4.8.1", "cucumber-junit-4.8.1", "junit-4")),
+            "cucumber-core-4.8.1",
+            "cucumber-junit-4.8.1",
+            "junit-4")),
           mavenProject("app",
             pomGainingJackson(),
             srcTestJava(
