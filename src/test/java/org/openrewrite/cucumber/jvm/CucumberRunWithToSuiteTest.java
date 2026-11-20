@@ -123,6 +123,16 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
     @Test
     void allOptions() {
         rewriteRun(
+          // Bounds `objectFactory`, and is in `cucumber-core`, which the parser classpath lacks
+          //language=java
+          java(
+            """
+              package io.cucumber.core.backend;
+
+              public interface ObjectFactory {
+              }
+              """
+          ),
           //language=java
           java(
             """
@@ -150,7 +160,7 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
               public class RunCucumberTest {
               }
 
-              class CustomObjectFactory {
+              class CustomObjectFactory implements io.cucumber.core.backend.ObjectFactory {
               }
               """,
             """
@@ -177,7 +187,7 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
               public class RunCucumberTest {
               }
 
-              class CustomObjectFactory {
+              class CustomObjectFactory implements io.cucumber.core.backend.ObjectFactory {
               }
               """
           )
