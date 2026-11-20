@@ -33,6 +33,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.util.Collections.*;
 
+import org.openrewrite.java.tree.J;
+
 @RequiredArgsConstructor
 class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
 
@@ -591,14 +593,14 @@ class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {
         // After last cucumber annotated method
         return body.getStatements().stream()
                 .filter(J.MethodDeclaration.class::isInstance)
-                .map(org.openrewrite.java.tree.J.MethodDeclaration.class::cast)
+                .map(J.MethodDeclaration.class::cast)
                 .filter(CucumberJava8ClassVisitor::isCucumberAnnotated)
                 .map(method -> method.getCoordinates().after())
                 .reduce((a, b) -> b)
                 // After last constructor
                 .orElseGet(() -> body.getStatements().stream()
                         .filter(J.MethodDeclaration.class::isInstance)
-                        .map(org.openrewrite.java.tree.J.MethodDeclaration.class::cast)
+                        .map(J.MethodDeclaration.class::cast)
                         .filter(J.MethodDeclaration::isConstructor)
                         .map(constructor -> constructor.getCoordinates().after())
                         .reduce((a, b) -> b)
