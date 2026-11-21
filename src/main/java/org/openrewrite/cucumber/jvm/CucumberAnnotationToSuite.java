@@ -17,6 +17,11 @@ package org.openrewrite.cucumber.jvm;
 
 import lombok.Getter;
 import lombok.SneakyThrows;
+
+import java.text.RuleBasedCollator;
+import java.time.Duration;
+import java.util.Comparator;
+
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Preconditions;
 import org.openrewrite.Recipe;
@@ -32,10 +37,6 @@ import org.openrewrite.java.tree.J.ClassDeclaration;
 import org.openrewrite.java.tree.JavaCoordinates;
 import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.java.tree.TypeUtils;
-
-import java.text.RuleBasedCollator;
-import java.time.Duration;
-import java.util.Comparator;
 
 public class CucumberAnnotationToSuite extends Recipe {
 

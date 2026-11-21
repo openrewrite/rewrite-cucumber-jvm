@@ -17,6 +17,11 @@ package org.openrewrite.cucumber.jvm;
 
 import lombok.Getter;
 import org.jspecify.annotations.Nullable;
+
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.openrewrite.*;
 import org.openrewrite.internal.ListUtils;
 import org.openrewrite.marker.Markers;
@@ -26,10 +31,6 @@ import org.openrewrite.properties.tree.Properties;
 import org.openrewrite.trait.Comments;
 import org.openrewrite.xml.tree.Content;
 import org.openrewrite.xml.tree.Xml;
-
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static java.util.stream.Collectors.*;
 import static org.openrewrite.Tree.randomId;

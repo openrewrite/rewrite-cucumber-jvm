@@ -19,6 +19,10 @@ import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import org.jspecify.annotations.Nullable;
+
+import java.time.Duration;
+import java.util.*;
+
 import org.openrewrite.Cursor;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Preconditions;
@@ -32,9 +36,6 @@ import org.openrewrite.staticanalysis.RemoveUnneededBlock;
 import org.openrewrite.staticanalysis.UnnecessaryThrows;
 import org.openrewrite.staticanalysis.VariableReferences;
 import org.openrewrite.trait.Comments;
-
-import java.time.Duration;
-import java.util.*;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;

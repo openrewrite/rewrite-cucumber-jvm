@@ -17,6 +17,10 @@ package org.openrewrite.cucumber.jvm;
 
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
+
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.internal.ListUtils;
 import org.openrewrite.java.JavaIsoVisitor;
@@ -24,16 +28,12 @@ import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.JavaTemplate;
 import org.openrewrite.java.JavaVisitor;
 import org.openrewrite.java.tree.*;
+import org.openrewrite.java.tree.J;
 import org.openrewrite.marker.SearchResult;
 import org.openrewrite.staticanalysis.RemoveUnneededBlock;
 import org.openrewrite.staticanalysis.UnnecessaryThrows;
 
-import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import static java.util.Collections.*;
-
-import org.openrewrite.java.tree.J;
 
 @RequiredArgsConstructor
 class CucumberJava8ClassVisitor extends JavaIsoVisitor<ExecutionContext> {

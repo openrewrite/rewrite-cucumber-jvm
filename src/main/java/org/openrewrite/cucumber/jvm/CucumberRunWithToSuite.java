@@ -17,6 +17,9 @@ package org.openrewrite.cucumber.jvm;
 
 import lombok.Getter;
 import org.jspecify.annotations.Nullable;
+
+import java.util.*;
+
 import org.openrewrite.Cursor;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Preconditions;
@@ -34,8 +37,6 @@ import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.java.tree.TypeUtils;
 import org.openrewrite.trait.Comments;
-
-import java.util.*;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;

@@ -16,17 +16,18 @@
 package org.openrewrite.cucumber.jvm;
 
 import org.jspecify.annotations.Nullable;
+
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+
 import org.openrewrite.internal.StringUtils;
 import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.java.tree.Statement;
 import org.openrewrite.java.tree.TypeUtils;
-
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Shared by the recipes that turn a registered transformation into a `cucumber-java` annotated method.

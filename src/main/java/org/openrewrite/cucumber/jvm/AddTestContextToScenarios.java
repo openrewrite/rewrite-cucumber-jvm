@@ -16,6 +16,9 @@
 package org.openrewrite.cucumber.jvm;
 
 import lombok.Getter;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Preconditions;
 import org.openrewrite.Recipe;
@@ -27,8 +30,6 @@ import org.openrewrite.java.JavaTemplate;
 import org.openrewrite.java.search.UsesType;
 import org.openrewrite.java.tree.*;
 import org.openrewrite.marker.Markers;
-
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
