@@ -18,6 +18,10 @@ package org.openrewrite.cucumber.jvm;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 import org.jspecify.annotations.Nullable;
+
+import java.nio.file.Path;
+import java.util.*;
+
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.ScanningRecipe;
 import org.openrewrite.SourceFile;
@@ -37,9 +41,6 @@ import org.openrewrite.java.tree.TypeUtils;
 import org.openrewrite.maven.tree.MavenResolutionResult;
 import org.openrewrite.properties.PropertiesVisitor;
 import org.openrewrite.properties.tree.Properties;
-
-import java.nio.file.Path;
-import java.util.*;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableMap;

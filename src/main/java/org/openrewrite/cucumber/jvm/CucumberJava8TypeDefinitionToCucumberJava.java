@@ -19,6 +19,10 @@ import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.With;
 import org.jspecify.annotations.Nullable;
+
+import java.time.Duration;
+import java.util.*;
+
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Preconditions;
 import org.openrewrite.Recipe;
@@ -31,9 +35,6 @@ import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.marker.SearchResult;
-
-import java.time.Duration;
-import java.util.*;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
