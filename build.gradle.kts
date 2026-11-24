@@ -60,7 +60,7 @@ dependencies {
     testImplementation("org.openrewrite:rewrite-java-21")
     testImplementation("org.openrewrite:rewrite-test")
     testImplementation("org.openrewrite.gradle.tooling:model:$rewriteVersion")
-    testImplementation(gradleApi())
+    testRuntimeOnly(gradleApi())
 }
 
 tasks.withType<Test>().configureEach {

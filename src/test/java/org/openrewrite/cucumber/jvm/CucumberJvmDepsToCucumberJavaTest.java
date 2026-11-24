@@ -213,7 +213,7 @@ class CucumberJvmDepsToCucumberJavaTest implements RewriteTest {
                   </dependencies>
               </project>
               """,
-            spec -> spec.after(actual -> """
+            """
               <project>
                   <groupId>com.example</groupId>
                   <artifactId>app</artifactId>
@@ -222,12 +222,55 @@ class CucumberJvmDepsToCucumberJavaTest implements RewriteTest {
                       <dependency>
                           <groupId>io.cucumber</groupId>
                           <artifactId>cucumber-java</artifactId>
-                          <version>%s</version>
+                          <version>7.34.3</version>
                           <scope>test</scope>
                       </dependency>
                   </dependencies>
               </project>
-              """.formatted(cucumberJavaVersion(actual)))
+              """
+          )
+        );
+    }
+
+    @Test
+    void mavenExistingTargetKeepsItsScopeAndVersion() {
+        rewriteRun(
+          pomXml(
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <dependencies>
+                      <dependency>
+                          <groupId>io.cucumber</groupId>
+                          <artifactId>cucumber-java</artifactId>
+                          <version>7.18.0</version>
+                          <scope>test</scope>
+                      </dependency>
+                      <dependency>
+                          <groupId>io.cucumber</groupId>
+                          <artifactId>cucumber-jvm-deps</artifactId>
+                          <version>1.0.6</version>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """,
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <dependencies>
+                      <dependency>
+                          <groupId>io.cucumber</groupId>
+                          <artifactId>cucumber-java</artifactId>
+                          <version>7.18.0</version>
+                          <scope>test</scope>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """
           )
         );
     }
@@ -294,7 +337,43 @@ class CucumberJvmDepsToCucumberJavaTest implements RewriteTest {
               dependencies {
                   testImplementation 'io.cucumber:cucumber-java:%s'
               }
-              """.formatted(gradleCucumberJavaVersion(actual)))
+              """.formatted(cucumberJavaVersion(actual)))
+          )
+        );
+    }
+
+    @Test
+    void gradleExistingTarget() {
+        rewriteRun(
+          spec -> spec.beforeRecipe(withToolingApi()),
+          buildGradle(
+            """
+              plugins {
+                  id 'java'
+              }
+
+              repositories {
+                  mavenCentral()
+              }
+
+              dependencies {
+                  testImplementation 'io.cucumber:cucumber-java:7.18.0'
+                  testImplementation 'io.cucumber:cucumber-jvm-deps:1.0.6'
+              }
+              """,
+            """
+              plugins {
+                  id 'java'
+              }
+
+              repositories {
+                  mavenCentral()
+              }
+
+              dependencies {
+                  testImplementation 'io.cucumber:cucumber-java:7.18.0'
+              }
+              """
           )
         );
     }
@@ -329,21 +408,14 @@ class CucumberJvmDepsToCucumberJavaTest implements RewriteTest {
               dependencies {
                   testImplementation("io.cucumber:cucumber-java:%s")
               }
-              """.formatted(gradleCucumberJavaVersion(actual)))
+              """.formatted(cucumberJavaVersion(actual)))
           )
         );
     }
 
-    private static String gradleCucumberJavaVersion(String actual) {
-        Matcher matcher = Pattern.compile("io.cucumber:cucumber-java:(7\\.\\d+[^'\\\"]*)").matcher(actual);
-        assertThat(matcher.find()).as("Cucumber Java 7.x dependency").isTrue();
-        return matcher.group(1);
-    }
-
     private static String cucumberJavaVersion(String actual) {
-        Matcher matcher = Pattern.compile("<artifactId>cucumber-java</artifactId>\\s+<version>(7\\.\\d+[^<]*)</version>")
-          .matcher(actual);
-        assertThat(matcher.find()).as("Cucumber Java 7.x dependency").isTrue();
+        Matcher matcher = Pattern.compile("cucumber-java(?::|</artifactId>\\s+<version>)(7\\.\\d+\\.\\d+)").matcher(actual);
+        assertThat(matcher.find()).as("Cucumber Java 7.x dependency in %s", actual).isTrue();
         return matcher.group(1);
     }
 }
