@@ -397,11 +397,6 @@ class CucumberJvmDepsToCucumberJavaTest implements RewriteTest {
                   <version>1.0.0</version>
                   <dependencies>
                       <dependency>
-                          <groupId>info.cukes</groupId>
-                          <artifactId>cucumber-jvm-deps</artifactId>
-                          <version>1.0.5</version>
-                      </dependency>
-                      <dependency>
                           <groupId>io.cucumber</groupId>
                           <artifactId>cucumber-core</artifactId>
                           <version>7.34.3</version>
@@ -520,6 +515,294 @@ class CucumberJvmDepsToCucumberJavaTest implements RewriteTest {
                   testImplementation("io.cucumber:cucumber-java:%s")
               }
               """.formatted(cucumberJavaVersion(actual)))
+          )
+        );
+    }
+
+    @Test
+    void infoCukesAlone() {
+        rewriteRun(
+          pomXml(
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <dependencies>
+                      <dependency>
+                          <groupId>info.cukes</groupId>
+                          <artifactId>cucumber-jvm-deps</artifactId>
+                          <version>1.0.5</version>
+                          <scope>provided</scope>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """,
+            spec -> spec.after(actual -> """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <dependencies>
+                      <dependency>
+                          <groupId>io.cucumber</groupId>
+                          <artifactId>cucumber-java</artifactId>
+                          <version>%s</version>
+                          <scope>provided</scope>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """.formatted(cucumberJavaVersion(actual)))
+          )
+        );
+    }
+
+    @Test
+    void infoCukesNextToCucumberJava() {
+        rewriteRun(
+          pomXml(
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <dependencies>
+                      <dependency>
+                          <groupId>io.cucumber</groupId>
+                          <artifactId>cucumber-java</artifactId>
+                          <version>2.3.1</version>
+                          <scope>test</scope>
+                      </dependency>
+                      <dependency>
+                          <groupId>info.cukes</groupId>
+                          <artifactId>cucumber-jvm-deps</artifactId>
+                          <version>1.0.5</version>
+                          <scope>provided</scope>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """,
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <dependencies>
+                      <dependency>
+                          <groupId>io.cucumber</groupId>
+                          <artifactId>cucumber-java</artifactId>
+                          <version>2.3.1</version>
+                          <scope>test</scope>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """
+          )
+        );
+    }
+
+    @Test
+    void infoCukesNextToLegacyCucumber() {
+        rewriteRun(
+          pomXml(
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <dependencies>
+                      <dependency>
+                          <groupId>info.cukes</groupId>
+                          <artifactId>cucumber-java</artifactId>
+                          <version>1.2.5</version>
+                          <scope>test</scope>
+                      </dependency>
+                      <dependency>
+                          <groupId>info.cukes</groupId>
+                          <artifactId>cucumber-jvm-deps</artifactId>
+                          <version>1.0.5</version>
+                          <scope>test</scope>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """,
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <dependencies>
+                      <dependency>
+                          <groupId>info.cukes</groupId>
+                          <artifactId>cucumber-java</artifactId>
+                          <version>1.2.5</version>
+                          <scope>test</scope>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """
+          )
+        );
+    }
+
+    @Test
+    void infoCukesVersionFromPropertyNextToLegacyCucumber() {
+        rewriteRun(
+          pomXml(
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <properties>
+                      <cucumber.version>1.2.2</cucumber.version>
+                      <cucumber-jvm-deps>1.0.3</cucumber-jvm-deps>
+                  </properties>
+                  <dependencies>
+                      <dependency>
+                          <groupId>info.cukes</groupId>
+                          <artifactId>cucumber-jvm-deps</artifactId>
+                          <scope>test</scope>
+                          <version>${cucumber-jvm-deps}</version>
+                      </dependency>
+                      <dependency>
+                          <groupId>info.cukes</groupId>
+                          <artifactId>cucumber-picocontainer</artifactId>
+                          <version>${cucumber.version}</version>
+                          <scope>test</scope>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """,
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <properties>
+                      <cucumber.version>1.2.2</cucumber.version>
+                      <cucumber-jvm-deps>1.0.3</cucumber-jvm-deps>
+                  </properties>
+                  <dependencies>
+                      <dependency>
+                          <groupId>info.cukes</groupId>
+                          <artifactId>cucumber-picocontainer</artifactId>
+                          <version>${cucumber.version}</version>
+                          <scope>test</scope>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """
+          )
+        );
+    }
+
+    @Test
+    void infoCukesDependencyManagement() {
+        rewriteRun(
+          pomXml(
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>parent</artifactId>
+                  <version>1.0.0</version>
+                  <packaging>pom</packaging>
+                  <dependencyManagement>
+                      <dependencies>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-java</artifactId>
+                              <version>7.18.0</version>
+                          </dependency>
+                          <dependency>
+                              <groupId>info.cukes</groupId>
+                              <artifactId>cucumber-jvm-deps</artifactId>
+                              <version>1.0.5</version>
+                          </dependency>
+                      </dependencies>
+                  </dependencyManagement>
+              </project>
+              """,
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>parent</artifactId>
+                  <version>1.0.0</version>
+                  <packaging>pom</packaging>
+                  <dependencyManagement>
+                      <dependencies>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-java</artifactId>
+                              <version>7.18.0</version>
+                          </dependency>
+                      </dependencies>
+                  </dependencyManagement>
+              </project>
+              """
+          )
+        );
+    }
+
+    @Test
+    void gradleInfoCukesAlone() {
+        rewriteRun(
+          spec -> spec.beforeRecipe(withToolingApi()),
+          buildGradle(
+            """
+              plugins {
+                  id 'java'
+              }
+              repositories {
+                  mavenCentral()
+              }
+              dependencies {
+                  testImplementation 'info.cukes:cucumber-jvm-deps:1.0.5'
+              }
+              """,
+            spec -> spec.after(actual -> """
+              plugins {
+                  id 'java'
+              }
+              repositories {
+                  mavenCentral()
+              }
+              dependencies {
+                  testImplementation 'io.cucumber:cucumber-java:%s'
+              }
+              """.formatted(cucumberJavaVersion(actual)))
+          )
+        );
+    }
+
+    @Test
+    void gradleInfoCukesNextToLegacyCucumber() {
+        rewriteRun(
+          spec -> spec.beforeRecipe(withToolingApi()),
+          buildGradle(
+            """
+              plugins {
+                  id 'java'
+              }
+              repositories {
+                  mavenCentral()
+              }
+              dependencies {
+                  testImplementation 'info.cukes:cucumber-java:1.2.5'
+                  testImplementation 'info.cukes:cucumber-jvm-deps:1.0.5'
+              }
+              """,
+            """
+              plugins {
+                  id 'java'
+              }
+              repositories {
+                  mavenCentral()
+              }
+              dependencies {
+                  testImplementation 'info.cukes:cucumber-java:1.2.5'
+              }
+              """
           )
         );
     }
