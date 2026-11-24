@@ -734,6 +734,7 @@ tags:
   - cucumber
 recipeList:
   - org.openrewrite.cucumber.jvm.RemoveCucumberJvmDepsNextToCucumberJava
+  - org.openrewrite.cucumber.jvm.RemoveManagedCucumberJvmDepsNextToManagedCucumberJava
   - org.openrewrite.java.dependencies.ChangeDependency:
       oldGroupId: io.cucumber
       oldArtifactId: cucumber-jvm-deps
@@ -755,5 +756,23 @@ preconditions:
       artifactIdPattern: cucumber-java
 recipeList:
   - org.openrewrite.java.dependencies.RemoveDependency:
+      groupId: io.cucumber
+      artifactId: cucumber-jvm-deps
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.RemoveManagedCucumberJvmDepsNextToManagedCucumberJava
+displayName: Remove managed `cucumber-jvm-deps` next to managed `cucumber-java`
+description: >-
+  Remove the deprecated `io.cucumber:cucumber-jvm-deps` dependency management entry from Maven poms that already
+  manage `io.cucumber:cucumber-java`, keeping the version of the existing `cucumber-java` entry.
+tags:
+  - testing
+  - cucumber
+preconditions:
+  - org.openrewrite.maven.search.FindManagedDependency:
+      groupId: io.cucumber
+      artifactId: cucumber-java
+recipeList:
+  - org.openrewrite.maven.RemoveManagedDependency:
       groupId: io.cucumber
       artifactId: cucumber-jvm-deps

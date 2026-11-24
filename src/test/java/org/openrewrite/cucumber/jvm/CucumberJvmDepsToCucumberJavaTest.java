@@ -276,6 +276,117 @@ class CucumberJvmDepsToCucumberJavaTest implements RewriteTest {
     }
 
     @Test
+    void mavenExistingManagedTargetKeepsItsVersion() {
+        rewriteRun(
+          pomXml(
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <dependencyManagement>
+                      <dependencies>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-java</artifactId>
+                              <version>7.18.0</version>
+                          </dependency>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-jvm-deps</artifactId>
+                              <version>1.0.6</version>
+                          </dependency>
+                      </dependencies>
+                  </dependencyManagement>
+                  <dependencies>
+                      <dependency>
+                          <groupId>io.cucumber</groupId>
+                          <artifactId>cucumber-java</artifactId>
+                          <scope>test</scope>
+                      </dependency>
+                      <dependency>
+                          <groupId>io.cucumber</groupId>
+                          <artifactId>cucumber-jvm-deps</artifactId>
+                          <scope>test</scope>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """,
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <dependencyManagement>
+                      <dependencies>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-java</artifactId>
+                              <version>7.18.0</version>
+                          </dependency>
+                      </dependencies>
+                  </dependencyManagement>
+                  <dependencies>
+                      <dependency>
+                          <groupId>io.cucumber</groupId>
+                          <artifactId>cucumber-java</artifactId>
+                          <scope>test</scope>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """
+          )
+        );
+    }
+
+    @Test
+    void mavenExistingManagedTargetInParentKeepsItsVersion() {
+        rewriteRun(
+          pomXml(
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>parent</artifactId>
+                  <version>1.0.0</version>
+                  <packaging>pom</packaging>
+                  <dependencyManagement>
+                      <dependencies>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-java</artifactId>
+                              <version>7.18.0</version>
+                          </dependency>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-jvm-deps</artifactId>
+                              <version>1.0.6</version>
+                          </dependency>
+                      </dependencies>
+                  </dependencyManagement>
+              </project>
+              """,
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>parent</artifactId>
+                  <version>1.0.0</version>
+                  <packaging>pom</packaging>
+                  <dependencyManagement>
+                      <dependencies>
+                          <dependency>
+                              <groupId>io.cucumber</groupId>
+                              <artifactId>cucumber-java</artifactId>
+                              <version>7.18.0</version>
+                          </dependency>
+                      </dependencies>
+                  </dependencyManagement>
+              </project>
+              """
+          )
+        );
+    }
+
+    @Test
     void unrelatedDependencies() {
         rewriteRun(
           pomXml(
