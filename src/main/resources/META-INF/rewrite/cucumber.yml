@@ -720,3 +720,21 @@ recipeList:
       artifactId: docstring
       newVersion: 7.x
       overrideManagedVersion: true
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.CucumberJvmDepsToCucumberJava
+displayName: Migrate `cucumber-jvm-deps` to `cucumber-java`
+description: >-
+  Replace the deprecated `io.cucumber:cucumber-jvm-deps` dependency with `io.cucumber:cucumber-java` 7.x in Maven
+  and Gradle builds. The artifacts have independent version histories, so the old version is not retained.
+  This recipe changes dependency declarations only; usages of the old repackaged `cucumber.deps` classes and
+  migrations of other Cucumber modules must be handled separately.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: io.cucumber
+      oldArtifactId: cucumber-jvm-deps
+      newArtifactId: cucumber-java
+      newVersion: 7.x
