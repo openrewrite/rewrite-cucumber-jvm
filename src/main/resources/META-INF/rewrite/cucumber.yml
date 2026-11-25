@@ -183,6 +183,7 @@ recipeList:
   - org.openrewrite.cucumber.jvm.MigrateRuntimeOptionsBuilder
   - org.openrewrite.cucumber.jvm.RegexToCucumberExpression
   - org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite
+  - org.openrewrite.cucumber.jvm.CucumberJvmDepsToCucumberJava
   - org.openrewrite.java.dependencies.UpgradeDependencyVersion:
       groupId: io.cucumber
       artifactId: "*"
