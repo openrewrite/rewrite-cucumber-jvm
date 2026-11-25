@@ -23,10 +23,15 @@ import java.util.regex.Pattern;
 import org.openrewrite.DocumentExample;
 import org.openrewrite.InMemoryExecutionContext;
 import org.openrewrite.java.JavaParser;
+import org.openrewrite.java.style.ImportLayoutStyle;
+import org.openrewrite.style.NamedStyles;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
+import static java.util.Collections.emptySet;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.openrewrite.Tree.randomId;
 import static org.openrewrite.java.Assertions.*;
 import static org.openrewrite.maven.Assertions.pomXml;
 import static org.openrewrite.maven.Assertions.withLocalRepository;
@@ -412,6 +417,15 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
           spec -> spec
             .recipeFromResources("org.openrewrite.cucumber.jvm.UpgradeCucumber7x")
             .parser(JavaParser.fromJavaVersion()
+              // Whether five imports fold into a star otherwise depends on whether the pom change has marked the classpath stale yet
+              .styles(singletonList(new NamedStyles(randomId(), "NoStarImports", "No star imports", null, emptySet(),
+                singletonList(ImportLayoutStyle.builder()
+                  .classCountToUseStarImport(999)
+                  .nameCountToUseStarImport(999)
+                  .importAllOthers()
+                  .blankLine()
+                  .importStaticAllOthers()
+                  .build()))))
               .classpathFromResources(new InMemoryExecutionContext(), "junit-4", "cucumber-junit-4.8.1", "cucumber-core-4.8.1")),
           mavenProject("app",
             srcTestJava(
