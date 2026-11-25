@@ -49,6 +49,7 @@ public class CucumberRunWithToSuite extends Recipe {
     private static final String CUCUMBER_API_OPTIONS = "cucumber.api.CucumberOptions";
     private static final String CONSTANTS = "io.cucumber.junit.platform.engine.Constants";
     private static final String SUITE_API = "org.junit.platform.suite.api.";
+    private static final String CLASS_RULE = "org.junit.ClassRule";
     private static final AnnotationMatcher RUN_WITH = new AnnotationMatcher("@org.junit.runner.RunWith");
     private static final AnnotationMatcher CUCUMBER_OPTIONS_MATCHER = new AnnotationMatcher("@" + CUCUMBER_OPTIONS);
     private static final AnnotationMatcher CUCUMBER_API_OPTIONS_MATCHER = new AnnotationMatcher("@" + CUCUMBER_API_OPTIONS);
@@ -78,8 +79,8 @@ public class CucumberRunWithToSuite extends Recipe {
             "the package of the annotated class by default, and the Cucumber engine in the whole classpath, so that package " +
             "becomes the explicit glue when none is configured. Class-level setup and teardown methods become " +
             "`@BeforeSuite` and `@AfterSuite` methods, as a `@Suite` does not run `@BeforeClass` or `@BeforeAll`. " +
-            "A class that runs with a subclass of the runner, that inherits `@CucumberOptions` or class-level setup " +
-            "or teardown, or that has an option that cannot be carried over, such as one that refers to a constant, " +
+            "A class that runs with a subclass of the runner, that inherits `@CucumberOptions`, class-level setup " +
+            "or teardown or a class rule, or that has an option that cannot be carried over, such as one that refers to a constant, " +
             "keeps the JUnit 4 runner, with a comment explaining why.";
 
     @Override
@@ -332,8 +333,8 @@ public class CucumberRunWithToSuite extends Recipe {
             return suite;
         }
 
-        // The JUnit 4 runner merges the `@CucumberOptions` of the superclasses, and runs their class-level setup and
-        // teardown, neither of which a `@Suite` does
+        // The JUnit 4 runner merges the `@CucumberOptions` of the superclasses, and runs their class-level setup,
+        // teardown and class rules, none of which a `@Suite` does
         private static void checkSuperclass(JavaType.@Nullable FullyQualified superclass) {
             for (JavaType.FullyQualified type = superclass; type == null || !TypeUtils.isObject(type); type = type.getSupertype()) {
                 if (type == null || type instanceof JavaType.Unknown) {
@@ -349,8 +350,20 @@ public class CucumberRunWithToSuite extends Recipe {
                         if (SUITE_LIFECYCLE_ANNOTATIONS.containsKey(annotation.getFullyQualifiedName())) {
                             throw new NotConvertible("it inherits class-level setup or teardown from `" + type.getClassName() + "`");
                         }
+                        checkClassRule(type, annotation);
                     }
                 }
+                for (JavaType.Variable field : type.getMembers()) {
+                    for (JavaType.FullyQualified annotation : field.getAnnotations()) {
+                        checkClassRule(type, annotation);
+                    }
+                }
+            }
+        }
+
+        private static void checkClassRule(JavaType.FullyQualified type, JavaType.FullyQualified annotation) {
+            if (TypeUtils.isOfClassType(annotation, CLASS_RULE)) {
+                throw new NotConvertible("it inherits a class rule from `" + type.getClassName() + "`");
             }
         }
 

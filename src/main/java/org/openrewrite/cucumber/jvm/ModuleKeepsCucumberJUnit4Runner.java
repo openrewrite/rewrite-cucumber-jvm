@@ -24,12 +24,14 @@ import java.util.Set;
 
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Option;
+import org.openrewrite.Preconditions;
 import org.openrewrite.ScanningRecipe;
 import org.openrewrite.SourceFile;
 import org.openrewrite.Tree;
 import org.openrewrite.TreeVisitor;
 import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.marker.JavaProject;
+import org.openrewrite.java.search.UsesType;
 import org.openrewrite.java.service.AnnotationService;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaSourceFile;
@@ -59,7 +61,7 @@ public class ModuleKeepsCucumberJUnit4Runner extends ScanningRecipe<Set<@Nullabl
 
     @Override
     public TreeVisitor<?, ExecutionContext> getScanner(Set<@Nullable JavaProject> acc) {
-        return new JavaIsoVisitor<ExecutionContext>() {
+        return Preconditions.check(new UsesType<>("org.junit.runner.RunWith", false), new JavaIsoVisitor<ExecutionContext>() {
             @Override
             public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext ctx) {
                 if (CucumberRunWithToSuite.keepsJUnit4Runner(classDecl, service(AnnotationService.class).getAllAnnotations(getCursor()))) {
@@ -72,7 +74,7 @@ public class ModuleKeepsCucumberJUnit4Runner extends ScanningRecipe<Set<@Nullabl
             public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext ctx) {
                 return method;
             }
-        };
+        });
     }
 
     @Override

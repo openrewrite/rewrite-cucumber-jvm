@@ -620,6 +620,50 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
     }
 
     @Test
+    void commentOnRunnerInheritingClassRule() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import org.junit.ClassRule;
+              import org.junit.rules.TemporaryFolder;
+
+              public abstract class BaseRunner {
+                  @ClassRule
+                  public static TemporaryFolder folder = new TemporaryFolder();
+              }
+              """
+          ),
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import org.junit.runner.RunWith;
+
+              @RunWith(Cucumber.class)
+              public class RunCucumberTest extends BaseRunner {
+              }
+              """,
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import org.junit.runner.RunWith;
+
+              // TODO Not migrated to a JUnit Platform `@Suite`, as it inherits a class rule from `BaseRunner`
+              @RunWith(Cucumber.class)
+              public class RunCucumberTest extends BaseRunner {
+              }
+              """
+          )
+        );
+    }
+
+    @Test
     void commentOnRunnerSubclass() {
         rewriteRun(
           //language=java
