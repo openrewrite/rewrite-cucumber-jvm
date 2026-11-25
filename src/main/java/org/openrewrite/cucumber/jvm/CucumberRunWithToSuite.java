@@ -46,10 +46,12 @@ public class CucumberRunWithToSuite extends Recipe {
     private static final String CUCUMBER = "io.cucumber.junit.Cucumber";
     private static final String CUCUMBER_API = "cucumber.api.junit.Cucumber";
     private static final String CUCUMBER_OPTIONS = "io.cucumber.junit.CucumberOptions";
+    private static final String CUCUMBER_API_OPTIONS = "cucumber.api.CucumberOptions";
     private static final String CONSTANTS = "io.cucumber.junit.platform.engine.Constants";
     private static final String SUITE_API = "org.junit.platform.suite.api.";
     private static final AnnotationMatcher RUN_WITH = new AnnotationMatcher("@org.junit.runner.RunWith");
     private static final AnnotationMatcher CUCUMBER_OPTIONS_MATCHER = new AnnotationMatcher("@" + CUCUMBER_OPTIONS);
+    private static final AnnotationMatcher CUCUMBER_API_OPTIONS_MATCHER = new AnnotationMatcher("@" + CUCUMBER_API_OPTIONS);
     private static final String RUNNER_CLASS = "RUNNER_CLASS";
     private static final Map<String, String> SUITE_LIFECYCLE_ANNOTATIONS = new HashMap<>();
     private static final String CLASSPATH_PREFIX = "classpath:";
@@ -76,27 +78,23 @@ public class CucumberRunWithToSuite extends Recipe {
             "the package of the annotated class by default, and the Cucumber engine in the whole classpath, so that package " +
             "becomes the explicit glue when none is configured. Class-level setup and teardown methods become " +
             "`@BeforeSuite` and `@AfterSuite` methods, as a `@Suite` does not run `@BeforeClass` or `@BeforeAll`. " +
-            "A class that runs with a subclass of the runner, that extends another class, which may contribute " +
-            "`@CucumberOptions`, or that has an option that cannot be carried over, such as one that refers to a " +
-            "constant, keeps the JUnit 4 runner, with a comment explaining why.";
+            "A class that runs with a subclass of the runner, that inherits `@CucumberOptions` or class-level setup " +
+            "or teardown, or that has an option that cannot be carried over, such as one that refers to a constant, " +
+            "keeps the JUnit 4 runner, with a comment explaining why.";
 
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor() {
         return Preconditions.check(Preconditions.or(new UsesType<>(CUCUMBER, false), new UsesType<>(CUCUMBER_API, false)), new JavaIsoVisitor<ExecutionContext>() {
             @Override
             public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext ctx) {
-                JavaType.FullyQualified runner = cucumberRunner(findAnnotation(getCursor(), RUN_WITH));
+                List<J.Annotation> annotations = service(AnnotationService.class).getAllAnnotations(getCursor());
+                JavaType.FullyQualified runner = cucumberRunner(findAnnotation(annotations, RUN_WITH), false);
                 if (runner == null) {
                     return super.visitClassDeclaration(classDecl, ctx);
                 }
                 SuiteAnnotations suite;
                 try {
-                    if (!TypeUtils.isOfClassType(runner, CUCUMBER)) {
-                        throw new NotConvertible("it runs with `" + runner.getClassName() + "`",
-                                "Carry over what that adds to the Cucumber runner, as configuration parameters, hooks or a plugin,",
-                                "then replace `@RunWith` and `@CucumberOptions` with a `@Suite`.");
-                    }
-                    suite = SuiteAnnotations.from(classDecl, findAnnotation(getCursor(), CUCUMBER_OPTIONS_MATCHER));
+                    suite = suite(classDecl, runner, findAnnotation(annotations, CUCUMBER_OPTIONS_MATCHER));
                 } catch (NotConvertible e) {
                     return notMigrated(super.visitClassDeclaration(classDecl, ctx), e);
                 }
@@ -161,26 +159,51 @@ public class CucumberRunWithToSuite extends Recipe {
                 return method.getValue() instanceof J.MethodDeclaration &&
                         method.getParentTreeCursor().getParentTreeCursor().getMessage(RUNNER_CLASS, false);
             }
-
-            private J.@Nullable Annotation findAnnotation(Cursor cursor, AnnotationMatcher matcher) {
-                for (J.Annotation annotation : service(AnnotationService.class).getAllAnnotations(cursor)) {
-                    if (matcher.matches(annotation)) {
-                        return annotation;
-                    }
-                }
-                return null;
-            }
         });
     }
 
-    // The `cucumber.api` runner itself is left for the package rename, after which it is migrated
-    private static JavaType.@Nullable FullyQualified cucumberRunner(J.@Nullable Annotation runWith) {
+    // Taking the `cucumber.api` types for what the package rename turns them into, as this is asked of the sources as
+    // they were before any recipe in the same run changed them
+    static boolean keepsJUnit4Runner(J.ClassDeclaration classDecl, List<J.Annotation> annotations) {
+        JavaType.FullyQualified runner = cucumberRunner(findAnnotation(annotations, RUN_WITH), true);
+        if (runner == null) {
+            return false;
+        }
+        J.Annotation options = findAnnotation(annotations, CUCUMBER_OPTIONS_MATCHER);
+        try {
+            suite(classDecl, runner, options == null ? findAnnotation(annotations, CUCUMBER_API_OPTIONS_MATCHER) : options);
+            return false;
+        } catch (NotConvertible e) {
+            return true;
+        }
+    }
+
+    private static SuiteAnnotations suite(J.ClassDeclaration classDecl, JavaType.FullyQualified runner, J.@Nullable Annotation options) {
+        if (!TypeUtils.isOfClassType(runner, CUCUMBER) && !TypeUtils.isOfClassType(runner, CUCUMBER_API)) {
+            throw new NotConvertible("it runs with `" + runner.getClassName() + "`",
+                    "Carry over what that adds to the Cucumber runner, as configuration parameters, hooks or a plugin,",
+                    "then replace `@RunWith` and `@CucumberOptions` with a `@Suite`.");
+        }
+        return SuiteAnnotations.from(classDecl, options);
+    }
+
+    private static J.@Nullable Annotation findAnnotation(List<J.Annotation> annotations, AnnotationMatcher matcher) {
+        for (J.Annotation annotation : annotations) {
+            if (matcher.matches(annotation)) {
+                return annotation;
+            }
+        }
+        return null;
+    }
+
+    // Unless asked to, the `cucumber.api` runner itself is left for the package rename, after which it is migrated
+    private static JavaType.@Nullable FullyQualified cucumberRunner(J.@Nullable Annotation runWith, boolean includeCucumberApi) {
         if (runWith == null || runWith.getArguments() == null || runWith.getArguments().size() != 1) {
             return null;
         }
         Expression value = runWith.getArguments().get(0);
         JavaType.FullyQualified runner = classLiteral(value instanceof J.Assignment ? ((J.Assignment) value).getAssignment() : value);
-        return runner != null && !TypeUtils.isOfClassType(runner, CUCUMBER_API) &&
+        return runner != null && (includeCucumberApi || !TypeUtils.isOfClassType(runner, CUCUMBER_API)) &&
                 (TypeUtils.isAssignableTo(CUCUMBER, runner) || TypeUtils.isAssignableTo(CUCUMBER_API, runner)) ? runner : null;
     }
 
@@ -195,7 +218,7 @@ public class CucumberRunWithToSuite extends Recipe {
 
         static SuiteAnnotations from(J.ClassDeclaration classDecl, J.@Nullable Annotation options) {
             if (classDecl.getExtends() != null) {
-                throw new NotConvertible("it extends another class, which may contribute `@CucumberOptions`");
+                checkSuperclass(TypeUtils.asFullyQualified(classDecl.getExtends().getType()));
             }
             String packageName = classDecl.getType() == null ? "" : classDecl.getType().getPackageName();
             SuiteAnnotations suite = new SuiteAnnotations();
@@ -307,6 +330,28 @@ public class CucumberRunWithToSuite extends Recipe {
                 suite.add("GLUE_PROPERTY_NAME", String.join(", ", allGlue));
             }
             return suite;
+        }
+
+        // The JUnit 4 runner merges the `@CucumberOptions` of the superclasses, and runs their class-level setup and
+        // teardown, neither of which a `@Suite` does
+        private static void checkSuperclass(JavaType.@Nullable FullyQualified superclass) {
+            for (JavaType.FullyQualified type = superclass; type == null || !TypeUtils.isObject(type); type = type.getSupertype()) {
+                if (type == null || type instanceof JavaType.Unknown) {
+                    throw new NotConvertible("it extends another class, which may contribute `@CucumberOptions`");
+                }
+                for (JavaType.FullyQualified annotation : type.getAnnotations()) {
+                    if (TypeUtils.isOfClassType(annotation, CUCUMBER_OPTIONS) || TypeUtils.isOfClassType(annotation, CUCUMBER_API_OPTIONS)) {
+                        throw new NotConvertible("it inherits `@CucumberOptions` from `" + type.getClassName() + "`");
+                    }
+                }
+                for (JavaType.Method method : type.getMethods()) {
+                    for (JavaType.FullyQualified annotation : method.getAnnotations()) {
+                        if (SUITE_LIFECYCLE_ANNOTATIONS.containsKey(annotation.getFullyQualifiedName())) {
+                            throw new NotConvertible("it inherits class-level setup or teardown from `" + type.getClassName() + "`");
+                        }
+                    }
+                }
+            }
         }
 
         private static @Nullable List<String> classpathResources(List<String> features) {
