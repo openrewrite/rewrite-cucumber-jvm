@@ -745,6 +745,53 @@ class CucumberJvmDepsToCucumberJavaTest implements RewriteTest {
     }
 
     @Test
+    void infoCukesDependencyManagementNextToManagedLegacyCucumber() {
+        rewriteRun(
+          pomXml(
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>parent</artifactId>
+                  <version>1.0.0</version>
+                  <packaging>pom</packaging>
+                  <dependencyManagement>
+                      <dependencies>
+                          <dependency>
+                              <groupId>info.cukes</groupId>
+                              <artifactId>cucumber-java</artifactId>
+                              <version>1.2.5</version>
+                          </dependency>
+                          <dependency>
+                              <groupId>info.cukes</groupId>
+                              <artifactId>cucumber-jvm-deps</artifactId>
+                              <version>1.0.5</version>
+                          </dependency>
+                      </dependencies>
+                  </dependencyManagement>
+              </project>
+              """,
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>parent</artifactId>
+                  <version>1.0.0</version>
+                  <packaging>pom</packaging>
+                  <dependencyManagement>
+                      <dependencies>
+                          <dependency>
+                              <groupId>info.cukes</groupId>
+                              <artifactId>cucumber-java</artifactId>
+                              <version>1.2.5</version>
+                          </dependency>
+                      </dependencies>
+                  </dependencyManagement>
+              </project>
+              """
+          )
+        );
+    }
+
+    @Test
     void gradleInfoCukesAlone() {
         rewriteRun(
           spec -> spec.beforeRecipe(withToolingApi()),

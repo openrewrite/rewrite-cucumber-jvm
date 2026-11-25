@@ -48,7 +48,9 @@ mvn -U org.openrewrite.maven:rewrite-maven-plugin:run \
 
 ### Cucumber-JVM-Deps migration to Cucumber-Java
 
-Replace `io.cucumber:cucumber-jvm-deps` with `io.cucumber:cucumber-java` 7.x in Maven or Gradle builds:
+Replace `io.cucumber:cucumber-jvm-deps` or `info.cukes:cucumber-jvm-deps` with `io.cucumber:cucumber-java` 7.x
+in Maven or Gradle builds. Where a module already depends on `cucumber-java`, or on Cucumber-JVM 1.x through
+`info.cukes` modules, the dependency is removed instead and the existing Cucumber dependencies are left as they are:
 
 ```shell
 mvn -U org.openrewrite.maven:rewrite-maven-plugin:run \
