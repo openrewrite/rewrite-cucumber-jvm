@@ -406,6 +406,218 @@ class CucumberToJunitPlatformSuiteTest implements RewriteTest {
         );
     }
 
+    @Test
+    void upgradeFromCucumber4MigratesARunnerExtendingAHelperClass() {
+        rewriteRun(
+          spec -> spec
+            .recipeFromResources("org.openrewrite.cucumber.jvm.UpgradeCucumber7x")
+            .parser(JavaParser.fromJavaVersion()
+              .classpathFromResources(new InMemoryExecutionContext(), "junit-4", "cucumber-junit-4.8.1", "cucumber-core-4.8.1")),
+          mavenProject("app",
+            srcTestJava(
+              //language=java
+              java(
+                """
+                  package com.example;
+
+                  abstract class AttackRunner {
+                      protected static void setUpProxy() {
+                      }
+                  }
+                  """
+              ),
+              //language=java
+              java(
+                """
+                  package com.example;
+
+                  import cucumber.api.CucumberOptions;
+                  import cucumber.api.junit.Cucumber;
+                  import org.junit.BeforeClass;
+                  import org.junit.runner.RunWith;
+
+                  @RunWith(Cucumber.class)
+                  @CucumberOptions(features = "src/test/resources/features/SqlInjection.feature", glue = {"com.example.attacks"})
+                  public class SqlInjectionRunner extends AttackRunner {
+                      @BeforeClass
+                      public static void setup() {
+                          setUpProxy();
+                      }
+                  }
+                  """,
+                """
+                  package com.example;
+
+                  import org.junit.platform.suite.api.BeforeSuite;
+                  import org.junit.platform.suite.api.ConfigurationParameter;
+                  import org.junit.platform.suite.api.IncludeEngines;
+                  import org.junit.platform.suite.api.SelectClasspathResource;
+                  import org.junit.platform.suite.api.Suite;
+
+                  import static io.cucumber.junit.platform.engine.Constants.GLUE_PROPERTY_NAME;
+
+                  @Suite
+                  @IncludeEngines("cucumber")
+                  @SelectClasspathResource("features/SqlInjection.feature")
+                  @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "com.example.attacks")
+                  public class SqlInjectionRunner extends AttackRunner {
+                      @BeforeSuite
+                      public static void setup() {
+                          setUpProxy();
+                      }
+                  }
+                  """
+              )
+            ),
+            //language=xml
+            pomXml(
+              """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-java</artifactId>
+                            <version>4.8.1</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-junit</artifactId>
+                            <version>4.8.1</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """,
+              spec -> spec.after(actual -> """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-java</artifactId>
+                            <version>%1$s</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-junit-platform-engine</artifactId>
+                            <version>%1$s</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.junit.platform</groupId>
+                            <artifactId>junit-platform-suite</artifactId>
+                            <version>%2$s</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """.formatted(cucumber7(actual), CucumberRunWithToSuiteTest.addedJUnitPlatformSuiteVersion(actual)))
+            )
+          )
+        );
+    }
+
+    @Test
+    void upgradeFromCucumber4KeepsCucumberJUnitForARunnerThatIsNotMigrated() {
+        rewriteRun(
+          spec -> spec
+            .recipeFromResources("org.openrewrite.cucumber.jvm.UpgradeCucumber7x")
+            .parser(JavaParser.fromJavaVersion()
+              .classpathFromResources(new InMemoryExecutionContext(), "junit-4", "cucumber-junit-4.8.1", "cucumber-core-4.8.1")),
+          mavenProject("app",
+            srcTestJava(
+              //language=java
+              java(
+                """
+                  package com.example;
+
+                  import cucumber.api.CucumberOptions;
+                  import cucumber.api.junit.Cucumber;
+                  import org.junit.runner.RunWith;
+
+                  @RunWith(Cucumber.class)
+                  @CucumberOptions(features = RunCucumberTest.FEATURES)
+                  public class RunCucumberTest {
+                      static final String FEATURES = "classpath:features";
+                  }
+                  """,
+                """
+                  package com.example;
+
+                  import io.cucumber.junit.Cucumber;
+                  import io.cucumber.junit.CucumberOptions;
+                  import org.junit.runner.RunWith;
+
+                  // TODO Not migrated to a JUnit Platform `@Suite`, as `features` is not a string literal
+                  @RunWith(Cucumber.class)
+                  @CucumberOptions(features = RunCucumberTest.FEATURES)
+                  public class RunCucumberTest {
+                      static final String FEATURES = "classpath:features";
+                  }
+                  """
+              )
+            ),
+            //language=xml
+            pomXml(
+              """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-junit</artifactId>
+                            <version>4.8.1</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """,
+              spec -> spec.after(actual -> """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-junit</artifactId>
+                            <version>%1$s</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-junit-platform-engine</artifactId>
+                            <version>%1$s</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.junit.platform</groupId>
+                            <artifactId>junit-platform-suite</artifactId>
+                            <version>%2$s</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.junit.vintage</groupId>
+                            <artifactId>junit-vintage-engine</artifactId>
+                            <version>%3$s</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """.formatted(cucumber7(actual), CucumberRunWithToSuiteTest.addedJUnitPlatformSuiteVersion(actual),
+                CucumberRunWithToSuiteTest.addedJUnitVintageVersion(actual)))
+            )
+          )
+        );
+    }
+
     // A parent that is not among the sources, as in a corporate parent resolved from a repository, which the
     // recipe can neither see the sources of nor change. The local repository needs no context of the test's own, so
     // the test keeps the default one, which loads the Maven settings and resolves Cucumber through the mirror they

@@ -511,7 +511,150 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
               import io.cucumber.junit.Cucumber;
               import org.junit.runner.RunWith;
 
-              // TODO Not migrated to a JUnit Platform `@Suite`, as it extends another class, which may contribute `@CucumberOptions`
+              // TODO Not migrated to a JUnit Platform `@Suite`, as it inherits `@CucumberOptions` from `BaseRunner`
+              @RunWith(Cucumber.class)
+              public class RunCucumberTest extends BaseRunner {
+              }
+              """
+          )
+        );
+    }
+
+    @Test
+    void runnerExtendingAClassWithoutOptions() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example;
+
+              abstract class BaseRunner {
+                  protected static void setUpProxy() {
+                  }
+              }
+              """
+          ),
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import io.cucumber.junit.CucumberOptions;
+              import org.junit.BeforeClass;
+              import org.junit.runner.RunWith;
+
+              @RunWith(Cucumber.class)
+              @CucumberOptions(features = "classpath:features", glue = "com.example.steps")
+              public class RunCucumberTest extends BaseRunner {
+                  @BeforeClass
+                  public static void setup() {
+                      setUpProxy();
+                  }
+              }
+              """,
+            """
+              package com.example;
+
+              import org.junit.platform.suite.api.*;
+
+              import static io.cucumber.junit.platform.engine.Constants.GLUE_PROPERTY_NAME;
+
+              @Suite
+              @IncludeEngines("cucumber")
+              @SelectClasspathResource("features")
+              @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "com.example.steps")
+              public class RunCucumberTest extends BaseRunner {
+                  @BeforeSuite
+                  public static void setup() {
+                      setUpProxy();
+                  }
+              }
+              """
+          )
+        );
+    }
+
+    @Test
+    void commentOnRunnerInheritingClassLevelSetup() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import org.junit.BeforeClass;
+
+              public abstract class BaseRunner {
+                  @BeforeClass
+                  public static void startServer() {
+                  }
+              }
+              """
+          ),
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import org.junit.runner.RunWith;
+
+              @RunWith(Cucumber.class)
+              public class RunCucumberTest extends BaseRunner {
+              }
+              """,
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import org.junit.runner.RunWith;
+
+              // TODO Not migrated to a JUnit Platform `@Suite`, as it inherits class-level setup or teardown from `BaseRunner`
+              @RunWith(Cucumber.class)
+              public class RunCucumberTest extends BaseRunner {
+              }
+              """
+          )
+        );
+    }
+
+    @Test
+    void commentOnRunnerInheritingClassRule() {
+        rewriteRun(
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import org.junit.ClassRule;
+              import org.junit.rules.TemporaryFolder;
+
+              public abstract class BaseRunner {
+                  @ClassRule
+                  public static TemporaryFolder folder = new TemporaryFolder();
+              }
+              """
+          ),
+          //language=java
+          java(
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import org.junit.runner.RunWith;
+
+              @RunWith(Cucumber.class)
+              public class RunCucumberTest extends BaseRunner {
+              }
+              """,
+            """
+              package com.example;
+
+              import io.cucumber.junit.Cucumber;
+              import org.junit.runner.RunWith;
+
+              // TODO Not migrated to a JUnit Platform `@Suite`, as it inherits a class rule from `BaseRunner`
               @RunWith(Cucumber.class)
               public class RunCucumberTest extends BaseRunner {
               }
@@ -826,6 +969,107 @@ class CucumberRunWithToSuiteTest implements RewriteTest {
             )
           )
         );
+    }
+
+    @Test
+    void keepsCucumberJUnitForARunnerThatIsNotMigrated() {
+        rewriteRun(
+          spec -> spec.recipeFromResources("org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite"),
+          mavenProject("project",
+            srcTestJava(
+              //language=java
+              java(
+                """
+                  package com.example;
+
+                  import io.cucumber.junit.Cucumber;
+                  import io.cucumber.junit.CucumberOptions;
+                  import org.junit.runner.RunWith;
+
+                  @RunWith(Cucumber.class)
+                  @CucumberOptions(features = RunCucumberTest.FEATURES)
+                  public class RunCucumberTest {
+                      static final String FEATURES = "classpath:features";
+                  }
+                  """,
+                """
+                  package com.example;
+
+                  import io.cucumber.junit.Cucumber;
+                  import io.cucumber.junit.CucumberOptions;
+                  import org.junit.runner.RunWith;
+
+                  // TODO Not migrated to a JUnit Platform `@Suite`, as `features` is not a string literal
+                  @RunWith(Cucumber.class)
+                  @CucumberOptions(features = RunCucumberTest.FEATURES)
+                  public class RunCucumberTest {
+                      static final String FEATURES = "classpath:features";
+                  }
+                  """
+              )
+            ),
+            //language=xml
+            pomXml(
+              """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-junit</artifactId>
+                            <version>7.18.0</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """,
+              spec -> spec.after(actual -> """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-junit</artifactId>
+                            <version>%1$s</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-junit-platform-engine</artifactId>
+                            <version>%1$s</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.junit.platform</groupId>
+                            <artifactId>junit-platform-suite</artifactId>
+                            <version>%2$s</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.junit.vintage</groupId>
+                            <artifactId>junit-vintage-engine</artifactId>
+                            <version>%3$s</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """.formatted(CucumberToJunitPlatformSuiteTest.cucumber7(actual), addedJUnitPlatformSuiteVersion(actual), addedJUnitVintageVersion(actual)))
+            )
+          )
+        );
+    }
+
+    private static final Pattern JUNIT_VINTAGE_VERSION =
+      Pattern.compile("<artifactId>junit-vintage-engine</artifactId>\\s+<version>(5\\.\\d+[^<]*)</version>");
+
+    static String addedJUnitVintageVersion(String actual) {
+        Matcher matcher = JUNIT_VINTAGE_VERSION.matcher(actual);
+        assertThat(matcher.find()).as("junit-vintage-engine added to %s", actual).isTrue();
+        return matcher.group(1);
     }
 
     // `AddDependency` resolves `1.x` against Maven Central, so the version moves with each JUnit release;
