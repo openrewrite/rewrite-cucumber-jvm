@@ -16,21 +16,176 @@
 package org.openrewrite.cucumber.jvm;
 
 import org.junit.jupiter.api.Test;
+
+import org.openrewrite.DocumentExample;
+import org.openrewrite.InMemoryExecutionContext;
+import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuiteTest.cucumber7;
+import static org.openrewrite.java.Assertions.*;
 import static org.openrewrite.maven.Assertions.pomXml;
 
-/**
- * {@code cucumber-jvm-deps} is not needed by any {@code cucumber-core} from 3.0.0 on, so the upgrade to 7.x
- * does not leave a declaration of it behind.
- */
 class UpgradeCucumber7xTest implements RewriteTest {
 
     @Override
     public void defaults(RecipeSpec spec) {
-        spec.recipeFromResources("org.openrewrite.cucumber.jvm.UpgradeCucumber7x");
+        spec
+          .recipeFromResources("org.openrewrite.cucumber.jvm.UpgradeCucumber7x")
+          .parser(JavaParser.fromJavaVersion()
+            .classpathFromResources(new InMemoryExecutionContext(), "cucumber-java-4.8.1"));
+    }
+
+    @DocumentExample
+    @Test
+    void addCucumberJavaThatAnObjectFactoryUsedToBring() {
+        rewriteRun(
+          mavenProject("app",
+            srcTestJava(
+              //language=java
+              java(
+                """
+                  package com.example;
+
+                  import cucumber.api.java.en.Given;
+
+                  public class Steps {
+                      @Given("a step")
+                      public void aStep() {
+                      }
+                  }
+                  """,
+                """
+                  package com.example;
+
+                  import io.cucumber.java.en.Given;
+
+                  public class Steps {
+                      @Given("a step")
+                      public void aStep() {
+                      }
+                  }
+                  """
+              )
+            ),
+            //language=xml
+            pomXml(
+              """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <properties>
+                        <cucumber.version>1.2.2</cucumber.version>
+                    </properties>
+                    <dependencies>
+                        <dependency>
+                            <groupId>info.cukes</groupId>
+                            <artifactId>cucumber-picocontainer</artifactId>
+                            <version>${cucumber.version}</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """,
+              spec -> spec.after(actual -> """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <properties>
+                        <cucumber.version>%1$s</cucumber.version>
+                    </properties>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-java</artifactId>
+                            <version>%1$s</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-picocontainer</artifactId>
+                            <version>${cucumber.version}</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """.formatted(cucumber7(actual)))
+            )
+          )
+        );
+    }
+
+    @Test
+    void keepCucumberJavaThatIsDeclared() {
+        rewriteRun(
+          mavenProject("app",
+            srcTestJava(
+              //language=java
+              java(
+                """
+                  package com.example;
+
+                  import io.cucumber.java.en.Given;
+
+                  public class Steps {
+                      @Given("a step")
+                      public void aStep() {
+                      }
+                  }
+                  """
+              )
+            ),
+            //language=xml
+            pomXml(
+              """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-java</artifactId>
+                            <version>7.18.0</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-picocontainer</artifactId>
+                            <version>7.18.0</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """,
+              spec -> spec.after(actual -> """
+                <project>
+                    <groupId>com.example</groupId>
+                    <artifactId>app</artifactId>
+                    <version>1.0.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-java</artifactId>
+                            <version>%1$s</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>io.cucumber</groupId>
+                            <artifactId>cucumber-picocontainer</artifactId>
+                            <version>%1$s</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """.formatted(cucumber7(actual)))
+            )
+          )
+        );
     }
 
     @Test
