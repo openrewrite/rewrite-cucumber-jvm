@@ -23,6 +23,7 @@ import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuiteTest.cucumber7;
 import static org.openrewrite.java.Assertions.*;
 import static org.openrewrite.maven.Assertions.pomXml;
@@ -183,6 +184,146 @@ class UpgradeCucumber7xTest implements RewriteTest {
                 </project>
                 """.formatted(cucumber7(actual)))
             )
+          )
+        );
+    }
+
+    @Test
+    void legacyCucumberAndJvmDepsEndUpOnCucumber7WithoutJvmDeps() {
+        rewriteRun(
+          pomXml(
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <dependencies>
+                      <dependency>
+                          <groupId>info.cukes</groupId>
+                          <artifactId>cucumber-java</artifactId>
+                          <version>1.2.5</version>
+                          <scope>test</scope>
+                      </dependency>
+                      <dependency>
+                          <groupId>info.cukes</groupId>
+                          <artifactId>cucumber-jvm-deps</artifactId>
+                          <version>1.0.5</version>
+                          <scope>test</scope>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """,
+            spec -> spec.after(actual -> {
+                assertThat(actual)
+                  .doesNotContain("cucumber-jvm-deps")
+                  .doesNotContain("info.cukes")
+                  .containsOnlyOnce("<artifactId>cucumber-java</artifactId>")
+                  .containsPattern("<groupId>io\\.cucumber</groupId>\\s+<artifactId>cucumber-java</artifactId>\\s+<version>7\\.\\d+\\.\\d+</version>");
+                return actual;
+            })
+          )
+        );
+    }
+
+    @Test
+    void jvmDepsNextToCucumberJava8ReplacementEndsUpWithOneCucumberJava() {
+        rewriteRun(
+          pomXml(
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <dependencies>
+                      <dependency>
+                          <groupId>io.cucumber</groupId>
+                          <artifactId>cucumber-java8</artifactId>
+                          <version>2.3.1</version>
+                          <scope>test</scope>
+                      </dependency>
+                      <dependency>
+                          <groupId>info.cukes</groupId>
+                          <artifactId>cucumber-jvm-deps</artifactId>
+                          <version>1.0.5</version>
+                          <scope>test</scope>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """,
+            spec -> spec.after(actual -> {
+                assertThat(actual)
+                  .doesNotContain("cucumber-jvm-deps")
+                  .doesNotContain("info.cukes")
+                  .containsOnlyOnce("<artifactId>cucumber-java</artifactId>");
+                return actual;
+            })
+          )
+        );
+    }
+
+    @Test
+    void jvmDepsAloneBecomesCucumberJava7() {
+        rewriteRun(
+          pomXml(
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>app</artifactId>
+                  <version>1.0.0</version>
+                  <dependencies>
+                      <dependency>
+                          <groupId>info.cukes</groupId>
+                          <artifactId>cucumber-jvm-deps</artifactId>
+                          <version>1.0.5</version>
+                          <scope>test</scope>
+                      </dependency>
+                  </dependencies>
+              </project>
+              """,
+            spec -> spec.after(actual -> {
+                assertThat(actual)
+                  .doesNotContain("cucumber-jvm-deps")
+                  .doesNotContain("info.cukes")
+                  .containsPattern("<groupId>io\\.cucumber</groupId>\\s+<artifactId>cucumber-java</artifactId>\\s+<version>7\\.\\d+\\.\\d+</version>");
+                return actual;
+            })
+          )
+        );
+    }
+
+    @Test
+    void managedLegacyCucumberAndJvmDepsLoseTheManagedJvmDeps() {
+        rewriteRun(
+          pomXml(
+            """
+              <project>
+                  <groupId>com.example</groupId>
+                  <artifactId>parent</artifactId>
+                  <version>1.0.0</version>
+                  <packaging>pom</packaging>
+                  <dependencyManagement>
+                      <dependencies>
+                          <dependency>
+                              <groupId>info.cukes</groupId>
+                              <artifactId>cucumber-java</artifactId>
+                              <version>1.2.5</version>
+                          </dependency>
+                          <dependency>
+                              <groupId>info.cukes</groupId>
+                              <artifactId>cucumber-jvm-deps</artifactId>
+                              <version>1.0.5</version>
+                          </dependency>
+                      </dependencies>
+                  </dependencyManagement>
+              </project>
+              """,
+            spec -> spec.after(actual -> {
+                assertThat(actual)
+                  .doesNotContain("cucumber-jvm-deps")
+                  .doesNotContain("info.cukes")
+                  .containsOnlyOnce("<artifactId>cucumber-java</artifactId>");
+                return actual;
+            })
           )
         );
     }

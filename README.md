@@ -46,6 +46,21 @@ mvn -U org.openrewrite.maven:rewrite-maven-plugin:run \
   -DactiveRecipes=org.openrewrite.cucumber.jvm.CucumberJava8ToJava
 ```
 
+### Cucumber-JVM-Deps migration to Cucumber-Java
+
+Replace `io.cucumber:cucumber-jvm-deps` or `info.cukes:cucumber-jvm-deps` with `io.cucumber:cucumber-java` 7.x
+in Maven or Gradle builds. Where a module already depends on `cucumber-java`, or on Cucumber-JVM 1.x through
+`info.cukes` modules, the dependency is removed instead and the existing Cucumber dependencies are left as they are:
+
+```shell
+mvn -U org.openrewrite.maven:rewrite-maven-plugin:run \
+  -Drewrite.recipeArtifactCoordinates=org.openrewrite.recipe:rewrite-cucumber-jvm:RELEASE \
+  -DactiveRecipes=org.openrewrite.cucumber.jvm.CucumberJvmDepsToCucumberJava
+```
+
+This recipe changes dependency declarations. Direct usages of the old repackaged `cucumber.deps.*` classes
+require separate migration, as do other Cucumber modules when upgrading an older application to 7.x.
+
 ## Bugs and Feature requests
 
 You can register bugs and feature requests in the

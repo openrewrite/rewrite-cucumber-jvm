@@ -183,6 +183,7 @@ recipeList:
   - org.openrewrite.cucumber.jvm.MigrateRuntimeOptionsBuilder
   - org.openrewrite.cucumber.jvm.RegexToCucumberExpression
   - org.openrewrite.cucumber.jvm.CucumberToJunitPlatformSuite
+  - org.openrewrite.cucumber.jvm.CucumberJvmDepsToCucumberJava
   - org.openrewrite.java.dependencies.UpgradeDependencyVersion:
       groupId: io.cucumber
       artifactId: "*"
@@ -781,3 +782,115 @@ recipeList:
       version: 5.x
       onlyIfUsing: org.junit.runner.RunWith
       acceptTransitive: true
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.CucumberJvmDepsToCucumberJava
+displayName: Migrate `cucumber-jvm-deps` to `cucumber-java`
+description: >-
+  Replace the deprecated `io.cucumber:cucumber-jvm-deps` and `info.cukes:cucumber-jvm-deps` dependencies with
+  `io.cucumber:cucumber-java` 7.x in Maven and Gradle builds. Where a module already depends on Cucumber, which
+  brings `cucumber-jvm-deps` along transitively, the dependency is removed instead and the existing Cucumber
+  dependencies keep their versions. The artifacts have independent version histories, so the old version is not
+  retained. This recipe changes dependency declarations only; usages of the old repackaged `cucumber.deps` classes
+  and migrations of other Cucumber modules must be handled separately.
+tags:
+  - testing
+  - cucumber
+recipeList:
+  - org.openrewrite.cucumber.jvm.RemoveCucumberJvmDepsNextToCucumberJava
+  - org.openrewrite.cucumber.jvm.RemoveCucumberJvmDepsNextToLegacyCucumber
+  - org.openrewrite.cucumber.jvm.RemoveManagedCucumberJvmDepsNextToManagedCucumberJava
+  - org.openrewrite.cucumber.jvm.RemoveManagedCucumberJvmDepsNextToManagedLegacyCucumber
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: io.cucumber
+      oldArtifactId: cucumber-jvm-deps
+      newArtifactId: cucumber-java
+      newVersion: 7.x
+  - org.openrewrite.java.dependencies.ChangeDependency:
+      oldGroupId: info.cukes
+      oldArtifactId: cucumber-jvm-deps
+      newGroupId: io.cucumber
+      newArtifactId: cucumber-java
+      newVersion: 7.x
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.RemoveCucumberJvmDepsNextToCucumberJava
+displayName: Remove `cucumber-jvm-deps` next to `cucumber-java`
+description: >-
+  Remove the deprecated `io.cucumber:cucumber-jvm-deps` and `info.cukes:cucumber-jvm-deps` dependencies from modules
+  that already depend on `io.cucumber:cucumber-java`, keeping the scope and version of the existing `cucumber-java`
+  declaration.
+tags:
+  - testing
+  - cucumber
+preconditions:
+  - org.openrewrite.java.dependencies.DependencyInsight:
+      groupIdPattern: io.cucumber
+      artifactIdPattern: cucumber-java
+recipeList:
+  - org.openrewrite.java.dependencies.RemoveDependency:
+      groupId: io.cucumber
+      artifactId: cucumber-jvm-deps
+  - org.openrewrite.java.dependencies.RemoveDependency:
+      groupId: info.cukes
+      artifactId: cucumber-jvm-deps
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.RemoveCucumberJvmDepsNextToLegacyCucumber
+displayName: Remove `cucumber-jvm-deps` next to `info.cukes` Cucumber modules
+description: >-
+  Remove the deprecated `info.cukes:cucumber-jvm-deps` dependency from modules that already depend on Cucumber-JVM
+  1.x through `info.cukes:cucumber-core`, which brings `cucumber-jvm-deps` along transitively. Replacing it with
+  `cucumber-java` 7.x there would put two incompatible Cucumber generations on the classpath.
+tags:
+  - testing
+  - cucumber
+preconditions:
+  - org.openrewrite.java.dependencies.DependencyInsight:
+      groupIdPattern: info.cukes
+      artifactIdPattern: cucumber-core
+recipeList:
+  - org.openrewrite.java.dependencies.RemoveDependency:
+      groupId: info.cukes
+      artifactId: cucumber-jvm-deps
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.RemoveManagedCucumberJvmDepsNextToManagedCucumberJava
+displayName: Remove managed `cucumber-jvm-deps` next to managed `cucumber-java`
+description: >-
+  Remove the deprecated `io.cucumber:cucumber-jvm-deps` and `info.cukes:cucumber-jvm-deps` dependency management
+  entries from Maven poms that already manage `io.cucumber:cucumber-java`, keeping the version of the existing
+  `cucumber-java` entry.
+tags:
+  - testing
+  - cucumber
+preconditions:
+  - org.openrewrite.maven.search.FindManagedDependency:
+      groupId: io.cucumber
+      artifactId: cucumber-java
+recipeList:
+  - org.openrewrite.maven.RemoveManagedDependency:
+      groupId: io.cucumber
+      artifactId: cucumber-jvm-deps
+  - org.openrewrite.maven.RemoveManagedDependency:
+      groupId: info.cukes
+      artifactId: cucumber-jvm-deps
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: org.openrewrite.cucumber.jvm.RemoveManagedCucumberJvmDepsNextToManagedLegacyCucumber
+displayName: Remove managed `cucumber-jvm-deps` next to managed `info.cukes` Cucumber modules
+description: >-
+  Remove the deprecated `info.cukes:cucumber-jvm-deps` dependency management entry from Maven poms that manage
+  Cucumber-JVM 1.x through `info.cukes:cucumber-java`. Replacing it with `cucumber-java` 7.x there would manage two
+  incompatible Cucumber generations.
+tags:
+  - testing
+  - cucumber
+preconditions:
+  - org.openrewrite.maven.search.FindManagedDependency:
+      groupId: info.cukes
+      artifactId: cucumber-java
+recipeList:
+  - org.openrewrite.maven.RemoveManagedDependency:
+      groupId: info.cukes
+      artifactId: cucumber-jvm-deps
