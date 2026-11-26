@@ -15,6 +15,7 @@
  */
 package org.openrewrite.cucumber.jvm;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import org.openrewrite.DocumentExample;
@@ -259,27 +260,6 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
     }
 
     @Test
-    void retainAnExistingManualMigrationComment() {
-        rewriteRun(
-          properties(
-            """
-              # TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; migrate to the individual cucumber.* properties by hand
-              cucumber.options=--format pretty
-              """,
-            spec -> spec.path("src/test/resources/cucumber.properties")));
-    }
-
-    @Test
-    void leaveOtherPropertiesAlone() {
-        rewriteRun(
-          properties(
-            """
-              cucumber.glue=com.example.app
-              """,
-            spec -> spec.path("src/test/resources/cucumber.properties")));
-    }
-
-    @Test
     void mavenSystemPropertyVariables() {
         rewriteRun(
           pomXml(
@@ -478,21 +458,46 @@ class CucumberOptionsPropertyToIndividualPropertiesTest implements RewriteTest {
           ));
     }
 
-    @Test
-    void leaveMavenPropertiesAlone() {
-        rewriteRun(
-          pomXml(
-            """
-              <project>
-                  <modelVersion>4.0.0</modelVersion>
-                  <groupId>com.example</groupId>
-                  <artifactId>app</artifactId>
-                  <version>1.0.0</version>
-                  <properties>
-                      <cucumber.options>--glue com.example.app</cucumber.options>
-                  </properties>
-              </project>
-              """
-          ));
+    @Nested
+    class NoChange {
+
+        @Test
+        void retainAnExistingManualMigrationComment() {
+            rewriteRun(
+              properties(
+                """
+                  # TODO Cucumber-JVM 6.0.0 no longer reads cucumber.options; migrate to the individual cucumber.* properties by hand
+                  cucumber.options=--format pretty
+                  """,
+                spec -> spec.path("src/test/resources/cucumber.properties")));
+        }
+
+        @Test
+        void leaveOtherPropertiesAlone() {
+            rewriteRun(
+              properties(
+                """
+                  cucumber.glue=com.example.app
+                  """,
+                spec -> spec.path("src/test/resources/cucumber.properties")));
+        }
+
+        @Test
+        void leaveMavenPropertiesAlone() {
+            rewriteRun(
+              pomXml(
+                """
+                  <project>
+                      <modelVersion>4.0.0</modelVersion>
+                      <groupId>com.example</groupId>
+                      <artifactId>app</artifactId>
+                      <version>1.0.0</version>
+                      <properties>
+                          <cucumber.options>--glue com.example.app</cucumber.options>
+                      </properties>
+                  </project>
+                  """
+              ));
+        }
     }
 }
